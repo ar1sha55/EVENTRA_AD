@@ -48,6 +48,8 @@ export default function Login({
                                     tabIndex={1}
                                     autoComplete="email"
                                     placeholder="email@graduate.utm.my"
+                                    pattern=".+@graduate\.utm\.my"
+                                    title="Please enter an email address ending with @graduate.utm.my"
                                 />
                                 <InputError message={errors.email} />
                             </div>
@@ -101,7 +103,7 @@ export default function Login({
                         {canRegister && (
                             <div className="text-center text-sm text-muted-foreground">
                                 Don't have an account?{' '}
-                                <TextLink href={register()} tabIndex={5}>
+                                <TextLink href={register()} tabIndex={6}>
                                     Sign up
                                 </TextLink>
                             </div>
