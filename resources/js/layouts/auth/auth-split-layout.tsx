@@ -1,7 +1,9 @@
 import AppLogoIcon from '@/components/app-logo-icon';
+import image1 from '../../../images/image1.jpg';
+import clublogo from '../../../images/clublogo.jpg';
 import { home } from '@/routes';
-import { type SharedData } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
+
+import { Link } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
 
 interface AuthLayoutProps {
@@ -14,49 +16,35 @@ export default function AuthSplitLayout({
     title,
     description,
 }: PropsWithChildren<AuthLayoutProps>) {
-    const { quote } = usePage<SharedData>().props;
+
 
     return (
         <div className="relative grid h-dvh flex-col items-center justify-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0">
-            {/* LEFT SIDE */}
             <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
-                {/* background overlay */}
-                <div className="absolute inset-0 bg-zinc-900" />
-
-                {/* 🖼️ Add your image here */}
-                <img
-                    src="/images/layout_image.jpg"
-                    alt="Welcome illustration"
-                    className="absolute inset-0 h-full w-full object-cover opacity-40"
+                <div
+                    className="absolute inset-0" 
+                    style={{
+                        // 🌟 CORRECTED LINE: Use the imported JS variable directly 🌟
+                        backgroundImage: `url(${image1})`, // Use the imported variable
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                    }}
                 />
 
                 <Link
                     href={home()}
                     className="relative z-20 flex items-center text-lg font-medium"
                 >
-                    <AppLogoIcon className="mr-2 size-8 fill-current text-white" />
+                    <img src={clublogo} alt="UTM Volunteer Club" className="mr-2 size-20 rounded-full" />
+                    UTM Volunteer Club
                 </Link>
 
-                {quote && (
-                    <div className="relative z-20 mt-auto">
-                        <blockquote className="space-y-2">
-                            <p className="text-lg">
-                                &ldquo;{quote.message}&rdquo;
-                            </p>
-                            <footer className="text-sm text-neutral-300">
-                                {quote.author}
-                            </footer>
-                        </blockquote>
-                    </div>
-                )}
+                <div className="absolute bottom-10 left-10 z-20 text-sm">
+                    Powered by Eventra
+                </div>
             </div>
-
-            {/* RIGHT SIDE */}
-           <div
-    className="flex h-full w-full flex-col justify-center lg:p-8"
-    style={{ backgroundColor: '#450d6e' }}
->
-                <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]" >
+            <div className="w-full lg:p-8">
+                <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
                     <Link
                         href={home()}
                         className="relative z-20 flex items-center justify-center lg:hidden"
