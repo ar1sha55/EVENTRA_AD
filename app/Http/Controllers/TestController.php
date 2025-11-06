@@ -7,13 +7,56 @@ use Illuminate\Http\Request;
 
 class TestController extends Controller
 {
-    public function manager(): Response
+    public function managemembers(): Response
     {
-        return Inertia::render('Manager/Members');
+        return Inertia::render('Manager/ManageMembers');
     }
 
-    public function admin(): Response
+
+    public function joinEvents(): Response
     {
-        return Inertia::render('Admin/System');
+        return Inertia::render('JoinEvents');
+    }
+
+  
+
+    public function eventsGallery(): Response
+    {
+        return Inertia::render('EventsGallery');
+    }
+
+    public function announcement(): Response
+    {
+        return Inertia::render('Announcement');
+    }
+
+    public function contactSupport(): Response
+    {
+        return Inertia::render('ContactSupport');
+    }
+
+    public function eventBlast(): Response
+    {
+        return Inertia::render('Manager/EventBlast');
+    }
+
+    public function manageEvents(): Response
+    {
+        return Inertia::render('Manager/ManageEvents');
+    }
+
+    public function manageAnalytics(): Response
+    {
+        return Inertia::render('Manager/ManageAnalytics');
+    }
+
+    public function sendAnnouncement(): Response
+    {
+        return Inertia::render('Manager/SendAnnouncement');
+    }
+
+    public function systemControl(): Response
+    {
+        return Inertia::render('Admin/SystemControl');
     }
 }

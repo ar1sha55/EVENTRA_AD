@@ -56,16 +56,11 @@ export function AppSidebar() {
             icon: CalendarDays,
             subItems: [
                 {title: 'Join Events',
-            href: '/events',
+            href: '/join-events',
             icon: Calendar,},
             {
-            title: 'Scan Attendance',
-            href: '/qr-scanner',
-            icon: ScanLine,
-        },
-               {
-            title: 'Events Galleria',
-            href: '/events-galleria',
+            title: 'Events Gallery',
+            href: '/events-gallery',
             icon: Images,
         },
         {
@@ -99,11 +94,11 @@ export function AppSidebar() {
             icon: Users,
             subItems: [
                 {title: 'Manage Members',
-            href: '/managemembers',
+            href: '/manager/manage-members',
             icon: Users,},
             {
-            title: 'Send Message',
-            href: '/sendmessage',
+            title: 'Event Blast',
+            href: '/manager/event-blast',
             icon: MessageSquare,
         },],
         },
@@ -113,42 +108,35 @@ export function AppSidebar() {
             subItems: [
             {
             title: 'Manage Events',
-            href: '/manageevents',
+            href: '/manager/manage-events',
             icon: ClipboardList,                
             },
 
             {
             title: 'Analytics & Reports',
-            href: '/manageanalytics',
+            href: '/manager/manage-analytics',
             icon: BarChart3,
             },
 
             {
-            title: 'Announcement',
-            href: '/Mannouncement',
+            title: 'Send Announcement',
+            href: '/manager/send-announcement',
             icon: Bell,
             },
             
             ],
         },
 
-        {
-            title: 'Support',
-            icon: Headphones,
-            subItems: [
-        {
-            title: 'Contact Support',
-            href: '/contact-support',
-            icon: MessageCircle,
-        },]},
+        
     ];
 
     // Admin-specific navigation
-    const adminNavItems: NavItem[] = [
+    const adminNavItems: MainNavItem[] = [
         {
             title: 'System Control',
-            href: '/adminsystem',
+            href: '/admin/system-control',
             icon: Shield,
+            isActive: false,
         },
     ];
 

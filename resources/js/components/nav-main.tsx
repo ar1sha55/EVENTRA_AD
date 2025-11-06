@@ -15,35 +15,17 @@ import { ChevronRight } from 'lucide-react';
 
 export function NavMain({ items = [] }: { items: MainNavItem[] }) {
     const page = usePage();
-    
+
     return (
         <SidebarGroup className="px-2 py-0">
             <SidebarGroupLabel></SidebarGroupLabel>
             <SidebarMenu>
-                {items.map((item) => {
-                    // Check if item has subItems (dropdown menu)
-                    const hasSubItems = item.subItems && item.subItems.length > 0;
-
-                    // If no subItems, render as simple link
-                    if (!hasSubItems && item.href) {
-                        return (
-                            <SidebarMenuItem key={item.title}>
-                                <SidebarMenuButton asChild tooltip={item.title}>
-                                    <Link href={item.href}>
-                                        {item.icon && <item.icon />}
-                                        <span>{item.title}</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        );
-                    }
-
-                    // If has subItems, render as collapsible dropdown
-                    return (
+                {items.map((item) =>
+                    item.subItems && item.subItems.length > 0 ? (
                         <Collapsible
                             key={item.title}
                             asChild
-                            defaultOpen={item.isActive}
+                            defaultOpen={item.isActive || !!page.props.auth.user}
                             className="group/collapsible"
                         >
                             <SidebarMenuItem>
@@ -60,7 +42,9 @@ export function NavMain({ items = [] }: { items: MainNavItem[] }) {
                                             <SidebarMenuSubItem key={subItem.title}>
                                                 <SidebarMenuSubButton asChild>
                                                     <Link href={subItem.href}>
-                                                        {subItem.icon && <subItem.icon className="mr-2 h-4 w-4" />}
+                                                        {subItem.icon && (
+                                                            <subItem.icon className="mr-2 h-4 w-4" />
+                                                        )}
                                                         <span>{subItem.title}</span>
                                                     </Link>
                                                 </SidebarMenuSubButton>
@@ -70,8 +54,17 @@ export function NavMain({ items = [] }: { items: MainNavItem[] }) {
                                 </CollapsibleContent>
                             </SidebarMenuItem>
                         </Collapsible>
-                    );
-                })}
+                    ) : (
+                        <SidebarMenuItem key={item.title}>
+                            <SidebarMenuButton asChild>
+                                <Link href={item.href ?? '#'}>
+                                    {item.icon && <item.icon />}
+                                    <span>{item.title}</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    ),
+                )}
             </SidebarMenu>
         </SidebarGroup>
     );

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('matric_id')->unique()->nullable();
             $table->timestamp('email_verified_at')->nullable();
-            $table->enum('role', ['user', 'manager', 'admin'])->default('user');
+            $table->enum('role', ['member', 'manager', 'admin'])->default('member');
             $table->string('password');
             $table->rememberToken();
             $table->timestamps();
