@@ -16,6 +16,10 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->string('matric_id')->unique()->nullable();
+            $table->string('phone_number')->nullable();
+            $table->enum('nationality', ['malaysia', 'indonesia', 'singapore', 'japan', 'china', 'korea', 'egypt', 'yemen', 'thailand', 'vietnam', 'saudi arabia', 'nigeria', 'iraq', 'iran'])->nullable();
+            $table->enum('gender', ['male', 'female'])->nullable();
+            $table->enum('faculty', ['fke', 'fkm', 'fc', 'fab', 'fka', 'fs', 'fcee', 'fm', 'fssh'])->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->enum('role', ['member', 'manager', 'admin'])->default('member');
             $table->string('password');

@@ -24,6 +24,10 @@ class User extends Authenticatable
         'matric_id',
         'role',
         'password',
+        'phone_number',
+        'nationality',
+        'gender',
+        'faculty',
     ];
 
     /**

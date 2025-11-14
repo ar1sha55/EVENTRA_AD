@@ -35,7 +35,7 @@ export default function AnnouncementsPage() {
   const announcements: Announcement[] = props.announcements ?? [
     {
       id: 1,
-      title: "Community Clean-Up Drive",
+      title: "Community Clean-Up Drive :D",
       date: "November 10, 2024",
       author: "Event Manager",
       message:

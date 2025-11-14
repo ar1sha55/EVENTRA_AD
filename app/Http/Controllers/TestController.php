@@ -18,8 +18,6 @@ class TestController extends Controller
         return Inertia::render('JoinEvents');
     }
 
-  
-
     public function eventsGallery(): Response
     {
         return Inertia::render('EventsGallery');

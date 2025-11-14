@@ -5,6 +5,9 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { initializeTheme } from './hooks/use-appearance';
+import { route as ziggyRoute } from 'ziggy-js';
+
+
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -17,6 +20,13 @@ createInertiaApp({
         ),
     setup({ el, App, props }) {
         const root = createRoot(el);
+
+        // Make the route() function available globally in your components
+        // @ts-expect-error
+        window.route = (name, params, absolute) => ziggyRoute(name, params, absolute, {
+            // @ts-expect-error
+            ...props.initialPage.props.ziggy,
+        });
 
         root.render(
             <StrictMode>

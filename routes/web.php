@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
+use App\Http\Controllers\EventsController;
 use App\Http\Controllers\TestController;
 use App\Http\Middleware\RoleMiddleware;
 
@@ -24,11 +25,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::middleware('auth', 'verified', 'role:manager,admin')->group(function () {
+    Route::resource('events', EventsController::class);
     Route::get('/manager/manage-members', [TestController::class, 'manageMembers'])->name('manage-members');
     Route::get('/manager/event-blast', [TestController::class, 'eventBlast'])->name('event-blast');
-    Route::get('/manager/manage-events', [TestController::class, 'manageEvents'])->name('manage-events');
     Route::get('/manager/manage-analytics', [TestController::class, 'manageAnalytics'])->name('manage-analytics');
-     Route::get('/manager/send-announcement', [TestController::class, 'sendAnnouncement'])->name('send-announcement');
+    Route::get('/manager/send-announcement', [TestController::class, 'sendAnnouncement'])->name('send-announcement');
 });
 
 Route::middleware('auth', 'verified', 'role:admin')->group(function () {

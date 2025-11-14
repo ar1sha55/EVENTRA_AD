@@ -10,147 +10,94 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
-import { type MainNavItem, NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
-import {     
-    BookOpen, 
-    Folder, 
-    Shield, 
-    Settings, 
+import {
     LayoutGrid,
-    Users,
+    CalendarDays,
     Calendar,
+    Images,
     Bell,
-    MessageCircle,
-    ScanLine,
+    Headphones,
+    Users,
+    MessageSquare,
     ClipboardList,
     BarChart3,
-    MessageSquare,
-    FileText,
-    User,
-    LogOut,
-    Images,
-    CalendarDays,
-    Headphones,
+    Shield,
 } from 'lucide-react';
 import { usePage } from '@inertiajs/react';
-import { useMemo } from 'react';
-
+import { Link } from '@inertiajs/react';
 import AppLogo from './app-logo';
 
 export function AppSidebar() {
     const { auth } = usePage().props;
     const userRole = auth?.user?.role || 'user';
 
-    // Base navigation for regular users
-    const mainNavItems: MainNavItem[] = [
-        {   title: 'Dashboard',
+    // Base navigation for all users
+    const mainNavItems = [
+        {
+            title: 'Dashboard',
             href: '/dashboard',
             icon: LayoutGrid,
-            isActive:false,
         },
-
         {
             title: 'Events',
             icon: CalendarDays,
             subItems: [
-                {title: 'Join Events',
-            href: '/join-events',
-            icon: Calendar,},
-            {
-            title: 'Events Gallery',
-            href: '/events-gallery',
-            icon: Images,
-        },
-        {
-            title: 'Announcement',
-            href: '/announcement',
-            icon: Bell,
-        },
-            ]
+                { title: 'Join Events', href: '/join-events', icon: Calendar },
+                { title: 'Events Gallery', href: '/events-gallery', icon: Images },
+                { title: 'Announcement', href: '/announcement', icon: Bell },
+            ],
         },
         {
             title: 'Support',
             icon: Headphones,
             subItems: [
-        {
-            title: 'Contact Support',
-            href: '/contact-support',
-            icon: MessageCircle,
-        },]},
+                { title: 'Contact Support', href: '/contact-support', icon: Headphones },
+            ],
+        },
     ];
 
     // Manager-specific navigation
-    const managerNavItems: MainNavItem[] = [
-        {   title: 'Dashboard',
-            href: '/dashboard',
-            icon: LayoutGrid,
-            isActive:false,
-        },
-
+    const managerNavItems = [
         {
             title: 'Member Management',
             icon: Users,
             subItems: [
-                {title: 'Manage Members',
-            href: '/manager/manage-members',
-            icon: Users,},
-            {
-            title: 'Event Blast',
-            href: '/manager/event-blast',
-            icon: MessageSquare,
-        },],
+                { title: 'Manage Members', href: '/manager/manage-members', icon: Users },
+                { title: 'Event Blast', href: '/manager/event-blast', icon: MessageSquare },
+            ],
         },
-            {
+        {
             title: 'Events Management',
             icon: ClipboardList,
             subItems: [
-            {
-            title: 'Manage Events',
-            href: '/manager/manage-events',
-            icon: ClipboardList,                
-            },
-
-            {
-            title: 'Analytics & Reports',
-            href: '/manager/manage-analytics',
-            icon: BarChart3,
-            },
-
-            {
-            title: 'Send Announcement',
-            href: '/manager/send-announcement',
-            icon: Bell,
-            },
-            
+                { title: 'Manage Events', href: '/events', icon: ClipboardList },
+                { title: 'Analytics & Reports', href: '/manager/manage-analytics', icon: BarChart3 },
+                { title: 'Send Announcement', href: '/manager/send-announcement', icon: Bell },
             ],
         },
-
-        
     ];
 
     // Admin-specific navigation
-    const adminNavItems: MainNavItem[] = [
+    const adminNavItems = [
         {
             title: 'System Control',
             href: '/admin/system-control',
             icon: Shield,
-            isActive: false,
         },
     ];
 
     // Compute navigation items based on role
     let roleBasedNavItems = [...mainNavItems];
+
     if (userRole === 'manager') {
         roleBasedNavItems = [...managerNavItems];
     }
+
     if (userRole === 'admin') {
         roleBasedNavItems = [...managerNavItems, ...adminNavItems];
     }
 
-    const footerNavItems: NavItem[] = [
-    ];
+    const footerNavItems: any[] = []; // You can add footer links here if needed
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -158,7 +105,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
+                            <Link href="/dashboard">
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
