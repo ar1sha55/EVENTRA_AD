@@ -1,3 +1,5 @@
+import { Participant } from './Participant';
+
 export interface Event {
     id: number;
     name: string;
@@ -5,4 +7,7 @@ export interface Event {
     start_date: string;
     end_date: string;
     location: string;
+    capacity?: number;
+    participants?: Participant[];
+    image_path?: string;
 }

@@ -118,9 +118,7 @@ class EventsController extends Controller
      */
     public function joinEvents()
     {
-        $events = Event::with(['participants' => function ($query) {
-            $query->where('user_id', Auth::id());
-        }])->latest()->get();
+        $events = Event::with('participants')->latest()->get();
 
         return inertia('JoinEvents', [
             'events' => $events,

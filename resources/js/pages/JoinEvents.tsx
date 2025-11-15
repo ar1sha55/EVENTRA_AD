@@ -6,12 +6,14 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { CalendarDays, MapPin, Eye, ImageIcon, CheckCircle, Users, XCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Event, Participant } from '@/types';
+import { type JoinEventsPageProps } from '@/types/JoinEvents';
+import { type Event } from '@/types/Event';
+import { type Participant } from '@/types/Participant';
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Join Events', href: '/join-events' }];
 
 export default function JoinEvents() {
-    const { events, auth } = usePage().props as any;
+    const { events, auth } = usePage<JoinEventsPageProps>().props;
     const { user } = auth;
 
     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -23,14 +25,13 @@ export default function JoinEvents() {
     };
 
     const handleUnregister = (participantId: number) => {
-        // Note: You need to create this route and controller method
         router.delete(`/participants/${participantId}`, {
             onSuccess: () => setSelectedEvent(null),
         });
     };
 
     const getParticipantStatus = (event: Event): { status: string | null; participantId: number | null } => {
-        if (!event.participants || event.participants.length === 0) {
+        if (!user || !event.participants || event.participants.length === 0) {
             return { status: null, participantId: null };
         }
         const participant = event.participants.find((p: Participant) => p.user_id === user.id);
@@ -92,11 +93,11 @@ export default function JoinEvents() {
                                 </CardContent>
 
                                 <CardFooter className='flex justify-between items-center'>
-                                    <span className={`text-xs font-medium ${slotsLeft > 0 || slotsLeft === 'Unlimited' ? 'text-green-600' : 'text-red-500'}`}>
+                                    <span className={`text-xs font-medium ${((typeof slotsLeft === 'number' && slotsLeft > 0) || slotsLeft === 'Unlimited') ? 'text-green-600' : 'text-red-500'}`}>
                                         {slotsLeft} slots left
                                     </span>
 
-                                    {status ? (
+                                    {user && status ? (
                                         <Button size='sm' disabled variant='outline'>
                                             {status === 'APPROVED' && <CheckCircle className='mr-2 h-4 w-4 text-green-500' />}
                                             {status === 'PENDING' && <CheckCircle className='mr-2 h-4 w-4 text-yellow-500' />}
@@ -150,11 +151,11 @@ export default function JoinEvents() {
                         <Button variant='outline' onClick={() => setSelectedEvent(null)}>
                             Close
                         </Button>
-                        {selectedEvent && (() => {
+                        {selectedEvent && user && (() => {
                             const { status, participantId } = getParticipantStatus(selectedEvent);
-                            if (status) {
+                            if (status && participantId) {
                                 return (
-                                    <Button variant='destructive' onClick={() => handleUnregister(participantId!)}>
+                                    <Button variant='destructive' onClick={() => handleUnregister(participantId)}>
                                         <XCircle className='mr-2 h-4 w-4' /> Unregister
                                     </Button>
                                 );
