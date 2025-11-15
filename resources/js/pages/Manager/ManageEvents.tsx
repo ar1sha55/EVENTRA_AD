@@ -189,6 +189,9 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                                         <DropdownMenuItem onClick={() => openEditModal(event)}>
                                                             Edit
                                                         </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => router.get(`/events/${event.id}/participants`)}>
+                                                            Manage Participants
+                                                        </DropdownMenuItem>
                                                         <DropdownMenuItem onClick={() => setEventToDelete(event)}>
                                                             Delete
                                                         </DropdownMenuItem>

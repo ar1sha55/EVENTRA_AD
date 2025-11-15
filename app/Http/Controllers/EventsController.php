@@ -98,4 +98,17 @@ class EventsController extends Controller
 
         return back()->with('success', 'Event deleted successfully!');
     }
+
+    /**
+     * Display the participants of an event.
+     */
+    public function participants(Event $event)
+    {
+        $event->load(['participants.user']);
+
+        return inertia('Manager/ManageParticipants', [
+            'event' => $event,
+            'participants' => $event->participants,
+        ]);
+    }
 }
