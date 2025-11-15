@@ -65,25 +65,21 @@ export default function ManageParticipants({ event, participants }: ManagePartic
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                {participant.status === 'pending' && (
-                                                    <>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => handleStatusChange(participant.id, 'approved')}
-                                                        >
-                                                            Approve
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => handleStatusChange(participant.id, 'rejected')}
-                                                            className="ml-2"
-                                                        >
-                                                            Reject
-                                                        </Button>
-                                                    </>
-                                                )}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleStatusChange(participant.id, 'approved')}
+                                                >
+                                                    Approve
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleStatusChange(participant.id, 'rejected')}
+                                                    className="ml-2"
+                                                >
+                                                    Reject
+                                                </Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}

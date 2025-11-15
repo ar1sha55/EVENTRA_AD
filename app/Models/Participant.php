@@ -33,4 +33,20 @@ class Participant extends Model
      * @var string
      */
     const UPDATED_AT = 'last_updated';
+
+    /**
+     * Get the user that owns the participant.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the event that the participant belongs to.
+     */
+    public function event()
+    {
+        return $this->belongsTo(Event::class);
+    }
 }

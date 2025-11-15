@@ -6,9 +6,18 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { CalendarDays, MapPin, Eye, ImageIcon, CheckCircle, Users, XCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { type JoinEventsPageProps } from '@/types/JoinEvents';
-import { type Event } from '@/types/Event';
-import { type Participant } from '@/types/Participant';
+import { JoinEventsPageProps } from '@/types/JoinEvents';
+import { Event } from '@/types/Event';
+
+// Define Participant type locally
+type Participant = {
+    id: number;
+    user_id: number;
+    event_id: number;
+    status: string;
+    registration_date: string;
+    last_updated: string;
+};
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Join Events', href: '/join-events' }];
 
@@ -93,7 +102,7 @@ export default function JoinEvents() {
                                 </CardContent>
 
                                 <CardFooter className='flex justify-between items-center'>
-                                    <span className={`text-xs font-medium ${((typeof slotsLeft === 'number' && slotsLeft > 0) || slotsLeft === 'Unlimited') ? 'text-green-600' : 'text-red-500'}`}>
+                                    <span className={`text-xs font-medium ${typeof slotsLeft === 'number' && slotsLeft > 0 || slotsLeft === 'Unlimited' ? 'text-green-600' : 'text-red-500'}`}>
                                         {slotsLeft} slots left
                                     </span>
 
