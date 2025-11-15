@@ -20,4 +20,14 @@ class ParticipantsController extends Controller
 
         return back()->with('success', 'Participant status updated successfully!');
     }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Participant $participant)
+    {
+        $participant->delete();
+
+        return back()->with('success', 'You have successfully unregistered from the event.');
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\Participant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -110,5 +111,46 @@ class EventsController extends Controller
             'event' => $event,
             'participants' => $event->participants,
         ]);
+    }
+
+    /**
+     * Display a list of events for users to join.
+     */
+    public function joinEvents()
+    {
+        $events = Event::with(['participants' => function ($query) {
+            $query->where('user_id', Auth::id());
+        }])->latest()->get();
+
+        return inertia('JoinEvents', [
+            'events' => $events,
+        ]);
+    }
+
+    /**
+     * Register the authenticated user for an event.
+     */
+    public function register(Request $request, Event $event)
+    {
+        $user = Auth::user();
+
+        // Check if the user is already registered
+        $existingParticipant = Participant::where('user_id', $user->id)
+            ->where('event_id', $event->id)
+            ->first();
+
+        if ($existingParticipant) {
+            return back()->with('error', 'You are already registered for this event.');
+        }
+
+        // Create a new participant
+        Participant::create([
+            'user_id'  => $user->id,
+            'event_id' => $event->id,
+            'status'   => 'PENDING',
+            'registration_date' => now(),
+        ]);
+
+        return back()->with('success', 'You have successfully registered for the event. Please wait for approval.');
     }
 }

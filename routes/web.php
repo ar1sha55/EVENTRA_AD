@@ -20,7 +20,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 
     Route::post('/events/{event}/register', [EventsController::class, 'register'])->name('events.register');
-    Route::get('/join-events', [TestController::class, 'joinEvents'])->name('join-events');
+    Route::get('/join-events', [EventsController::class, 'joinEvents'])->name('join-events');
+    Route::delete('/participants/{participant}', [ParticipantsController::class, 'destroy'])->name('participants.destroy');
     Route::get('/events-gallery', [TestController::class, 'eventsGallery'])->name('events-gallery');
     Route::get('/announcement', [TestController::class, 'announcement'])->name('announcement');
     Route::get('/contact-support', [TestController::class, 'contactSupport'])->name('contact-support');
