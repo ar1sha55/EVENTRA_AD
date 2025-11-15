@@ -31,4 +31,14 @@ class Event extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * The participants that belong to the event.
+     */
+    public function participants()
+    {
+        return $this->belongsToMany(User::class, 'participants', 'event_id', 'user_id')
+            ->withPivot('status', 'id')
+            ->withTimestamps('registration_date', 'last_updated');
+    }
 }

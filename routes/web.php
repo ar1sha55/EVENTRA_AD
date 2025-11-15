@@ -26,6 +26,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::middleware('auth', 'verified', 'role:manager,admin')->group(function () {
     Route::resource('events', EventsController::class);
+    Route::get('/events/{event}/participants', [EventsController::class, 'participants'])->name('events.participants');
     Route::get('/manager/manage-members', [TestController::class, 'manageMembers'])->name('manage-members');
     Route::get('/manager/event-blast', [TestController::class, 'eventBlast'])->name('event-blast');
     Route::get('/manager/manage-analytics', [TestController::class, 'manageAnalytics'])->name('manage-analytics');
