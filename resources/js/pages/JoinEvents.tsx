@@ -6,10 +6,8 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { CalendarDays, MapPin, Eye, ImageIcon, CheckCircle, Users, XCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { JoinEventsPageProps } from '@/types/JoinEvents';
-import { Event } from '@/types/Event';
 
-// Define Participant type locally
+// Define types locally
 type Participant = {
     id: number;
     user_id: number;
@@ -19,6 +17,33 @@ type Participant = {
     last_updated: string;
 };
 
+type Event = {
+    id: number;
+    name: string;
+    description: string;
+    start_date: string;
+    end_date: string;
+    location: string;
+    capacity?: number;
+    fee?: number;
+    status: 'draft' | 'published' | 'archived';
+    image_path?: string;
+    participants?: Participant[];
+};
+
+type User = {
+    id: number;
+    name: string;
+    email: string;
+};
+
+type JoinEventsPageProps = {
+    events: Event[];
+    auth: {
+        user: User;
+    };
+};
+
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Join Events', href: '/join-events' }];
 
 export default function JoinEvents() {
@@ -26,6 +51,9 @@ export default function JoinEvents() {
     const { user } = auth;
 
     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+
+    // Additional frontend safety filter (backend should already filter, but this is a failsafe)
+    const publishedEvents = events.filter((event: Event) => event.status === 'published');
 
     const handleRegister = (eventId: number) => {
         router.post(`/events/${eventId}/register`, {}, {
@@ -62,66 +90,73 @@ export default function JoinEvents() {
                     </div>
                 </div>
 
-                <div className='grid gap-6 sm:grid-cols-2 lg:grid-cols-3'>
-                    {events.map((event: Event) => {
-                        const { status } = getParticipantStatus(event);
-                        const totalParticipants = event.participants?.length || 0;
-                        const slotsLeft = event.capacity ? event.capacity - totalParticipants : 'Unlimited';
+                {publishedEvents.length === 0 ? (
+                    <div className='text-center py-12'>
+                        <p className='text-muted-foreground text-lg'>No events available at the moment.</p>
+                        <p className='text-sm text-muted-foreground mt-2'>Check back later for new volunteering opportunities!</p>
+                    </div>
+                ) : (
+                    <div className='grid gap-6 sm:grid-cols-2 lg:grid-cols-3'>
+                        {publishedEvents.map((event: Event) => {
+                            const { status } = getParticipantStatus(event);
+                            const totalParticipants = event.participants?.length || 0;
+                            const slotsLeft = event.capacity ? event.capacity - totalParticipants : 'Unlimited';
 
-                        return (
-                            <Card
-                                key={event.id}
-                                className='overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 rounded-xl'
-                            >
-                                {event.image_path ? (
-                                    <img
-                                        src={`/storage/${event.image_path}`}
-                                        alt={event.name}
-                                        className='aspect-[16/9] w-full object-cover'
-                                    />
-                                ) : (
-                                    <div className='aspect-[16/9] bg-gray-200 flex items-center justify-center text-gray-500'>
-                                        <ImageIcon className='h-8 w-8' />
-                                    </div>
-                                )}
-
-                                <CardHeader>
-                                    <CardTitle className='text-lg font-semibold'>{event.name}</CardTitle>
-                                    <CardDescription className='flex items-center gap-2 text-sm text-muted-foreground'>
-                                        <CalendarDays className='h-4 w-4' />
-                                        {new Date(event.start_date).toLocaleDateString()}
-                                    </CardDescription>
-                                </CardHeader>
-
-                                <CardContent>
-                                    <p className='text-sm text-muted-foreground mb-2'>
-                                        <MapPin className='inline-block h-4 w-4 mr-1 text-muted-foreground' />
-                                        {event.location}
-                                    </p>
-                                    <p className='text-sm text-muted-foreground line-clamp-2'>{event.description}</p>
-                                </CardContent>
-
-                                <CardFooter className='flex justify-between items-center'>
-                                    <span className={`text-xs font-medium ${typeof slotsLeft === 'number' && slotsLeft > 0 || slotsLeft === 'Unlimited' ? 'text-green-600' : 'text-red-500'}`}>
-                                        {slotsLeft} slots left
-                                    </span>
-
-                                    {user && status ? (
-                                        <Button size='sm' disabled variant='outline'>
-                                            {status === 'APPROVED' && <CheckCircle className='mr-2 h-4 w-4 text-green-500' />}
-                                            {status === 'PENDING' && <CheckCircle className='mr-2 h-4 w-4 text-yellow-500' />}
-                                            {status}
-                                        </Button>
+                            return (
+                                <Card
+                                    key={event.id}
+                                    className='overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 rounded-xl'
+                                >
+                                    {event.image_path ? (
+                                        <img
+                                            src={`/storage/${event.image_path}`}
+                                            alt={event.name}
+                                            className='aspect-[16/9] w-full object-cover'
+                                        />
                                     ) : (
-                                        <Button size='sm' variant='outline' onClick={() => setSelectedEvent(event)}>
-                                            <Eye className='mr-2 h-4 w-4' /> View Details
-                                        </Button>
+                                        <div className='aspect-[16/9] bg-gray-200 flex items-center justify-center text-gray-500'>
+                                            <ImageIcon className='h-8 w-8' />
+                                        </div>
                                     )}
-                                </CardFooter>
-                            </Card>
-                        );
-                    })}
-                </div>
+
+                                    <CardHeader>
+                                        <CardTitle className='text-lg font-semibold'>{event.name}</CardTitle>
+                                        <CardDescription className='flex items-center gap-2 text-sm text-muted-foreground'>
+                                            <CalendarDays className='h-4 w-4' />
+                                            {new Date(event.start_date).toLocaleDateString()}
+                                        </CardDescription>
+                                    </CardHeader>
+
+                                    <CardContent>
+                                        <p className='text-sm text-muted-foreground mb-2'>
+                                            <MapPin className='inline-block h-4 w-4 mr-1 text-muted-foreground' />
+                                            {event.location}
+                                        </p>
+                                        <p className='text-sm text-muted-foreground line-clamp-2'>{event.description}</p>
+                                    </CardContent>
+
+                                    <CardFooter className='flex justify-between items-center'>
+                                        <span className={`text-xs font-medium ${typeof slotsLeft === 'number' && slotsLeft > 0 || slotsLeft === 'Unlimited' ? 'text-green-600' : 'text-red-500'}`}>
+                                            {slotsLeft} slots left
+                                        </span>
+
+                                        {user && status ? (
+                                            <Button size='sm' disabled variant='outline'>
+                                                {status === 'APPROVED' && <CheckCircle className='mr-2 h-4 w-4 text-green-500' />}
+                                                {status === 'PENDING' && <CheckCircle className='mr-2 h-4 w-4 text-yellow-500' />}
+                                                {status}
+                                            </Button>
+                                        ) : (
+                                            <Button size='sm' variant='outline' onClick={() => setSelectedEvent(event)}>
+                                                <Eye className='mr-2 h-4 w-4' /> View Details
+                                            </Button>
+                                        )}
+                                    </CardFooter>
+                                </Card>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>

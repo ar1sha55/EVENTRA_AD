@@ -13,10 +13,16 @@ class ParticipantsController extends Controller
     public function updateStatus(Request $request, Participant $participant)
     {
         $validated = $request->validate([
-            'status' => 'required|string|in:approved,rejected',
+            'status' => 'required|string|in:PENDING,APPROVED,REJECTED,pending,approved,rejected',
         ]);
 
-        $participant->update($validated);
+        // Convert to uppercase for consistency
+        $status = strtoupper($validated['status']);
+
+        $participant->update([
+            'status' => $status,
+            'last_updated' => now(),
+        ]);
 
         return back()->with('success', 'Participant status updated successfully!');
     }

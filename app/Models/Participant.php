@@ -18,6 +18,8 @@ class Participant extends Model
         'user_id',
         'event_id',
         'status',
+        'registration_date',
+        'last_updated',
     ];
 
     /**

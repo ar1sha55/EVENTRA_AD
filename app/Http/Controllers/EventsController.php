@@ -35,6 +35,7 @@ class EventsController extends Controller
             'location'    => 'required|string|max:255',
             'capacity'    => 'nullable|integer',
             'fee'         => 'nullable|numeric',
+            'status'      => 'required|in:draft,published,archived',
             'image'       => 'nullable|image|max:10240', // 10MB max
         ]);
 
@@ -45,7 +46,6 @@ class EventsController extends Controller
 
         // Assign the authenticated manager as creator
         $validated['user_id'] = Auth::id();
-        $validated['status'] = 'draft';
 
         Event::create($validated);
 
@@ -65,6 +65,7 @@ class EventsController extends Controller
             'location'    => 'required|string|max:255',
             'capacity'    => 'nullable|integer',
             'fee'         => 'nullable|numeric',
+            'status'      => 'required|in:draft,published,archived',
             'image'       => 'nullable|image|max:10240',
         ]);
 
@@ -115,10 +116,15 @@ class EventsController extends Controller
 
     /**
      * Display a list of events for users to join.
+     * Only show published events to members.
      */
     public function joinEvents()
     {
-        $events = Event::with('participants')->latest()->get();
+        // Filter to only show published events
+        $events = Event::where('status', 'published')
+            ->with('participants.user')
+            ->orderBy('start_date', 'asc')
+            ->get();
 
         return inertia('JoinEvents', [
             'events' => $events,
@@ -127,9 +133,15 @@ class EventsController extends Controller
 
     /**
      * Register the authenticated user for an event.
+     * Security: Only allow registration for published events.
      */
     public function register(Request $request, Event $event)
     {
+        // Security check: Prevent registration for non-published events
+        if ($event->status !== 'published') {
+            return back()->with('error', 'This event is not available for registration.');
+        }
+
         $user = Auth::user();
 
         // Check if the user is already registered
@@ -139,6 +151,15 @@ class EventsController extends Controller
 
         if ($existingParticipant) {
             return back()->with('error', 'You are already registered for this event.');
+        }
+
+        // Check if event has capacity and if it's full
+        if ($event->capacity) {
+            $currentParticipants = Participant::where('event_id', $event->id)->count();
+            
+            if ($currentParticipants >= $event->capacity) {
+                return back()->with('error', 'This event has reached its maximum capacity.');
+            }
         }
 
         // Create a new participant

@@ -86,14 +86,16 @@
   --chart-3: oklch(0.646 0.222 41.116);
   --chart-4: oklch(0.553 0.195 38.402);
   --chart-5: oklch(0.47 0.157 37.304);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.646 0.222 41.116);
-  --sidebar-primary-foreground: oklch(0.98 0.016 73.684);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.75 0.183 55.934);
+  
+  /* Light Mode Purple Sidebar */
+  --sidebar: oklch(0.95 0.05 290);
+  --sidebar-foreground: oklch(0.25 0.08 290);
+  --sidebar-primary: oklch(0.55 0.18 290);
+  --sidebar-primary-foreground: oklch(0.98 0.01 290);
+  --sidebar-accent: oklch(0.88 0.08 290);
+  --sidebar-accent-foreground: oklch(0.25 0.08 290);
+  --sidebar-border: oklch(0.85 0.06 290);
+  --sidebar-ring: oklch(0.55 0.18 290);
 }
 
 .dark {
@@ -120,14 +122,16 @@
   --chart-3: oklch(0.646 0.222 41.116);
   --chart-4: oklch(0.553 0.195 38.402);
   --chart-5: oklch(0.47 0.157 37.304);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.705 0.213 47.604);
-  --sidebar-primary-foreground: oklch(0.98 0.016 73.684);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.408 0.123 38.172);
+  
+  /* Dark Mode Purple Sidebar */
+  --sidebar: oklch(0.20 0.05 300);
+  --sidebar-foreground: oklch(0.92 0.05 290);
+  --sidebar-primary: oklch(0.65 0.20 290);
+  --sidebar-primary-foreground: oklch(0.98 0.01 290);
+  --sidebar-accent: oklch(0.28 0.08 290);
+  --sidebar-accent-foreground: oklch(0.92 0.05 290);
+  --sidebar-border: oklch(0.28 0.04 300);
+  --sidebar-ring: oklch(0.65 0.20 290);
 }
 
 
@@ -138,5 +142,49 @@
 
     body {
         @apply bg-background text-foreground;
+    }
+}
+
+/* Enhanced Sidebar Hover Effects */
+@layer components {
+    /* Sidebar menu button hover effects */
+    [data-sidebar] [data-sidebar-menu-button] {
+        @apply transition-all duration-200 ease-in-out;
+    }
+    
+    [data-sidebar] [data-sidebar-menu-button]:hover {
+        @apply bg-sidebar-accent/80 scale-[1.02];
+    }
+    
+    [data-sidebar] [data-sidebar-menu-button][data-active="true"] {
+        @apply bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-sm;
+    }
+    
+    /* Sub-menu hover effects */
+    [data-sidebar] [data-sidebar-menu-sub-button] {
+        @apply transition-all duration-200 ease-in-out;
+    }
+    
+    [data-sidebar] [data-sidebar-menu-sub-button]:hover {
+        @apply bg-sidebar-accent/60 translate-x-1;
+    }
+    
+    [data-sidebar] [data-sidebar-menu-sub-button][data-active="true"] {
+        @apply bg-sidebar-accent text-sidebar-accent-foreground font-medium;
+    }
+    
+    /* Icon hover glow effect */
+    [data-sidebar] [data-sidebar-menu-button]:hover svg {
+        @apply drop-shadow-sm;
+    }
+    
+    /* Collapsible trigger hover */
+    [data-sidebar] [data-collapsible-trigger]:hover {
+        @apply bg-sidebar-accent/80;
+    }
+    
+    /* Smooth transitions for collapsible content */
+    [data-sidebar] [data-radix-collapsible-content] {
+        @apply transition-all duration-300 ease-in-out;
     }
 }
