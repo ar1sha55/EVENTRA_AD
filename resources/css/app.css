@@ -86,18 +86,6 @@
   --chart-3: oklch(0.646 0.222 41.116);
   --chart-4: oklch(0.553 0.195 38.402);
   --chart-5: oklch(0.47 0.157 37.304);
-<<<<<<< HEAD
-  
-  /* Light Mode Purple Sidebar */
-  --sidebar: oklch(0.95 0.05 290);
-  --sidebar-foreground: oklch(0.25 0.08 290);
-  --sidebar-primary: oklch(0.55 0.18 290);
-  --sidebar-primary-foreground: oklch(0.98 0.01 290);
-  --sidebar-accent: oklch(0.88 0.08 290);
-  --sidebar-accent-foreground: oklch(0.25 0.08 290);
-  --sidebar-border: oklch(0.85 0.06 290);
-  --sidebar-ring: oklch(0.55 0.18 290);
-=======
   --sidebar: oklch(0.25 0.06 300);             
   --sidebar-foreground: oklch(0.98 0.01 300);   
   --sidebar-primary: oklch(0.646 0.222 41.116);
@@ -106,7 +94,12 @@
   --sidebar-accent-foreground: oklch(0.99 0 0);
   --sidebar-border: oklch(0.32 0.04 300);
   --sidebar-ring: oklch(0.72 0.17 300);
->>>>>>> d6e978b0b79214152497c89b59186dfed0b8a96c
+   --footer: oklch(98.212% 0.00011 271.152);                    /* Very light purple background */
+  --footer-text: oklch(0.35 0.08 300);               /* Dark purple text for links */
+  --footer-icon: oklch(0.40 0.10 300);               /* Dark purple for icons */
+  --footer-line: oklch(71.516% 0.11413 298.196);               /* Medium purple for divider lines */
+  --footer-border: oklch(0.75 0.06 300);             /* Medium purple for borders */
+  --footer-copyright: oklch(0.50 0.08 300);
 }
 
 .dark {
@@ -133,18 +126,6 @@
   --chart-3: oklch(0.646 0.222 41.116);
   --chart-4: oklch(0.553 0.195 38.402);
   --chart-5: oklch(0.47 0.157 37.304);
-<<<<<<< HEAD
-  
-  /* Dark Mode Purple Sidebar */
-  --sidebar: oklch(0.20 0.05 300);
-  --sidebar-foreground: oklch(0.92 0.05 290);
-  --sidebar-primary: oklch(0.65 0.20 290);
-  --sidebar-primary-foreground: oklch(0.98 0.01 290);
-  --sidebar-accent: oklch(0.28 0.08 290);
-  --sidebar-accent-foreground: oklch(0.92 0.05 290);
-  --sidebar-border: oklch(0.28 0.04 300);
-  --sidebar-ring: oklch(0.65 0.20 290);
-=======
   --sidebar: oklch(0.20 0.05 300);              
   --sidebar-foreground: oklch(0.97 0.01 300); 
   --sidebar-primary: oklch(0.705 0.213 47.604);
@@ -153,7 +134,12 @@
   --sidebar-accent-foreground: oklch(0.99 0 0); 
   --sidebar-border: oklch(0.28 0.04 300);
   --sidebar-ring: oklch(0.75 0.18 300);
->>>>>>> d6e978b0b79214152497c89b59186dfed0b8a96c
+   --footer-text: oklch(0.90 0.02 300);               /* Light text for links */
+  --footer-icon: oklch(0.95 0.01 300);               /* White/light icons */
+  --footer-line: oklch(0.48 0.033 303.315);          /* Medium purple for divider lines */
+  --footer-border: oklch(0.35 0.04 300);             /* Darker purple for borders */
+  --footer-copyright: oklch(0.75 0.076 303.144); 
+  --footer: oklch(16.635% 0.00641 300.794);
 }
 
 
