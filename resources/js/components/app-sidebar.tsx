@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/sidebar';
 import {
     LayoutGrid,
+    LayoutDashboard,
     CalendarDays,
     Calendar,
     Images,
@@ -58,6 +59,11 @@ export function AppSidebar() {
 
     // Manager-specific navigation
     const managerNavItems = [
+        {
+            title: 'Manager Dashboard',
+            href: '/manager/dashboard',
+            icon: LayoutDashboard,
+        },
         {
             title: 'Member Management',
             icon: Users,
