@@ -17,6 +17,16 @@ class Participant extends Model
         'payment_proof_path',
         'registration_date',
         'last_updated',
+        'hours_logged', // Added this
+    ];
+
+    /**
+     * The attributes that should be cast.
+     */
+    protected $casts = [
+        'registration_date' => 'datetime',
+        'last_updated' => 'datetime',
+        'hours_logged' => 'decimal:2', // Cast to decimal with 2 decimal places
     ];
 
     

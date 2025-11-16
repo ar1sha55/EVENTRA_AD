@@ -12,18 +12,28 @@ class Event extends Model
 
     // Allow mass assignment for these fields
     protected $fillable = [
-    'name',
-    'description',
-    'start_date',
-    'end_date',
-    'location',
-    'capacity',
-    'fee',
-    'status',
-    'user_id',
-    'image_path', // MUST MATCH the migration
-    'qr_code_path',
-];
+        'name',
+        'description',
+        'start_date',
+        'end_date',
+        'location',
+        'capacity',
+        'fee',
+        'status',
+        'user_id',
+        'image_path',
+        'qr_code_path',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     */
+    protected $casts = [
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
+        'fee' => 'decimal:2',
+        'capacity' => 'integer',
+    ];
 
     /**
      * Relationship: Event belongs to a User (creator)

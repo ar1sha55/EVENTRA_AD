@@ -5,17 +5,21 @@ import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
     CalendarDays, 
     Users, 
     CheckCircle, 
-    Handshake,
+    ClipboardList,
     ArrowRight,
     Bell,
     UserPlus,
     Calendar,
     UserCheck,
-    Hand
+    Hand,
+    Building2,
+    Award,
+    Clock
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -24,7 +28,7 @@ interface DashboardSummary {
     upcoming_events: number;
     completed_events: number;
     total_members: number;
-    partnerships: number;
+    total_registrations: number;
     pending_registrations: number;
 }
 
@@ -34,11 +38,8 @@ interface ParticipantStatusBreakdown {
     REJECTED?: number;
 }
 
-interface AgeDistribution {
-    '18 - 24 Years': number;
-    '25 - 34 Years': number;
-    '35 - 44 Years': number;
-    '44 + Years': number;
+interface FacultyDistribution {
+    [facultyName: string]: number;  // e.g., "Engineering": 45
 }
 
 interface UpcomingEvent {
@@ -62,13 +63,24 @@ interface MemberEngagement {
     [eventName: string]: number;  // Dynamic event names
 }
 
+interface TopParticipant {
+    id: number;
+    name: string;
+    email: string;
+    faculty: string;
+    profile_photo_path?: string;
+    total_hours: number;
+    events_participated: number;
+}
+
 interface DashboardData {
     summary: DashboardSummary;
     participant_status_breakdown: ParticipantStatusBreakdown;
-    participants_age_distribution: AgeDistribution;
+    participants_faculty_distribution: FacultyDistribution;
     upcoming_events: UpcomingEvent[];
     recent_notifications: Notification[];
     member_engagement: MemberEngagement;
+    top_participants: TopParticipant[];
 }
 
 export default function ManagerDashboard() {
@@ -121,17 +133,40 @@ export default function ManagerDashboard() {
         );
     }
 
-    const { summary, participant_status_breakdown, participants_age_distribution, upcoming_events, recent_notifications, member_engagement } = dashboardData;
+    const { 
+        summary, 
+        participant_status_breakdown, 
+        participants_faculty_distribution, 
+        upcoming_events, 
+        recent_notifications, 
+        member_engagement,
+        top_participants 
+    } = dashboardData;
 
     // Calculate total participants for percentages
-    const totalParticipants = Object.values(participants_age_distribution).reduce((sum, val) => sum + val, 0);
+    const totalParticipants = Object.values(participants_faculty_distribution).reduce((sum, val) => sum + val, 0);
 
-    // Colors for the pie chart segments
-    const ageColors = [
+    // Colors for the pie chart segments (expanded for more faculties)
+    const facultyColors = [
         'bg-purple-500',
+        'bg-blue-500',
         'bg-red-500',
         'bg-yellow-500',
-        'bg-green-500'
+        'bg-green-500',
+        'bg-pink-500',
+        'bg-indigo-500',
+        'bg-orange-500'
+    ];
+
+    const facultyColorHex = [
+        '#a855f7',
+        '#3b82f6',
+        '#ef4444',
+        '#eab308',
+        '#22c55e',
+        '#ec4899',
+        '#6366f1',
+        '#f97316'
     ];
 
     const engagementColors = [
@@ -141,6 +176,35 @@ export default function ManagerDashboard() {
         'bg-green-500',
         'bg-red-500'
     ];
+
+    // Medal colors for top participants
+    const getMedalColor = (index: number) => {
+        switch (index) {
+            case 0: return 'from-yellow-400 to-yellow-600'; // Gold
+            case 1: return 'from-gray-300 to-gray-500'; // Silver
+            case 2: return 'from-orange-400 to-orange-600'; // Bronze
+            default: return 'from-blue-500 to-purple-600';
+        }
+    };
+
+    const getMedalBgColor = (index: number) => {
+        switch (index) {
+            case 0: return 'bg-yellow-50 border-yellow-200'; // Gold
+            case 1: return 'bg-gray-50 border-gray-200'; // Silver
+            case 2: return 'bg-orange-50 border-orange-200'; // Bronze
+            default: return 'bg-blue-50 border-blue-200';
+        }
+    };
+
+    // Get initials from name
+    const getInitials = (name: string) => {
+        return name
+            .split(' ')
+            .map(word => word[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+    };
 
     return (
         <AppLayout>
@@ -207,91 +271,108 @@ export default function ManagerDashboard() {
                             </CardContent>
                         </Card>
 
-                        {/* Partnership */}
+                        {/* Total Registrations */}
                         <Card className="bg-pink-50 dark:bg-pink-950 border-pink-200 dark:border-pink-800">
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
                                 <CardTitle className="text-sm font-medium text-pink-900 dark:text-pink-100">
-                                    Partnership
+                                    Total Registrations
                                 </CardTitle>
-                                <Handshake className="h-8 w-8 text-pink-600 dark:text-pink-400" />
+                                <ClipboardList className="h-8 w-8 text-pink-600 dark:text-pink-400" />
                             </CardHeader>
                             <CardContent>
                                 <div className="text-4xl font-bold text-pink-900 dark:text-pink-100">
-                                    {summary.partnerships}
+                                    {summary.total_registrations}
                                 </div>
+                                <p className="text-xs text-pink-700 dark:text-pink-300 mt-1">
+                                    {summary.pending_registrations} pending
+                                </p>
                             </CardContent>
                         </Card>
                     </div>
 
                     {/* Middle Section - Charts and Upcoming Events */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Participants Ages Pie Chart */}
+                        {/* Participants by Faculty Pie Chart */}
                         <Card>
                             <CardHeader>
-                                <CardTitle className="text-lg">Participants Ages</CardTitle>
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Building2 className="h-5 w-5" />
+                                    Participants by Faculty
+                                </CardTitle>
+                                <CardDescription>Distribution across faculties</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="flex items-center justify-center mb-4">
-                                    {/* Simple Pie Chart Representation */}
-                                    <div className="relative w-48 h-48">
-                                        <svg viewBox="0 0 100 100" className="transform -rotate-90">
-                                            {(() => {
-                                                let currentAngle = 0;
-                                                const entries = Object.entries(participants_age_distribution);
-                                                return entries.map(([age, count], index) => {
-                                                    const percentage = totalParticipants > 0 ? (count / totalParticipants) * 100 : 0;
-                                                    const angle = (percentage / 100) * 360;
-                                                    const startX = 50 + 40 * Math.cos((currentAngle * Math.PI) / 180);
-                                                    const startY = 50 + 40 * Math.sin((currentAngle * Math.PI) / 180);
-                                                    const endAngle = currentAngle + angle;
-                                                    const endX = 50 + 40 * Math.cos((endAngle * Math.PI) / 180);
-                                                    const endY = 50 + 40 * Math.sin((endAngle * Math.PI) / 180);
-                                                    const largeArc = angle > 180 ? 1 : 0;
-                                                    
-                                                    const colors = ['#a855f7', '#ef4444', '#eab308', '#22c55e'];
-                                                    const color = colors[index % colors.length];
-                                                    
-                                                    const path = `M 50 50 L ${startX} ${startY} A 40 40 0 ${largeArc} 1 ${endX} ${endY} Z`;
-                                                    currentAngle = endAngle;
-                                                    
-                                                    return (
-                                                        <path
-                                                            key={age}
-                                                            d={path}
-                                                            fill={color}
-                                                            stroke="white"
-                                                            strokeWidth="0.5"
-                                                        />
-                                                    );
-                                                });
-                                            })()}
-                                            {/* Center white circle for donut effect */}
-                                            <circle cx="50" cy="50" r="25" fill="white" />
-                                        </svg>
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <div className="text-center">
-                                                <p className="text-2xl font-bold">{totalParticipants}</p>
-                                                <p className="text-xs text-muted-foreground">Total</p>
+                                {totalParticipants > 0 ? (
+                                    <>
+                                        <div className="flex items-center justify-center mb-4">
+                                            {/* Simple Pie Chart Representation */}
+                                            <div className="relative w-48 h-48">
+                                                <svg viewBox="0 0 100 100" className="transform -rotate-90">
+                                                    {(() => {
+                                                        let currentAngle = 0;
+                                                        const entries = Object.entries(participants_faculty_distribution);
+                                                        return entries.map(([faculty, count], index) => {
+                                                            const percentage = totalParticipants > 0 ? (count / totalParticipants) * 100 : 0;
+                                                            const angle = (percentage / 100) * 360;
+                                                            const startX = 50 + 40 * Math.cos((currentAngle * Math.PI) / 180);
+                                                            const startY = 50 + 40 * Math.sin((currentAngle * Math.PI) / 180);
+                                                            const endAngle = currentAngle + angle;
+                                                            const endX = 50 + 40 * Math.cos((endAngle * Math.PI) / 180);
+                                                            const endY = 50 + 40 * Math.sin((endAngle * Math.PI) / 180);
+                                                            const largeArc = angle > 180 ? 1 : 0;
+                                                            
+                                                            const color = facultyColorHex[index % facultyColorHex.length];
+                                                            
+                                                            const path = `M 50 50 L ${startX} ${startY} A 40 40 0 ${largeArc} 1 ${endX} ${endY} Z`;
+                                                            currentAngle = endAngle;
+                                                            
+                                                            return (
+                                                                <path
+                                                                    key={faculty}
+                                                                    d={path}
+                                                                    fill={color}
+                                                                    stroke="white"
+                                                                    strokeWidth="0.5"
+                                                                />
+                                                            );
+                                                        });
+                                                    })()}
+                                                    {/* Center white circle for donut effect */}
+                                                    <circle cx="50" cy="50" r="25" fill="white" />
+                                                </svg>
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <div className="text-center">
+                                                        <p className="text-2xl font-bold">{totalParticipants}</p>
+                                                        <p className="text-xs text-muted-foreground">Total</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-                                
-                                {/* Legend */}
-                                <div className="space-y-2">
-                                    {Object.entries(participants_age_distribution).map(([age, count], index) => {
-                                        const percentage = totalParticipants > 0 ? Math.round((count / totalParticipants) * 100) : 0;
-                                        return (
-                                            <div key={age} className="flex items-center justify-between text-sm">
-                                                <div className="flex items-center gap-2">
-                                                    <div className={`w-3 h-3 rounded-full ${ageColors[index]}`} />
-                                                    <span>{age}</span>
-                                                </div>
-                                                <span className="font-medium">{percentage}%</span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                        
+                                        {/* Legend */}
+                                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                                            {Object.entries(participants_faculty_distribution).map(([faculty, count], index) => {
+                                                const percentage = totalParticipants > 0 ? Math.round((count / totalParticipants) * 100) : 0;
+                                                return (
+                                                    <div key={faculty} className="flex items-center justify-between text-sm">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={`w-3 h-3 rounded-full ${facultyColors[index % facultyColors.length]}`} />
+                                                            <span className="truncate" title={faculty}>{faculty}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-muted-foreground">{count}</span>
+                                                            <span className="font-medium min-w-[3rem] text-right">{percentage}%</span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground text-center py-8">
+                                        No faculty data available
+                                    </p>
+                                )}
                             </CardContent>
                         </Card>
 
@@ -357,7 +438,7 @@ export default function ManagerDashboard() {
                         </Card>
                     </div>
 
-                    {/* Bottom Section - Members Engagement and Notifications */}
+                    {/* Bottom Section - Members Engagement and Top Participants */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Members Engagement Donut Chart */}
                         <Card>
@@ -366,117 +447,138 @@ export default function ManagerDashboard() {
                                 <CardDescription>Event participation distribution</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="flex items-center justify-center mb-4">
-                                    {/* Donut Chart for Member Engagement */}
-                                    <div className="relative w-48 h-48">
-                                        <svg viewBox="0 0 100 100" className="transform -rotate-90">
-                                            {(() => {
-                                                let currentAngle = 0;
-                                                const entries = Object.entries(member_engagement);
-                                                const totalEngagement = Object.values(member_engagement).reduce((sum, val) => sum + val, 0);
-                                                
-                                                return entries.map(([eventType, count], index) => {
-                                                    const percentage = totalEngagement > 0 ? (count / totalEngagement) * 100 : 0;
-                                                    const angle = (percentage / 100) * 360;
-                                                    const startX = 50 + 40 * Math.cos((currentAngle * Math.PI) / 180);
-                                                    const startY = 50 + 40 * Math.sin((currentAngle * Math.PI) / 180);
-                                                    const endAngle = currentAngle + angle;
-                                                    const endX = 50 + 40 * Math.cos((endAngle * Math.PI) / 180);
-                                                    const endY = 50 + 40 * Math.sin((endAngle * Math.PI) / 180);
-                                                    const largeArc = angle > 180 ? 1 : 0;
-                                                    
-                                                    const colors = ['#a855f7', '#3b82f6', '#eab308', '#22c55e', '#ef4444'];
-                                                    const color = colors[index % colors.length];
-                                                    
-                                                    const path = `M 50 50 L ${startX} ${startY} A 40 40 0 ${largeArc} 1 ${endX} ${endY} Z`;
-                                                    currentAngle = endAngle;
-                                                    
-                                                    return (
-                                                        <path
-                                                            key={eventType}
-                                                            d={path}
-                                                            fill={color}
-                                                            stroke="white"
-                                                            strokeWidth="0.5"
-                                                        />
-                                                    );
-                                                });
-                                            })()}
-                                            {/* Center white circle for donut effect */}
-                                            <circle cx="50" cy="50" r="20" fill="white" />
-                                        </svg>
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <div className="text-center">
-                                                <p className="text-2xl font-bold">
-                                                    {Object.values(member_engagement).reduce((sum, val) => sum + val, 0)}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">Total</p>
+                                {Object.keys(member_engagement).length > 0 ? (
+                                    <>
+                                        <div className="flex items-center justify-center mb-4">
+                                            {/* Donut Chart for Member Engagement */}
+                                            <div className="relative w-48 h-48">
+                                                <svg viewBox="0 0 100 100" className="transform -rotate-90">
+                                                    {(() => {
+                                                        let currentAngle = 0;
+                                                        const entries = Object.entries(member_engagement);
+                                                        const totalEngagement = Object.values(member_engagement).reduce((sum, val) => sum + val, 0);
+                                                        
+                                                        return entries.map(([eventType, count], index) => {
+                                                            const percentage = totalEngagement > 0 ? (count / totalEngagement) * 100 : 0;
+                                                            const angle = (percentage / 100) * 360;
+                                                            const startX = 50 + 40 * Math.cos((currentAngle * Math.PI) / 180);
+                                                            const startY = 50 + 40 * Math.sin((currentAngle * Math.PI) / 180);
+                                                            const endAngle = currentAngle + angle;
+                                                            const endX = 50 + 40 * Math.cos((endAngle * Math.PI) / 180);
+                                                            const endY = 50 + 40 * Math.sin((endAngle * Math.PI) / 180);
+                                                            const largeArc = angle > 180 ? 1 : 0;
+                                                            
+                                                            const colors = ['#a855f7', '#3b82f6', '#eab308', '#22c55e', '#ef4444'];
+                                                            const color = colors[index % colors.length];
+                                                            
+                                                            const path = `M 50 50 L ${startX} ${startY} A 40 40 0 ${largeArc} 1 ${endX} ${endY} Z`;
+                                                            currentAngle = endAngle;
+                                                            
+                                                            return (
+                                                                <path
+                                                                    key={eventType}
+                                                                    d={path}
+                                                                    fill={color}
+                                                                    stroke="white"
+                                                                    strokeWidth="0.5"
+                                                                />
+                                                            );
+                                                        });
+                                                    })()}
+                                                    {/* Center white circle for donut effect */}
+                                                    <circle cx="50" cy="50" r="20" fill="white" />
+                                                </svg>
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <div className="text-center">
+                                                        <p className="text-2xl font-bold">
+                                                            {Object.values(member_engagement).reduce((sum, val) => sum + val, 0)}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground">Total</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-                                
-                                {/* Legend */}
-                                <div className="space-y-2">
-                                    {Object.entries(member_engagement).map(([eventType, count], index) => (
-                                        <div key={eventType} className="flex items-center justify-between text-sm">
-                                            <div className="flex items-center gap-2">
-                                                <div className={`w-3 h-3 rounded-full ${engagementColors[index]}`} />
-                                                <span>{eventType}</span>
-                                            </div>
-                                            <span className="font-medium">{count}</span>
+                                        
+                                        {/* Legend */}
+                                        <div className="space-y-2">
+                                            {Object.entries(member_engagement).map(([eventType, count], index) => (
+                                                <div key={eventType} className="flex items-center justify-between text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`w-3 h-3 rounded-full ${engagementColors[index]}`} />
+                                                        <span className="truncate" title={eventType}>{eventType}</span>
+                                                    </div>
+                                                    <span className="font-medium">{count}</span>
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))}
-                                </div>
+                                    </>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground text-center py-8">
+                                        No engagement data available
+                                    </p>
+                                )}
                             </CardContent>
                         </Card>
 
-                        {/* Notifications */}
+                        {/* Top Participants by Hours Logged */}
                         <Card>
-                            <CardHeader className="flex flex-row items-center justify-between">
+                            <CardHeader>
                                 <div>
-                                    <CardTitle className="text-lg">Notifications</CardTitle>
-                                    <CardDescription>Recent activity updates</CardDescription>
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <Award className="h-5 w-5 text-yellow-500" />
+                                        Top Volunteers
+                                    </CardTitle>
+                                    <CardDescription>Most hours logged by participants</CardDescription>
                                 </div>
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    className="flex items-center gap-1"
-                                >
-                                    See All
-                                    <ArrowRight className="h-4 w-4" />
-                                </Button>
                             </CardHeader>
                             <CardContent>
-                                <div className="space-y-4">
-                                    {recent_notifications.length === 0 ? (
+                                <div className="space-y-3">
+                                    {top_participants && top_participants.length === 0 ? (
                                         <p className="text-sm text-muted-foreground text-center py-8">
-                                            No recent notifications
+                                            No volunteer hours logged yet
                                         </p>
                                     ) : (
-                                        recent_notifications.slice(0, 5).map((notification, index) => (
-                                            <div key={index} className="flex items-start gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                                                    {notification.type === 'membership_request' && (
-                                                        <UserPlus className="h-5 w-5 text-muted-foreground" />
-                                                    )}
-                                                    {notification.type === 'event_happening' && (
-                                                        <Calendar className="h-5 w-5 text-muted-foreground" />
-                                                    )}
-                                                    {notification.type === 'event_participation' && (
-                                                        <UserCheck className="h-5 w-5 text-muted-foreground" />
-                                                    )}
+                                        top_participants?.map((participant, index) => (
+                                            <div 
+                                                key={participant.id} 
+                                                className={`flex items-center gap-3 p-3 rounded-lg border-2 ${getMedalBgColor(index)} transition-all hover:shadow-md cursor-pointer`}
+                                                onClick={() => router.get(`/members/${participant.id}`)}
+                                            >
+                                                {/* Rank Badge */}
+                                                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getMedalColor(index)} flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md`}>
+                                                    {index + 1}
                                                 </div>
+                                                
+                                                {/* Avatar */}
+                                                <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
+                                                    {participant.profile_photo_path ? (
+                                                        <AvatarImage 
+                                                            src={`/storage/${participant.profile_photo_path}`} 
+                                                            alt={participant.name}
+                                                        />
+                                                    ) : null}
+                                                    <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500 text-white font-semibold">
+                                                        {getInitials(participant.name)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                
+                                                {/* Participant Info */}
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-sm">{notification.message}</p>
-                                                    <p className="text-xs text-muted-foreground mt-1">
-                                                        {new Date(notification.timestamp).toLocaleDateString('en-US', {
-                                                            month: 'short',
-                                                            day: 'numeric',
-                                                            hour: '2-digit',
-                                                            minute: '2-digit'
-                                                        })}
+                                                    <p className="font-semibold truncate">{participant.name}</p>
+                                                    <p className="text-xs text-muted-foreground truncate">
+                                                        {participant.faculty || 'No faculty'}
                                                     </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {participant.events_participated} {participant.events_participated === 1 ? 'event' : 'events'}
+                                                    </p>
+                                                </div>
+                                                
+                                                {/* Hours Badge */}
+                                                <div className="flex flex-col items-end">
+                                                    <Badge variant="outline" className="bg-white border-2 font-bold whitespace-nowrap">
+                                                        <Clock className="h-3 w-3 mr-1" />
+                                                        {participant.total_hours} hrs
+                                                    </Badge>
                                                 </div>
                                             </div>
                                         ))
@@ -485,6 +587,60 @@ export default function ManagerDashboard() {
                             </CardContent>
                         </Card>
                     </div>
+
+                    {/* Notifications Section (Full Width) */}
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-lg">Recent Notifications</CardTitle>
+                                <CardDescription>Latest activity updates</CardDescription>
+                            </div>
+                            <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="flex items-center gap-1"
+                            >
+                                See All
+                                <ArrowRight className="h-4 w-4" />
+                            </Button>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {recent_notifications.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground text-center py-8 col-span-2">
+                                        No recent notifications
+                                    </p>
+                                ) : (
+                                    recent_notifications.slice(0, 6).map((notification, index) => (
+                                        <div key={index} className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent transition-colors">
+                                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                                {notification.type === 'membership_request' && (
+                                                    <UserPlus className="h-5 w-5 text-muted-foreground" />
+                                                )}
+                                                {notification.type === 'event_happening' && (
+                                                    <Calendar className="h-5 w-5 text-muted-foreground" />
+                                                )}
+                                                {notification.type === 'event_participation' && (
+                                                    <UserCheck className="h-5 w-5 text-muted-foreground" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm">{notification.message}</p>
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    {new Date(notification.timestamp).toLocaleDateString('en-US', {
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    })}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </AppLayout>
