@@ -22,6 +22,7 @@ class Event extends Model
     'status',
     'user_id',
     'image_path', // MUST MATCH the migration
+    'qr_code_path',
 ];
 
     /**

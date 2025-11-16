@@ -30,6 +30,7 @@ interface Event {
     fee?: number | null;
     status: 'draft' | 'published' | 'archived';
     image_path?: string;
+    qr_code_path?: string;
 }
 
 interface ModalProps {
@@ -49,12 +50,15 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
         fee: null as number | null,
         status: 'draft' as 'draft' | 'published' | 'archived',
         image: null as File | null,
+        qr_code_image: null as File | null,
     });
 
     const [preview, setPreview] = useState<string | null>(null);
+    const [qrCodePreview, setQrCodePreview] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const qrCodeFileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -69,8 +73,10 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
                     fee: event.fee ?? null,
                     status: event.status,
                     image: null,
+                    qr_code_image: null,
                 });
                 setPreview(event.image_path ? `/storage/${event.image_path}` : null);
+                setQrCodePreview(event.qr_code_path ? `/storage/${event.qr_code_path}` : null);
             } else {
                 setFormData({
                     name: '',
@@ -82,8 +88,10 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
                     fee: null,
                     status: 'draft',
                     image: null,
+                    qr_code_image: null,
                 });
                 setPreview(null);
+                setQrCodePreview(null);
             }
             setErrors({});
         }
@@ -107,14 +115,22 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
             data.append('capacity', formData.capacity.toString());
         }
 
-        // Only append fee if it's set
-        if (formData.fee !== null && formData.fee !== undefined) {
+        // Append fee (including 0 or null to allow clearing)
+        if (formData.fee !== null && formData.fee !== undefined && formData.fee > 0) {
             data.append('fee', formData.fee.toString());
+        } else {
+            // Explicitly set fee to 0 if null or 0 (for clearing fees)
+            data.append('fee', '0');
         }
 
         // Append image if selected
         if (formData.image) {
             data.append('image', formData.image);
+        }
+
+        // Append QR code image if selected
+        if (formData.qr_code_image) {
+            data.append('qr_code_image', formData.qr_code_image);
         }
 
         // For updates, add _method field for Laravel
@@ -149,6 +165,9 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
             });
         }
     };
+
+    // Check if fee is set and greater than 0
+    const isPaidEvent = formData.fee !== null && formData.fee > 0;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -270,7 +289,7 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
                                         value={formData.fee ?? ''}
                                         onBlur={(e) => {
                                             const value = parseFloat(e.target.value);
-                                            if (!isNaN(value)) {
+                                            if (!isNaN(value) && value > 0) {
                                                 updateFormData('fee', parseFloat(value.toFixed(2)));
                                             } else {
                                                 updateFormData('fee', null);
@@ -278,7 +297,12 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
                                         }}
                                         onChange={(e) => {
                                             const value = e.target.value;
-                                            updateFormData('fee', value ? parseFloat(value) : null);
+                                            if (value === '' || value === null) {
+                                                updateFormData('fee', null);
+                                            } else {
+                                                const numValue = parseFloat(value);
+                                                updateFormData('fee', isNaN(numValue) ? null : numValue);
+                                            }
                                         }}
                                         className="pl-12 text-center"
                                         min="0"
@@ -293,7 +317,7 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
                                     +
                                 </Button>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1">Leave empty for free events</p>
+                            <p className="text-xs text-muted-foreground mt-1">Leave empty or set to 0 for free events</p>
                             {errors.fee && <div className="text-red-500 text-sm mt-1">{errors.fee}</div>}
                         </div>
 
@@ -351,6 +375,48 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
                             )}
                             {errors.image && <div className="text-red-500 text-sm mt-1">{errors.image}</div>}
                         </div>
+
+                        {isPaidEvent && (
+                            <div className="md:col-span-2 border-t pt-4">
+                                <Label htmlFor="qr_code_image" className="text-base font-semibold">
+                                    Payment QR Code (Required for Paid Events) {event && '(Upload new to replace)'}
+                                </Label>
+                                <p className="text-xs text-muted-foreground mb-2">
+                                    Upload a QR code image that participants can scan to make payment
+                                </p>
+                                <Input
+                                    id="qr_code_image"
+                                    type="file"
+                                    accept="image/*"
+                                    ref={qrCodeFileInputRef}
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0] || null;
+                                        updateFormData('qr_code_image', file);
+                                        if (file) {
+                                            setQrCodePreview(URL.createObjectURL(file));
+                                        }
+                                    }}
+                                />
+                                <div className="mt-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => qrCodeFileInputRef.current?.click()}
+                                    >
+                                        {qrCodePreview ? 'Change QR Code' : 'Upload QR Code'}
+                                    </Button>
+                                    {formData.qr_code_image && <span className="ml-2 text-sm">{formData.qr_code_image.name}</span>}
+                                </div>
+                                {qrCodePreview && (
+                                    <div className="mt-2 border rounded-lg p-4 bg-gray-50">
+                                        <p className="text-sm font-medium mb-2">QR Code Preview:</p>
+                                        <img src={qrCodePreview} alt="QR Code Preview" className="h-48 w-auto object-contain rounded border bg-white mx-auto" />
+                                    </div>
+                                )}
+                                {errors.qr_code_image && <div className="text-red-500 text-sm mt-1">{errors.qr_code_image}</div>}
+                            </div>
+                        )}
                     </div>
 
                     <DialogFooter>

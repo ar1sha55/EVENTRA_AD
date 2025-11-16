@@ -1,4 +1,3 @@
-// resources/js/Pages/Manager/ManageEvents.tsx
 import React, { useState } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
@@ -31,7 +30,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Users } from 'lucide-react';
 
 interface Event {
     id: number;
@@ -45,6 +44,7 @@ interface Event {
     status: 'draft' | 'published' | 'archived';
     user_id: number;
     image_path?: string;
+    qr_code_path?: string;
     user?: {
         id: number;
         name: string;
@@ -55,6 +55,8 @@ interface Event {
 interface ManageEventsProps {
     events: Event[];
 }
+
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Manage Events', href: '/events' }];
 
 export default function ManageEvents({ events }: ManageEventsProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -87,6 +89,10 @@ export default function ManageEvents({ events }: ManageEventsProps) {
         }
     };
 
+    const viewParticipants = (eventId: number) => {
+        router.visit(`/events/${eventId}/participants`);
+    };
+
     // Filter events based on selected status
     const filteredEvents = statusFilter === 'all' 
         ? events 
@@ -101,7 +107,7 @@ export default function ManageEvents({ events }: ManageEventsProps) {
     };
 
     return (
-        <AppLayout>
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Manage Events" />
 
             <div className="py-12">
@@ -139,152 +145,123 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                         Archived ({statusCounts.archived})
                                     </Button>
                                 </div>
-                                <Button onClick={openCreateModal}>
-                                    Create New Event
-                                </Button>
+                                <Button onClick={openCreateModal}>Create Event</Button>
                             </div>
 
-                            {filteredEvents.length === 0 ? (
-                                <div className="text-center py-12">
-                                    <p className="text-muted-foreground">No {statusFilter !== 'all' ? statusFilter : ''} events found.</p>
-                                </div>
-                            ) : (
-                                <Table>
-                                    <TableHeader>
+                            <Table>
+                                <TableCaption>
+                                    {filteredEvents.length === 0 
+                                        ? `No ${statusFilter === 'all' ? '' : statusFilter} events found`
+                                        : `A list of all your ${statusFilter === 'all' ? '' : statusFilter} events`}
+                                </TableCaption>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Location</TableHead>
+                                        <TableHead>Start Date</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Fee</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredEvents.length === 0 ? (
                                         <TableRow>
-                                            <TableHead>Poster</TableHead>
-                                            <TableHead>Name</TableHead>
-                                            <TableHead>Location</TableHead>
-                                            <TableHead>Start Date</TableHead>
-                                            <TableHead>End Date</TableHead>
-                                            <TableHead>Fee</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Created By</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
+                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                                {statusFilter === 'all' 
+                                                    ? 'No events created yet. Click "Create Event" to get started.'
+                                                    : `No ${statusFilter} events found.`}
+                                            </TableCell>
                                         </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredEvents.map((event) => (
+                                    ) : (
+                                        filteredEvents.map((event) => (
                                             <TableRow key={event.id}>
-                                                <TableCell>
-                                                    {event.image_path ? (
-                                                        <div 
-                                                            className="relative h-16 w-16 cursor-pointer group"
-                                                            onClick={() => setPreviewImage(`/storage/${event.image_path}`)}
-                                                        >
-                                                            <img
-                                                                src={`/storage/${event.image_path}`}
-                                                                alt={event.name || 'Event Poster'}
-                                                                className="h-full w-full object-cover rounded"
-                                                            />
-                                                            <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-70 transition-all duration-300 ease-in-out rounded">
-                                                                <span className="text-white font-semibold">View</span>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        'No Poster'
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>{event.name}</TableCell>
+                                                <TableCell className="font-medium">{event.name}</TableCell>
                                                 <TableCell>{event.location}</TableCell>
                                                 <TableCell>
-                                                    {event.start_date ? new Date(event.start_date).toLocaleString() : 'Unknown'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {event.end_date ? new Date(event.end_date).toLocaleString() : 'Unknown'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {event.fee != null && !isNaN(Number(event.fee))
-                                                        ? `RM${Number(event.fee).toFixed(2)}`
-                                                        : 'Free'}
+                                                    {new Date(event.start_date).toLocaleDateString()}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge
                                                         variant={
                                                             event.status === 'published'
                                                                 ? 'default'
-                                                                : event.status === 'archived'
-                                                                ? 'destructive'
+                                                                : event.status === 'draft'
+                                                                ? 'secondary'
                                                                 : 'outline'
                                                         }
                                                     >
-                                                        {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                                                        {event.status}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell>
-                                                    {event.user ? (
-                                                        <>
-                                                            {event.user.name.charAt(0).toUpperCase() + event.user.name.slice(1)}
-                                                            {event.user.role && (
-                                                                <span className="ml-1">
-                                                                    ({event.user.role.charAt(0).toUpperCase() + event.user.role.slice(1)})
-                                                                </span>
-                                                            )}
-                                                        </>
+                                                    {event.fee && event.fee > 0 ? (
+                                                        <span className="text-blue-600 font-semibold">
+                                                            RM {Number(event.fee).toFixed(2)}
+                                                        </span>
                                                     ) : (
-                                                        'Unknown'
+                                                        <span className="text-muted-foreground">Free</span>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                                                <span className="sr-only">Open menu</span>
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={() => openEditModal(event)}>
-                                                                Edit
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => router.get(`/events/${event.id}/participants`)}>
-                                                                Manage Participants
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => setEventToDelete(event)}>
-                                                                Delete
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => viewParticipants(event.id)}
+                                                        >
+                                                            <Users className="h-4 w-4 mr-1" />
+                                                            Participants
+                                                        </Button>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="sm">
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onClick={() => openEditModal(event)}>
+                                                                    Edit
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    className="text-red-600"
+                                                                    onClick={() => setEventToDelete(event)}
+                                                                >
+                                                                    Delete
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            )}
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
                         </div>
                     </div>
                 </div>
             </div>
 
+            {/* Event Form Modal */}
             <EventFormModal
                 isOpen={isModalOpen}
                 onClose={closeModal}
                 event={editingEvent}
             />
 
+            {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!eventToDelete} onOpenChange={() => setEventToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the event "{eventToDelete?.name}".
+                            This will permanently delete the event "{eventToDelete?.name}". This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            <AlertDialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Poster Preview</AlertDialogTitle>
-                    </AlertDialogHeader>
-                    <img src={previewImage || ''} alt="Event Poster Preview" className="w-full rounded" />
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Close</AlertDialogCancel>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

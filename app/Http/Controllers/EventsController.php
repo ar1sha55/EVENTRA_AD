@@ -10,9 +10,7 @@ use Illuminate\Support\Facades\Storage;
 
 class EventsController extends Controller
 {
-    /**
-     * Display all events created by the manager.
-     */
+    
     public function index()
     {
         $events = Event::with('user')->latest()->get();
@@ -22,9 +20,7 @@ class EventsController extends Controller
         ]);
     }
 
-    /**
-     * Store a newly created event.
-     */
+   
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -33,15 +29,26 @@ class EventsController extends Controller
             'start_date'  => 'required|date',
             'end_date'    => 'required|date|after_or_equal:start_date',
             'location'    => 'required|string|max:255',
-            'capacity'    => 'nullable|integer',
-            'fee'         => 'nullable|numeric',
+            'capacity'    => 'nullable|integer|min:0',
+            'fee'         => 'nullable|numeric|min:0',
             'status'      => 'required|in:draft,published,archived',
             'image'       => 'nullable|image|max:10240', // 10MB max
+            'qr_code_image' => 'nullable|image|max:10240', // 10MB max
         ]);
 
         // Handle poster upload
         if ($request->hasFile('image')) {
             $validated['image_path'] = $request->file('image')->store('events', 'public');
+        }
+
+        // Handle QR code image upload (only if fee is greater than 0)
+        if ($request->hasFile('qr_code_image')) {
+            $validated['qr_code_path'] = $request->file('qr_code_image')->store('qrcodes', 'public');
+        }
+
+        // Convert fee to null if it's 0 or empty
+        if (isset($validated['fee']) && $validated['fee'] == 0) {
+            $validated['fee'] = null;
         }
 
         // Assign the authenticated manager as creator
@@ -52,9 +59,7 @@ class EventsController extends Controller
         return back()->with('success', 'Event created successfully!');
     }
 
-    /**
-     * Update an existing event.
-     */
+   
     public function update(Request $request, Event $event)
     {
         $validated = $request->validate([
@@ -63,15 +68,15 @@ class EventsController extends Controller
             'start_date'  => 'required|date',
             'end_date'    => 'required|date|after_or_equal:start_date',
             'location'    => 'required|string|max:255',
-            'capacity'    => 'nullable|integer',
-            'fee'         => 'nullable|numeric',
+            'capacity'    => 'nullable|integer|min:0',
+            'fee'         => 'nullable|numeric|min:0',
             'status'      => 'required|in:draft,published,archived',
             'image'       => 'nullable|image|max:10240',
+            'qr_code_image' => 'nullable|image|max:10240',
         ]);
 
         // If new image is uploaded, delete old one
         if ($request->hasFile('image')) {
-
             // delete old poster
             if ($event->image_path && Storage::disk('public')->exists($event->image_path)) {
                 Storage::disk('public')->delete($event->image_path);
@@ -81,19 +86,41 @@ class EventsController extends Controller
             $validated['image_path'] = $request->file('image')->store('events', 'public');
         }
 
+        // Handle QR code image upload
+        if ($request->hasFile('qr_code_image')) {
+            // delete old QR code
+            if ($event->qr_code_path && Storage::disk('public')->exists($event->qr_code_path)) {
+                Storage::disk('public')->delete($event->qr_code_path);
+            }
+            // upload new QR code
+            $validated['qr_code_path'] = $request->file('qr_code_image')->store('qrcodes', 'public');
+        }
+
+        // Convert fee to null if it's 0 or empty
+        if (isset($validated['fee']) && $validated['fee'] == 0) {
+            $validated['fee'] = null;
+            
+            // If fee is removed/set to 0 and a QR code exists, delete it
+            if ($event->qr_code_path && Storage::disk('public')->exists($event->qr_code_path)) {
+                Storage::disk('public')->delete($event->qr_code_path);
+            }
+            $validated['qr_code_path'] = null;
+        }
+
         $event->update($validated);
 
         return back()->with('success', 'Event updated successfully!');
     }
 
-    /**
-     * Delete event.
-     */
+   
     public function destroy(Event $event)
     {
-        // Delete poster
+        // Delete associated images
         if ($event->image_path && Storage::disk('public')->exists($event->image_path)) {
             Storage::disk('public')->delete($event->image_path);
+        }
+        if ($event->qr_code_path && Storage::disk('public')->exists($event->qr_code_path)) {
+            Storage::disk('public')->delete($event->qr_code_path);
         }
 
         $event->delete();
@@ -101,29 +128,13 @@ class EventsController extends Controller
         return back()->with('success', 'Event deleted successfully!');
     }
 
-    /**
-     * Display the participants of an event.
-     */
-    public function participants(Event $event)
-    {
-        $event->load(['participants.user']);
-
-        return inertia('Manager/ManageParticipants', [
-            'event' => $event,
-            'participants' => $event->participants,
-        ]);
-    }
-
-    /**
-     * Display a list of events for users to join.
-     * Only show published events to members.
-     */
+    
     public function joinEvents()
     {
-        // Filter to only show published events
-        $events = Event::where('status', 'published')
-            ->with('participants.user')
-            ->orderBy('start_date', 'asc')
+        // Load all participants for the events to calculate capacity
+        $events = Event::with(['participants'])
+            ->where('status', 'published')
+            ->latest()
             ->get();
 
         return inertia('JoinEvents', [
@@ -131,21 +142,16 @@ class EventsController extends Controller
         ]);
     }
 
-    /**
-     * Register the authenticated user for an event.
-     * Security: Only allow registration for published events.
-     */
+   
     public function register(Request $request, Event $event)
     {
-        // Security check: Prevent registration for non-published events
+        // Check if event is published
         if ($event->status !== 'published') {
             return back()->with('error', 'This event is not available for registration.');
         }
 
-        $user = Auth::user();
-
-        // Check if the user is already registered
-        $existingParticipant = Participant::where('user_id', $user->id)
+        // Check if user is already registered
+        $existingParticipant = Participant::where('user_id', Auth::id())
             ->where('event_id', $event->id)
             ->first();
 
@@ -153,23 +159,58 @@ class EventsController extends Controller
             return back()->with('error', 'You are already registered for this event.');
         }
 
-        // Check if event has capacity and if it's full
+        // Check capacity
         if ($event->capacity) {
-            $currentParticipants = Participant::where('event_id', $event->id)->count();
-            
+            $currentParticipants = Participant::where('event_id', $event->id)
+                ->whereIn('status', ['approved', 'pending_approval'])
+                ->count();
+
             if ($currentParticipants >= $event->capacity) {
-                return back()->with('error', 'This event has reached its maximum capacity.');
+                return back()->with('error', 'This event is fully booked.');
             }
         }
 
-        // Create a new participant
+        // For paid events, require payment proof
+        if ($event->fee && $event->fee > 0) {
+            $validated = $request->validate([
+                'payment_proof' => 'required|image|max:10240', // 10MB max
+            ]);
+
+            $paymentProofPath = $request->file('payment_proof')->store('payment_proofs', 'public');
+
+            Participant::create([
+                'user_id' => Auth::id(),
+                'event_id' => $event->id,
+                'status' => 'pending_approval',
+                'payment_proof_path' => $paymentProofPath,
+            ]);
+
+            return back()->with('success', 'Registration submitted! Your payment proof will be verified by the event manager.');
+        }
+
+        // For free events, approve immediately
         Participant::create([
-            'user_id'  => $user->id,
+            'user_id' => Auth::id(),
             'event_id' => $event->id,
-            'status'   => 'PENDING',
-            'registration_date' => now(),
+            'status' => 'approved',
         ]);
 
-        return back()->with('success', 'You have successfully registered for the event. Please wait for approval.');
+        return back()->with('success', 'Successfully registered for the event!');
+    }
+
+    /**
+     * Display participants for a specific event.
+     */
+    public function participants(Event $event)
+    {
+        $participants = Participant::with('user')
+            ->where('event_id', $event->id)
+            ->latest()
+            ->get();
+
+        return inertia('Manager/ManageParticipants', [
+            'event' => $event,
+            'participants' => $participants,
+        ]);
     }
 }

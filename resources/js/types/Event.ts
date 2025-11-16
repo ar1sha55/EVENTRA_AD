@@ -10,4 +10,5 @@ export interface Event {
     capacity?: number;
     participants?: Participant[];
     image_path?: string;
+    qr_code_path?: string;
 }

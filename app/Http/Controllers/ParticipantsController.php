@@ -4,36 +4,46 @@ namespace App\Http\Controllers;
 
 use App\Models\Participant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class ParticipantsController extends Controller
 {
-    /**
-     * Update the status of a participant.
-     */
+   
     public function updateStatus(Request $request, Participant $participant)
     {
         $validated = $request->validate([
-            'status' => 'required|string|in:PENDING,APPROVED,REJECTED,pending,approved,rejected',
+            'status' => 'required|in:pending_approval,approved,rejected',
         ]);
-
-        // Convert to uppercase for consistency
-        $status = strtoupper($validated['status']);
 
         $participant->update([
-            'status' => $status,
-            'last_updated' => now(),
+            'status' => $validated['status'],
         ]);
 
-        return back()->with('success', 'Participant status updated successfully!');
+        $statusMessage = match($validated['status']) {
+            'approved' => 'Participant approved successfully!',
+            'rejected' => 'Participant rejected.',
+            default => 'Participant status updated.',
+        };
+
+        return back()->with('success', $statusMessage);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+   
     public function destroy(Participant $participant)
     {
+        // Ensure user can only delete their own participation
+        if ($participant->user_id !== Auth::id()) {
+            return back()->with('error', 'Unauthorized action.');
+        }
+
+        // Delete payment proof if exists
+        if ($participant->payment_proof_path && Storage::disk('public')->exists($participant->payment_proof_path)) {
+            Storage::disk('public')->delete($participant->payment_proof_path);
+        }
+
         $participant->delete();
 
-        return back()->with('success', 'You have successfully unregistered from the event.');
+        return back()->with('success', 'Successfully unregistered from the event.');
     }
 }
