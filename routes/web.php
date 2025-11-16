@@ -6,6 +6,7 @@ use Laravel\Fortify\Features;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\ParticipantsController;
 use App\Http\Controllers\TestController;
+use App\Http\Controllers\ManagerDashboardController;
 use App\Http\Middleware\RoleMiddleware;
 
 Route::get('/', function () {
@@ -46,11 +47,20 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->group(function ()
     Route::get('/manager/event-blast', [TestController::class, 'eventBlast'])->name('event-blast');
     Route::get('/manager/manage-analytics', [TestController::class, 'manageAnalytics'])->name('manage-analytics');
     Route::get('/manager/send-announcement', [TestController::class, 'sendAnnouncement'])->name('send-announcement');
+
+    Route::get('/manager/dashboard', [ManagerDashboardController::class, 'index'])->name('manager.dashboard');
+    Route::post('/events/{event}/broadcast', [ManagerDashboardController::class, 'broadcast'])->name('events.broadcast');
 });
 
 // Routes for admins only
 Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
     Route::get('admin/system-control', [TestController::class, 'systemControl'])->name('system-control');
+});
+
+// API route for Manager Dashboard data
+Route::middleware(['auth', 'verified', 'role:manager,admin'])->prefix('api')->group(function () {
+    Route::get('/manager/dashboard/summary', [ManagerDashboardController::class, 'getSummary'])
+        ->name('api.manager.dashboard.summary');
 });
 
 require __DIR__.'/settings.php';
