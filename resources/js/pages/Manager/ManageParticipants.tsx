@@ -46,6 +46,115 @@ interface ManageParticipantsProps {
     participants: Participant[];
 }
 
+interface ParticipantTableProps {
+    participants: Participant[];
+    showActions?: boolean;
+    isPaidEvent: boolean;
+    onViewPaymentProof: (participant: Participant) => void;
+    onStatusChange: (participantId: number, status: 'approved' | 'rejected') => void;
+}
+
+// Move ParticipantTable component outside to prevent recreation on every render
+const ParticipantTable = ({
+    participants,
+    showActions = true,
+    isPaidEvent,
+    onViewPaymentProof,
+    onStatusChange
+}: ParticipantTableProps) => (
+    <Table>
+        <TableHeader>
+            <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Registration Date</TableHead>
+                <TableHead>Status</TableHead>
+                {isPaidEvent && <TableHead>Payment Proof</TableHead>}
+                {showActions && <TableHead className="text-right">Actions</TableHead>}
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            {participants.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={isPaidEvent ? (showActions ? 6 : 5) : (showActions ? 5 : 4)} className="text-center text-muted-foreground py-8">
+                        No participants in this category
+                    </TableCell>
+                </TableRow>
+            ) : (
+                participants.map((participant) => (
+                    <TableRow key={participant.id}>
+                        <TableCell className="font-medium">{participant.user.name}</TableCell>
+                        <TableCell>{participant.user.email}</TableCell>
+                        <TableCell>
+                            {participant.registration_date
+                                ? new Date(participant.registration_date).toLocaleDateString()
+                                : 'N/A'
+                            }
+                        </TableCell>
+                        <TableCell>
+                            <Badge
+                                variant={
+                                    participant.status.toLowerCase() === 'approved'
+                                        ? 'default'
+                                        : participant.status.toLowerCase() === 'rejected'
+                                        ? 'destructive'
+                                        : 'outline'
+                                }
+                            >
+                                {participant.status.charAt(0).toUpperCase() + participant.status.slice(1).toLowerCase().replace('_', ' ')}
+                            </Badge>
+                        </TableCell>
+                        {isPaidEvent && (
+                            <TableCell>
+                                {participant.payment_proof_path ? (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => onViewPaymentProof(participant)}
+                                    >
+                                        <Eye className="h-4 w-4 mr-1" />
+                                        View Proof
+                                    </Button>
+                                ) : (
+                                    <span className="text-xs text-muted-foreground">No proof</span>
+                                )}
+                            </TableCell>
+                        )}
+                        {showActions && (
+                            <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                    {participant.status.toLowerCase() !== 'approved' && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => onStatusChange(participant.id, 'approved')}
+                                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                        >
+                                            <CheckCircle className="h-4 w-4 mr-1" />
+                                            Approve
+                                        </Button>
+                                    )}
+                                    {participant.status.toLowerCase() !== 'rejected' && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => onStatusChange(participant.id, 'rejected')}
+                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        >
+                                            <XCircle className="h-4 w-4 mr-1" />
+                                            Reject
+                                        </Button>
+                                    )}
+                                </div>
+                            </TableCell>
+                        )}
+                    </TableRow>
+                ))
+            )}
+        </TableBody>
+    </Table>
+);
+
 export default function ManageParticipants({ event, participants }: ManageParticipantsProps) {
     const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
     const [paymentProofDialog, setPaymentProofDialog] = useState(false);
@@ -76,101 +185,7 @@ export default function ManageParticipants({ event, participants }: ManagePartic
     // State for active tab
     const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
 
-    const isPaidEvent = event.fee && event.fee > 0;
-
-    const ParticipantTable = ({ participants, showActions = true }: { participants: Participant[], showActions?: boolean }) => (
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Registration Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    {isPaidEvent && <TableHead>Payment Proof</TableHead>}
-                    {showActions && <TableHead className="text-right">Actions</TableHead>}
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {participants.length === 0 ? (
-                    <TableRow>
-                        <TableCell colSpan={isPaidEvent ? (showActions ? 6 : 5) : (showActions ? 5 : 4)} className="text-center text-muted-foreground py-8">
-                            No participants in this category
-                        </TableCell>
-                    </TableRow>
-                ) : (
-                    participants.map((participant) => (
-                        <TableRow key={participant.id}>
-                            <TableCell className="font-medium">{participant.user.name}</TableCell>
-                            <TableCell>{participant.user.email}</TableCell>
-                            <TableCell>
-                                {participant.registration_date 
-                                    ? new Date(participant.registration_date).toLocaleDateString()
-                                    : 'N/A'
-                                }
-                            </TableCell>
-                            <TableCell>
-                                <Badge
-                                    variant={
-                                        participant.status.toLowerCase() === 'approved'
-                                            ? 'default'
-                                            : participant.status.toLowerCase() === 'rejected'
-                                            ? 'destructive'
-                                            : 'outline'
-                                    }
-                                >
-                                    {participant.status.charAt(0).toUpperCase() + participant.status.slice(1).toLowerCase().replace('_', ' ')}
-                                </Badge>
-                            </TableCell>
-                            {isPaidEvent && (
-                                <TableCell>
-                                    {participant.payment_proof_path ? (
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => viewPaymentProof(participant)}
-                                        >
-                                            <Eye className="h-4 w-4 mr-1" />
-                                            View Proof
-                                        </Button>
-                                    ) : (
-                                        <span className="text-xs text-muted-foreground">No proof</span>
-                                    )}
-                                </TableCell>
-                            )}
-                            {showActions && (
-                                <TableCell className="text-right">
-                                    <div className="flex justify-end gap-2">
-                                        {participant.status.toLowerCase() !== 'approved' && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleStatusChange(participant.id, 'approved')}
-                                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                            >
-                                                <CheckCircle className="h-4 w-4 mr-1" />
-                                                Approve
-                                            </Button>
-                                        )}
-                                        {participant.status.toLowerCase() !== 'rejected' && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleStatusChange(participant.id, 'rejected')}
-                                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                            >
-                                                <XCircle className="h-4 w-4 mr-1" />
-                                                Reject
-                                            </Button>
-                                        )}
-                                    </div>
-                                </TableCell>
-                            )}
-                        </TableRow>
-                    ))
-                )}
-            </TableBody>
-        </Table>
-    );
+    const isPaidEvent = !!(event.fee && event.fee > 0);
 
     const getStatusBadge = (status: string) => {
         const normalizedStatus = status.toLowerCase();
@@ -329,10 +344,40 @@ export default function ManageParticipants({ event, participants }: ManagePartic
                             </div>
 
                             {/* Tab Content */}
-                            {activeTab === 'all' && <ParticipantTable participants={participants} />}
-                            {activeTab === 'pending' && <ParticipantTable participants={pendingParticipants} />}
-                            {activeTab === 'approved' && <ParticipantTable participants={approvedParticipants} showActions={false} />}
-                            {activeTab === 'rejected' && <ParticipantTable participants={rejectedParticipants} showActions={false} />}
+                            {activeTab === 'all' && (
+                                <ParticipantTable
+                                    participants={participants}
+                                    isPaidEvent={isPaidEvent}
+                                    onViewPaymentProof={viewPaymentProof}
+                                    onStatusChange={handleStatusChange}
+                                />
+                            )}
+                            {activeTab === 'pending' && (
+                                <ParticipantTable
+                                    participants={pendingParticipants}
+                                    isPaidEvent={isPaidEvent}
+                                    onViewPaymentProof={viewPaymentProof}
+                                    onStatusChange={handleStatusChange}
+                                />
+                            )}
+                            {activeTab === 'approved' && (
+                                <ParticipantTable
+                                    participants={approvedParticipants}
+                                    showActions={false}
+                                    isPaidEvent={isPaidEvent}
+                                    onViewPaymentProof={viewPaymentProof}
+                                    onStatusChange={handleStatusChange}
+                                />
+                            )}
+                            {activeTab === 'rejected' && (
+                                <ParticipantTable
+                                    participants={rejectedParticipants}
+                                    showActions={false}
+                                    isPaidEvent={isPaidEvent}
+                                    onViewPaymentProof={viewPaymentProof}
+                                    onStatusChange={handleStatusChange}
+                                />
+                            )}
                         </CardContent>
                     </Card>
                 </div>

@@ -29,15 +29,35 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $user = $request->user();
+        $validated = $request->validated();
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        // Handle profile picture upload
+        if ($request->hasFile('profile_picture')) {
+            // Delete old profile picture if exists
+            if ($user->profile_picture && \Storage::disk('public')->exists($user->profile_picture)) {
+                \Storage::disk('public')->delete($user->profile_picture);
+            }
+
+            $path = $request->file('profile_picture')->store('profile_pictures', 'public');
+            $validated['profile_picture'] = $path;
         }
 
-        $request->user()->save();
+        // Remove admin-only fields if user is not admin
+        if ($user->role !== 'admin') {
+            unset($validated['matric_id']);
+            unset($validated['faculty']);
+        }
 
-        return to_route('profile.edit');
+        $user->fill($validated);
+
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
+
+        return to_route('profile.edit')->with('status', 'profile-updated');
     }
 
     /**

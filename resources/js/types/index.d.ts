@@ -49,6 +49,14 @@ export interface User {
     id: number;
     name: string;
     email: string;
+    secondary_email?: string | null;
+    matric_id?: string | null;
+    phone_number?: string | null;
+    nationality?: string | null;
+    gender?: string | null;
+    faculty?: string | null;
+    role: string;
+    profile_picture?: string | null;
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
