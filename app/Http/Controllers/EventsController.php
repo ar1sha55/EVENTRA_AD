@@ -128,13 +128,14 @@ class EventsController extends Controller
         return back()->with('success', 'Event deleted successfully!');
     }
 
-    
+
     public function joinEvents()
     {
-        // Load all participants for the events to calculate capacity
+        // Load all participants for upcoming published events only
         $events = Event::with(['participants'])
             ->where('status', 'published')
-            ->latest()
+            ->where('start_date', '>=', now())
+            ->orderBy('start_date', 'asc')
             ->get();
 
         return inertia('JoinEvents', [

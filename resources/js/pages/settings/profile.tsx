@@ -2,7 +2,7 @@ import { send } from '@/routes/verification';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Transition } from '@headlessui/react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 import DeleteUser from '@/components/delete-user';
 import HeadingSmall from '@/components/heading-small';
@@ -48,7 +48,7 @@ export default function Profile({
     const isAdmin = auth.user.role === 'admin';
     const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
-    const [recentlySuccessful, setRecentlySuccessful] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -69,13 +69,9 @@ export default function Profile({
         formData.append('_method', 'PATCH');
 
         router.post('/settings/profile', formData, {
+            forceFormData: true,
             preserveScroll: true,
-            preserveState: false, // This ensures fresh data is loaded
-            onSuccess: () => {
-                setRecentlySuccessful(true);
-                setProfilePicturePreview(null);
-                setTimeout(() => setRecentlySuccessful(false), 2000);
-            },
+            preserveState: false,
             onFinish: () => {
                 setProcessing(false);
             },
@@ -137,6 +133,7 @@ export default function Profile({
                                                 accept="image/jpeg,image/jpg,image/png,image/gif"
                                                 className="hidden"
                                                 onChange={handleProfilePictureChange}
+                                                ref={fileInputRef}
                                             />
                                             <p className="text-xs text-muted-foreground">
                                                 JPG, PNG or GIF. Max size 2MB
@@ -331,7 +328,7 @@ export default function Profile({
                                     </Button>
 
                                     <Transition
-                                        show={recentlySuccessful}
+                                        show={status === 'profile-updated'}
                                         enter="transition ease-in-out"
                                         enterFrom="opacity-0"
                                         leave="transition ease-in-out"

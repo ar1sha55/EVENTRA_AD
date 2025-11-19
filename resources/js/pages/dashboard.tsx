@@ -3,8 +3,7 @@ import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Users, CalendarDays, Activity, BarChart3 } from "lucide-react";
-import { Badge } from '@/components/ui/badge';
+import { CalendarDays, Activity, BarChart3 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 
@@ -15,21 +14,25 @@ const breadcrumbs: BreadcrumbItem[] = [
   },
 ];
 
-export default function Dashboard() {
-  // Mock stats
-  const stats = {
-    totalEvents: 12,
-    upcomingEvents: 3,
-    totalMembers: 256,
-    activeMembers: 198,
-  };
+interface Event {
+  id: number;
+  name: string;
+  start_date: string;
+  location: string;
+  description: string;
+}
 
-  // Upcoming Malaysian volunteering events
-  const upcomingEvents = [
-    { id: 1, name: "River Clean-Up at Klang", date: "2025-11-15", location: "Klang River, Selangor", type: "Environment" },
-    { id: 2, name: "Beach Conservation at Penang", date: "2025-12-05", location: "Batu Ferringhi Beach, Penang", type: "Environment" },
-    { id: 3, name: "Community Food Drive at Kuala Lumpur", date: "2026-01-10", location: "KLCC Park", type: "Social" },
-  ];
+interface Stats {
+  totalEvents: number;
+  upcomingEventsCount: number;
+}
+
+interface DashboardProps {
+  upcomingEvents?: Event[];
+  stats?: Stats;
+}
+
+export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 0, upcomingEventsCount: 0 } }: DashboardProps) {
 
   // Recent activities
   const recentActivities = [
@@ -51,9 +54,7 @@ export default function Dashboard() {
   // Top stats configuration
   const topStats = [
     { title: 'Total Events', value: stats.totalEvents, icon: <CalendarDays className="h-4 w-4 text-muted-foreground" />, desc: 'All registered events' },
-    { title: 'Upcoming Events', value: stats.upcomingEvents, icon: <CalendarDays className="h-4 w-4 text-muted-foreground" />, desc: 'Next 30 days' },
-    { title: 'Total Members', value: stats.totalMembers, icon: <Users className="h-4 w-4 text-muted-foreground" />, desc: 'Registered members' },
-    { title: 'Active Members', value: stats.activeMembers, icon: <Activity className="h-4 w-4 text-muted-foreground" />, desc: 'Active this month' },
+    { title: 'Upcoming Events', value: stats.upcomingEventsCount, icon: <CalendarDays className="h-4 w-4 text-muted-foreground" />, desc: 'Published events' },
   ];
 
   return (
@@ -63,7 +64,7 @@ export default function Dashboard() {
       <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
 
         {/* Top Stats */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2">
           {topStats.map((stat, idx) => (
             <Card key={idx} className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -88,15 +89,24 @@ export default function Dashboard() {
               <Button variant="outline" size="sm">View All</Button>
             </CardHeader>
             <CardContent className="grid gap-4">
-              {upcomingEvents.map((event) => (
-                <div key={event.id} className="flex items-center justify-between rounded-lg border p-3 transition-all hover:bg-muted/40">
-                  <div className="flex flex-col">
-                    <span className="font-semibold">{event.name}</span>
-                    <span className="text-sm text-muted-foreground">{event.date} - {event.location}</span>
+              {upcomingEvents.length > 0 ? (
+                upcomingEvents.map((event) => (
+                  <div key={event.id} className="flex items-center justify-between rounded-lg border p-3 transition-all hover:bg-muted/40">
+                    <div className="flex flex-col">
+                      <span className="font-semibold">{event.name}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(event.start_date).toLocaleDateString('en-MY', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })} - {event.location}
+                      </span>
+                    </div>
                   </div>
-                  <Badge variant="outline">{event.type}</Badge>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No upcoming events at the moment.</p>
+              )}
             </CardContent>
           </Card>
 

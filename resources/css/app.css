@@ -87,15 +87,15 @@
   --chart-4: oklch(0.553 0.195 38.402);
   --chart-5: oklch(0.47 0.157 37.304);
   
-  /* Light Mode Purple Sidebar */
-  --sidebar: oklch(0.48 0.23 310);                   /* #7F169C - Deep purple background */
+  /* Light Mode Gradient Sidebar */
+  --sidebar: linear-gradient(to right, #B833F5 0%, #B833F5 45%, #FF55A0 80%, #FFA500 100%);
   --sidebar-foreground: oklch(0.95 0.05 310);        /* Light text for contrast */
-  --sidebar-primary: oklch(0.58 0.26 310);           /* Brighter purple for active items */
+  --sidebar-primary: oklch(0.70 0.26 320);           /* Brighter accent for active items */
   --sidebar-primary-foreground: oklch(0.99 0.01 290); /* White text on active */
-  --sidebar-accent: oklch(0.60 0.20 310);            /* Medium purple hover state */
+  --sidebar-accent: oklch(0.65 0.20 330);            /* Medium accent hover state */
   --sidebar-accent-foreground: oklch(0.98 0.02 310); /* Light text on hover */
-  --sidebar-border: oklch(0.42 0.20 310);            /* Darker purple border */
-  --sidebar-ring: oklch(0.58 0.24 310);              /* Purple focus ring */
+  --sidebar-border: oklch(0.42 0.20 310);            /* Border color */
+  --sidebar-ring: oklch(0.58 0.24 310);              /* Focus ring */
   
   /* Footer colors */
   --footer: oklch(98.212% 0.00011 271.152);
@@ -131,15 +131,15 @@
   --chart-4: oklch(0.553 0.195 38.402);
   --chart-5: oklch(0.47 0.157 37.304);
   
-  /* Dark Mode Purple Sidebar */
-  --sidebar: oklch(0.63 0.26 310);                   /* #BF3FE0 - Vibrant purple background */
+  /* Dark Mode Gradient Sidebar */
+  --sidebar: linear-gradient(to right, #5A0B75 0%, #5A0B75 45%, #B33951 80%, #FF692B 100%);
   --sidebar-foreground: oklch(0.95 0.05 310);        /* Light text for contrast */
-  --sidebar-primary: oklch(0.70 0.28 310);           /* Brighter purple for active items */
+  --sidebar-primary: oklch(0.70 0.28 310);           /* Brighter accent for active items */
   --sidebar-primary-foreground: oklch(0.98 0.01 290); /* White text on active */
-  --sidebar-accent: oklch(0.72 0.24 310);            /* Lighter purple hover state */
+  --sidebar-accent: oklch(0.72 0.24 310);            /* Lighter accent hover state */
   --sidebar-accent-foreground: oklch(0.98 0.02 310); /* Light text on hover */
-  --sidebar-border: oklch(0.58 0.23 310);            /* Darker purple border */
-  --sidebar-ring: oklch(0.68 0.26 310);              /* Bright purple focus ring */
+  --sidebar-border: oklch(0.58 0.23 310);            /* Border color */
+  --sidebar-ring: oklch(0.68 0.26 310);              /* Focus ring */
   
   /* Footer colors */
   --footer: oklch(16.635% 0.00641 300.794);
@@ -163,6 +163,39 @@
 
 /* Enhanced Sidebar Hover Effects */
 @layer components {
+    /* Solid purple for all sidebar areas - no gradient */
+    [data-slot="sidebar"],
+    .group\/sidebar-wrapper.has-data-\[variant\=inset\]\:bg-sidebar,
+    .bg-sidebar,
+    [data-sidebar="sidebar"],
+    .peer.text-sidebar-foreground {
+        background: #B833F5 !important; /* Light mode purple */
+    }
+
+    /* Dark mode solid purple for all sidebar areas */
+    .dark [data-slot="sidebar"],
+    .dark .group\/sidebar-wrapper.has-data-\[variant\=inset\]\:bg-sidebar,
+    .dark .bg-sidebar,
+    .dark [data-sidebar="sidebar"],
+    .dark .peer.text-sidebar-foreground {
+        background: #5A0B75 !important; /* Dark mode purple */
+    }
+
+    /* Gradient border around main content area only (not sidebar) */
+    [data-sidebar="inset"],
+    main {
+        position: relative;
+        border: 8px solid transparent;
+        border-image: linear-gradient(135deg, #B833F5 0%, #FF55A0 40%, #FFA500 100%) 1;
+        border-radius: 0;
+    }
+
+    /* Dark mode gradient border */
+    .dark [data-sidebar="inset"],
+    .dark main {
+        border-image: linear-gradient(135deg, #5A0B75 0%, #B33951 40%, #FF692B 100%) 1;
+    }
+
     /* Sidebar menu button hover effects */
     [data-sidebar] [data-sidebar-menu-button] {
         @apply transition-all duration-200 ease-in-out;
