@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('participants', function (Blueprint $table) {
-            $table->decimal('hours_logged', 8, 2)->default(0)->after('status');
+            if (!Schema::hasColumn('participants', 'hours_logged')) {
+                $table->decimal('hours_logged', 8, 2)->default(0)->after('status');
+            }
         });
     }
 
@@ -22,7 +24,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('participants', function (Blueprint $table) {
-            $table->dropColumn('hours_logged');
+            if (Schema::hasColumn('participants', 'hours_logged')) {
+                $table->dropColumn('hours_logged');
+            }
         });
     }
 };

@@ -88,14 +88,14 @@
   --chart-5: oklch(0.47 0.157 37.304);
   
   /* Light Mode Purple Sidebar */
-  --sidebar: oklch(0.48 0.23 310);                   /* #7F169C - Deep purple background */
-  --sidebar-foreground: oklch(0.95 0.05 310);        /* Light text for contrast */
-  --sidebar-primary: oklch(0.58 0.26 310);           /* Brighter purple for active items */
+  --sidebar: oklch(0.96 0.06 290);                   /* Very light purple background */
+  --sidebar-foreground: oklch(0.30 0.10 285);        /* Dark purple text */
+  --sidebar-primary: oklch(0.55 0.20 285);           /* Medium purple for active items */
   --sidebar-primary-foreground: oklch(0.99 0.01 290); /* White text on active */
-  --sidebar-accent: oklch(0.60 0.20 310);            /* Medium purple hover state */
-  --sidebar-accent-foreground: oklch(0.98 0.02 310); /* Light text on hover */
-  --sidebar-border: oklch(0.42 0.20 310);            /* Darker purple border */
-  --sidebar-ring: oklch(0.58 0.24 310);              /* Purple focus ring */
+  --sidebar-accent: oklch(0.88 0.08 285);            /* Light purple hover state */
+  --sidebar-accent-foreground: oklch(0.25 0.10 285); /* Dark purple text on hover */
+  --sidebar-border: oklch(0.82 0.08 290);            /* Purple border */
+  --sidebar-ring: oklch(0.60 0.18 285);              /* Purple focus ring */
   
   /* Footer colors */
   --footer: oklch(98.212% 0.00011 271.152);
@@ -132,14 +132,14 @@
   --chart-5: oklch(0.47 0.157 37.304);
   
   /* Dark Mode Purple Sidebar */
-  --sidebar: oklch(0.63 0.26 310);                   /* #BF3FE0 - Vibrant purple background */
-  --sidebar-foreground: oklch(0.95 0.05 310);        /* Light text for contrast */
-  --sidebar-primary: oklch(0.70 0.28 310);           /* Brighter purple for active items */
+  --sidebar: oklch(0.22 0.08 285);                   /* Dark purple background */
+  --sidebar-foreground: oklch(0.92 0.05 285);        /* Light purple/white text */
+  --sidebar-primary: oklch(0.60 0.22 285);           /* Bright purple for active items */
   --sidebar-primary-foreground: oklch(0.98 0.01 290); /* White text on active */
-  --sidebar-accent: oklch(0.72 0.24 310);            /* Lighter purple hover state */
-  --sidebar-accent-foreground: oklch(0.98 0.02 310); /* Light text on hover */
-  --sidebar-border: oklch(0.58 0.23 310);            /* Darker purple border */
-  --sidebar-ring: oklch(0.68 0.26 310);              /* Bright purple focus ring */
+  --sidebar-accent: oklch(0.32 0.12 285);            /* Medium purple hover state */
+  --sidebar-accent-foreground: oklch(0.95 0.03 285); /* Light text on hover */
+  --sidebar-border: oklch(0.30 0.08 285);            /* Dark purple border */
+  --sidebar-ring: oklch(0.65 0.20 285);              /* Bright purple focus ring */
   
   /* Footer colors */
   --footer: oklch(16.635% 0.00641 300.794);
@@ -163,6 +163,8 @@
 
 /* Enhanced Sidebar Hover Effects */
 @layer components {
+    
+
     /* Sidebar menu button hover effects */
     [data-sidebar] [data-sidebar-menu-button] {
         @apply transition-all duration-200 ease-in-out;
