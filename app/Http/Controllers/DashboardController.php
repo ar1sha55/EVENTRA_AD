@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -60,10 +62,28 @@ class DashboardController extends Controller
             ->where('start_date', '>=', now())
             ->count();
 
+        // Get top volunteers based on total hours from registered events
+        $topVolunteers = User::select([
+                'users.id',
+                'users.name',
+                'users.email',
+                'users.faculty',
+                'users.profile_picture',
+                DB::raw('COUNT(DISTINCT participants.event_id) as events_participated'),
+                DB::raw('COALESCE(SUM(TIMESTAMPDIFF(HOUR, events.start_date, events.end_date)), 0) as total_hours')
+            ])
+            ->join('participants', 'users.id', '=', 'participants.user_id')
+            ->join('events', 'participants.event_id', '=', 'events.id')
+            ->groupBy('users.id', 'users.name', 'users.email', 'users.faculty', 'users.profile_picture')
+            ->orderByDesc('total_hours')
+            ->limit(10)
+            ->get();
+
         return Inertia::render('dashboard', [
             'upcomingEvents' => $upcomingEvents,
             'notificationEvents' => $notificationEvents,
             'registeredEvents' => $registeredEvents,
+            'topVolunteers' => $topVolunteers,
             'stats' => [
                 'totalEvents' => $totalEvents,
                 'upcomingEventsCount' => $upcomingEventsCount,
