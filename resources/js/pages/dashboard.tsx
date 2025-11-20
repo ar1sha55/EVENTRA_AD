@@ -74,14 +74,26 @@ interface TopVolunteer {
   events_participated: number;
 }
 
+interface RegisteredEvent {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  location: string;
+  image_path?: string;
+  status: 'pending_approval' | 'approved' | 'rejected';
+  registration_date: string;
+}
+
 interface DashboardProps {
   upcomingEvents?: Event[];
   notificationEvents?: NotificationEvent[];
   stats?: Stats;
   topVolunteers?: TopVolunteer[];
+  registeredEvents?: RegisteredEvent[];
 }
 
-export default function Dashboard({ upcomingEvents = [], notificationEvents = [], stats = { totalEvents: 0, upcomingEventsCount: 0 }, topVolunteers = [] }: DashboardProps) {
+export default function Dashboard({ upcomingEvents = [], notificationEvents = [], stats = { totalEvents: 0, upcomingEventsCount: 0 }, topVolunteers = [], registeredEvents = [] }: DashboardProps) {
   const page = usePage();
   const auth = page.props.auth as { user: User };
   const { user } = auth;
@@ -309,6 +321,87 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
             </Card>
           ))}
         </div>
+
+        {/* Registered Events */}
+        {registeredEvents.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5 text-purple-600" />
+                My Registered Events
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3">
+                {registeredEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    className="flex items-center justify-between rounded-lg border p-4 transition-all hover:bg-muted/40"
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                      {/* Event Image */}
+                      {event.image_path && (
+                        <img
+                          src={`/storage/${event.image_path}`}
+                          alt={event.name}
+                          className="w-16 h-16 object-cover rounded-md"
+                        />
+                      )}
+
+                      {/* Event Details */}
+                      <div className="flex flex-col flex-1">
+                        <span className="font-semibold text-base">{event.name}</span>
+                        <span className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                          <CalendarDays className="h-3 w-3" />
+                          {new Date(event.start_date).toLocaleDateString('en-MY', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                          {event.end_date && ` - ${new Date(event.end_date).toLocaleDateString('en-MY', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}`}
+                        </span>
+                        <span className="text-sm text-muted-foreground flex items-center gap-2">
+                          <MapPin className="h-3 w-3" />
+                          {event.location}
+                        </span>
+                        <span className="text-xs text-muted-foreground mt-1">
+                          Registered on {new Date(event.registration_date).toLocaleDateString('en-MY', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Status Badge */}
+                    <div className="flex-shrink-0">
+                      {event.status === 'approved' && (
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-300">
+                          Approved
+                        </Badge>
+                      )}
+                      {event.status === 'pending_approval' && (
+                        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-300">
+                          Pending
+                        </Badge>
+                      )}
+                      {event.status === 'rejected' && (
+                        <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-300">
+                          Rejected
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Upcoming Events & Notifications */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
