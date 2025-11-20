@@ -93,6 +93,9 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
         { label: 'RM 50', value: 50 },
     ];
 
+    // Initialize form data when modal opens or event changes
+    // This is a valid use case for setState in useEffect for form initialization
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => {
         if (isOpen) {
             if (event) {
@@ -115,7 +118,7 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
                 const now = new Date();
                 const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
                 const endTime = new Date(tomorrow.getTime() + 2 * 60 * 60 * 1000); // 2 hours duration
-                
+
                 setFormData({
                     name: '',
                     description: '',

@@ -22,9 +22,9 @@ createInertiaApp({
         const root = createRoot(el);
 
         // Make the route() function available globally in your components
-        // @ts-expect-error
+        // @ts-expect-error - Adding route function to window object for global access
         window.route = (name, params, absolute) => ziggyRoute(name, params, absolute, {
-            // @ts-expect-error
+            // @ts-expect-error - Ziggy props are dynamically provided by Laravel
             ...props.initialPage.props.ziggy,
         });
 

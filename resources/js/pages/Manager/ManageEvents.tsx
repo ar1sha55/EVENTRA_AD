@@ -86,6 +86,42 @@ type SortDirection = 'asc' | 'desc';
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Manage Events', href: '/events' }];
 
+// SortButton component declared outside to prevent recreation on each render
+interface SortButtonProps {
+    field: SortField;
+    children: React.ReactNode;
+    sortField: SortField;
+    sortDirection: SortDirection;
+    onSort: (field: SortField) => void;
+}
+
+const SortButton = ({ field, children, sortField, sortDirection, onSort }: SortButtonProps) => {
+    const isActive = sortField === field;
+
+    return (
+        <button
+            onClick={() => onSort(field)}
+            className={`flex items-center gap-1 transition-colors hover:text-foreground ${
+                isActive ? 'text-foreground font-medium' : 'text-muted-foreground'
+            }`}
+            title={isActive ? `Sorted ${sortDirection === 'asc' ? 'Ascending' : 'Descending'}` : 'Click to sort'}
+        >
+            {children}
+            <span className="flex flex-col justify-center h-4 w-4">
+                {isActive ? (
+                    sortDirection === 'asc' ? (
+                        <ArrowUp className="h-3 w-3 text-primary" />
+                    ) : (
+                        <ArrowDown className="h-3 w-3 text-primary" />
+                    )
+                ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                )}
+            </span>
+        </button>
+    );
+};
+
 export default function ManageEvents({ events }: ManageEventsProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<Event | null>(null);
@@ -244,33 +280,6 @@ export default function ManageEvents({ events }: ManageEventsProps) {
         const approved = event.participants.filter(p => p.status === 'approved').length;
         const pending = event.participants.filter(p => p.status === 'pending_approval').length;
         return { approved, pending, total: approved + pending };
-    };
-
-    // UPDATED: SortButton with visual feedback
-    const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => {
-        const isActive = sortField === field;
-
-        return (
-            <button
-                onClick={() => handleSort(field)}
-                className={`flex items-center gap-1 transition-colors hover:text-foreground ${isActive ? 'text-foreground font-medium' : 'text-muted-foreground'
-                    }`}
-                title={isActive ? `Sorted ${sortDirection === 'asc' ? 'Ascending' : 'Descending'}` : 'Click to sort'}
-            >
-                {children}
-                <span className="flex flex-col justify-center h-4 w-4">
-                    {isActive ? (
-                        sortDirection === 'asc' ? (
-                            <ArrowUp className="h-3 w-3 text-primary" />
-                        ) : (
-                            <ArrowDown className="h-3 w-3 text-primary" />
-                        )
-                    ) : (
-                        <ArrowUpDown className="h-3 w-3 opacity-30" />
-                    )}
-                </span>
-            </button>
-        );
     };
 
     return (
@@ -470,20 +479,30 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                         <TableRow>
                                             <TableHead>Poster</TableHead>
                                             <TableHead>
-                                                <SortButton field="name">Name</SortButton>
+                                                <SortButton field="name" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                                                    Name
+                                                </SortButton>
                                             </TableHead>
                                             <TableHead>
-                                                <SortButton field="location">Location</SortButton>
+                                                <SortButton field="location" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                                                    Location
+                                                </SortButton>
                                             </TableHead>
                                             <TableHead>
-                                                <SortButton field="start_date">Start Date</SortButton>
+                                                <SortButton field="start_date" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                                                    Start Date
+                                                </SortButton>
                                             </TableHead>
                                             <TableHead>
-                                                <SortButton field="end_date">End Date</SortButton>
+                                                <SortButton field="end_date" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                                                    End Date
+                                                </SortButton>
                                             </TableHead>
                                             <TableHead>Status</TableHead>
                                             <TableHead>
-                                                <SortButton field="fee">Fee</SortButton>
+                                                <SortButton field="fee" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                                                    Fee
+                                                </SortButton>
                                             </TableHead>
                                             <TableHead>Participants</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>

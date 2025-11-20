@@ -70,10 +70,12 @@ const Footer: React.FC = () => {
                         >
                             <Facebook className="w-7 h-7" />
                         </a>
-                        {/* Gmail Icon & Mailto Link */}
-                        <a 
-                            href="mailto:utmvolunteerclub@gmail.com" 
-                            className="transition duration-300" 
+                        {/* Gmail Icon - Opens Gmail compose */}
+                        <a
+                            href="https://mail.google.com/mail/?view=cm&fs=1&to=utmvolunteerclub@gmail.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="transition duration-300"
                             aria-label="Gmail"
                             onMouseOver={e => e.currentTarget.style.color = '#dc2626'}
                             onMouseOut={e => e.currentTarget.style.color = 'var(--footer-icon)'}
@@ -99,16 +101,18 @@ const Footer: React.FC = () => {
                     >
                         Home
                     </Link>
-                    {/* Contact Link */}
-                    <Link 
-                        href="/contact" 
+                    {/* Contact Link - Opens Gmail */}
+                    <a
+                        href="https://mail.google.com/mail/?view=cm&fs=1&to=utmvolunteerclub@gmail.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="transition duration-300 text-center"
                         style={{ color: 'var(--footer-text)' }}
                         onMouseOver={e => e.currentTarget.style.color = hoverColorStyle.color as string}
                         onMouseOut={e => e.currentTarget.style.color = 'var(--footer-text)'}
                     >
                         Contact
-                    </Link>
+                    </a>
                     {/* Our Team Link */}
                     <Link 
                         href="/team" 

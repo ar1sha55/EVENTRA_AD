@@ -10,6 +10,8 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        $user = auth()->user();
+
         // Fetch upcoming published events (start_date >= today) with participants
         $upcomingEvents = Event::where('status', 'published')
             ->where('start_date', '>=', now())
@@ -28,6 +30,30 @@ class DashboardController extends Controller
             ->limit(5)
             ->get(['id', 'name', 'start_date']);
 
+        // Fetch user's registered events
+        $registeredEvents = Event::whereHas('participants', function($query) use ($user) {
+                $query->where('user_id', $user->id);
+            })
+            ->with(['participants' => function($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->select('id', 'user_id', 'event_id', 'status', 'registration_date');
+            }])
+            ->orderBy('start_date', 'desc')
+            ->get(['id', 'name', 'start_date', 'end_date', 'location', 'image_path'])
+            ->map(function($event) {
+                $participant = $event->participants->first();
+                return [
+                    'id' => $event->id,
+                    'name' => $event->name,
+                    'start_date' => $event->start_date,
+                    'end_date' => $event->end_date,
+                    'location' => $event->location,
+                    'image_path' => $event->image_path,
+                    'status' => $participant->status,
+                    'registration_date' => $participant->registration_date,
+                ];
+            });
+
         // Count total events for stats
         $totalEvents = Event::count();
         $upcomingEventsCount = Event::where('status', 'published')
@@ -37,6 +63,7 @@ class DashboardController extends Controller
         return Inertia::render('dashboard', [
             'upcomingEvents' => $upcomingEvents,
             'notificationEvents' => $notificationEvents,
+            'registeredEvents' => $registeredEvents,
             'stats' => [
                 'totalEvents' => $totalEvents,
                 'upcomingEventsCount' => $upcomingEventsCount,
