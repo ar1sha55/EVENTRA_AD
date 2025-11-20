@@ -403,38 +403,88 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
               <CardTitle>Upcoming Events</CardTitle>
               <Button variant="outline" size="sm">View All</Button>
             </CardHeader>
-            <CardContent className="grid gap-4">
+            <CardContent>
               {upcomingEvents.length > 0 ? (
-                upcomingEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="flex items-center justify-between rounded-lg border p-3 transition-all hover:bg-muted/40 cursor-pointer"
-                    onClick={() => setSelectedEvent(event)}
-                  >
-                    <div className="flex flex-col flex-1">
-                      <span className="font-semibold">{event.name}</span>
-                      <span className="text-sm text-muted-foreground flex items-center gap-2">
-                        <CalendarDays className="h-3 w-3" />
-                        {new Date(event.start_date).toLocaleDateString('en-MY', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                      </span>
-                      <span className="text-sm text-muted-foreground flex items-center gap-2">
-                        <MapPin className="h-3 w-3" />
-                        {event.location}
-                      </span>
-                    </div>
-                    {event.fee && event.fee > 0 && (
-                      <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                        RM {Number(event.fee).toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-                ))
+                <div className="relative space-y-4">
+                  {/* Timeline line */}
+                  <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-purple-500 via-blue-500 to-purple-500" />
+
+                  {upcomingEvents.map((event) => {
+                    const countdown = getCountdown(event.start_date);
+                    const now = new Date();
+                    const eventDate = new Date(event.start_date);
+                    const diffDays = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+                    // Determine timeline indicator color based on proximity
+                    const indicatorColor = diffDays === 0
+                      ? 'bg-red-500 ring-red-200'
+                      : diffDays === 1
+                      ? 'bg-orange-500 ring-orange-200'
+                      : diffDays <= 7
+                      ? 'bg-yellow-500 ring-yellow-200'
+                      : 'bg-blue-500 ring-blue-200';
+
+                    return (
+                      <div key={event.id} className="relative flex gap-4 group">
+                        {/* Timeline indicator */}
+                        <div className="relative flex-shrink-0">
+                          <div className={`w-6 h-6 rounded-full ${indicatorColor} ring-4 ring-background shadow-md z-10 relative`}>
+                            <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-current" />
+                          </div>
+                        </div>
+
+                        {/* Event card */}
+                        <div
+                          className="flex-1 rounded-lg border bg-card p-4 shadow-sm transition-all hover:shadow-md hover:border-primary/50 cursor-pointer group-hover:scale-[1.02]"
+                          onClick={() => setSelectedEvent(event)}
+                        >
+                          {/* Time indicator badge */}
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${countdown.color} bg-opacity-10`}>
+                              {countdown.text}
+                            </span>
+                            {event.fee && event.fee > 0 && (
+                              <span className="text-xs font-semibold text-blue-600 bg-blue-50 dark:bg-blue-950 px-2 py-1 rounded">
+                                RM {Number(event.fee).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Event details */}
+                          <h3 className="font-semibold text-base mb-2 group-hover:text-primary transition-colors">
+                            {event.name}
+                          </h3>
+
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <CalendarDays className="h-4 w-4 flex-shrink-0" />
+                              <span>
+                                {new Date(event.start_date).toLocaleDateString('en-MY', {
+                                  weekday: 'short',
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                                {' at '}
+                                {new Date(event.start_date).toLocaleTimeString('en-MY', {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <MapPin className="h-4 w-4 flex-shrink-0" />
+                              <span className="truncate">{event.location}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">No upcoming events at the moment.</p>
+                <p className="text-sm text-muted-foreground text-center py-8">No upcoming events at the moment.</p>
               )}
             </CardContent>
           </Card>
