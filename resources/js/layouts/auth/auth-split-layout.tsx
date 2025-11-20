@@ -42,7 +42,7 @@ export default function AuthSplitLayout({
                 <div className="absolute bottom-10 left-10 z-20">
                     <blockquote className="max-w-md space-y-2">
                         <p className="text-xl italic">
-                            &ldquo;Your small contribution can make a big difference.&rdquo;
+                            &ldquo;A Free Yet Priceless Act.&rdquo;
                         </p>
                     </blockquote>
                     <div className="mt-4 text-sm">Powered by Eventra</div>

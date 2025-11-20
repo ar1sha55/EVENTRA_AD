@@ -6,11 +6,8 @@ use App\Http\Controllers\EventsController;
 use App\Http\Controllers\ParticipantsController;
 use App\Http\Controllers\TestController;
 use App\Http\Controllers\ManagerDashboardController;
-<<<<<<< HEAD
-=======
 use App\Http\Controllers\DashboardController;
 use App\Http\Middleware\RoleMiddleware;
->>>>>>> bb86ecaa55b485a82c9aadf05b230497c5c080ca
 
 Route::get('/', function () {
     return redirect('/login');
