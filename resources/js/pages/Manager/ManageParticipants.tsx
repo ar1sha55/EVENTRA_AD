@@ -75,6 +75,7 @@ interface ParticipantTableProps {
 }
 
 // Move ParticipantTable component outside to prevent recreation on every render
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ParticipantTable = ({
     participants,
     showActions = true,
