@@ -3,7 +3,7 @@ import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { CalendarDays, Bell, BarChart3, MapPin, Award, Clock } from "lucide-react";
+import { CalendarDays, Bell, BarChart3, MapPin, Award, Clock, User } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -99,15 +99,6 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
   const { user } = auth;
 
   // Helper functions
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   const getMedalColor = (index: number) => {
     switch (index) {
       case 0: return 'from-yellow-400 to-yellow-600'; // Gold
@@ -548,8 +539,8 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
                             alt={volunteer.name}
                           />
                         ) : null}
-                        <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500 text-white font-semibold">
-                          {getInitials(volunteer.name)}
+                        <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500">
+                          <User className="h-6 w-6 text-white" />
                         </AvatarFallback>
                       </Avatar>
 

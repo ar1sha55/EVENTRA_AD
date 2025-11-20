@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { edit } from '@/routes/profile';
-import { Upload } from 'lucide-react';
+import { Upload, X, User } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -61,6 +61,23 @@ export default function Profile({
         }
     };
 
+    const handleRemoveProfilePicture = () => {
+        setProcessing(true);
+
+        router.delete('/settings/profile/picture', {
+            preserveScroll: true,
+            onSuccess: () => {
+                setProfilePicturePreview(null);
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                }
+            },
+            onFinish: () => {
+                setProcessing(false);
+            },
+        });
+    };
+
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setProcessing(true);
@@ -76,15 +93,6 @@ export default function Profile({
                 setProcessing(false);
             },
         });
-    };
-
-    const getInitials = (name: string) => {
-        return name
-            .split(' ')
-            .map(word => word[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2);
     };
 
     return (
@@ -112,20 +120,34 @@ export default function Profile({
                                                         : undefined)
                                                 }
                                             />
-                                            <AvatarFallback className="text-2xl">
-                                                {getInitials(auth.user.name)}
+                                            <AvatarFallback className="bg-muted">
+                                                <User className="h-12 w-12 text-muted-foreground" />
                                             </AvatarFallback>
                                         </Avatar>
                                         <div className="flex flex-col gap-2">
-                                            <Label
-                                                htmlFor="profile_picture"
-                                                className="cursor-pointer"
-                                            >
-                                                <div className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
-                                                    <Upload className="h-4 w-4" />
-                                                    <span>Upload new picture</span>
-                                                </div>
-                                            </Label>
+                                            <div className="flex gap-2">
+                                                <Label
+                                                    htmlFor="profile_picture"
+                                                    className="cursor-pointer"
+                                                >
+                                                    <div className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                                                        <Upload className="h-4 w-4" />
+                                                        <span>Upload new picture</span>
+                                                    </div>
+                                                </Label>
+                                                {(auth.user.profile_picture || profilePicturePreview) && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        onClick={handleRemoveProfilePicture}
+                                                        disabled={processing}
+                                                        className="flex items-center gap-2"
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                        <span>Remove</span>
+                                                    </Button>
+                                                )}
+                                            </div>
                                             <Input
                                                 id="profile_picture"
                                                 type="file"
