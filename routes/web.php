@@ -6,6 +6,11 @@ use App\Http\Controllers\EventsController;
 use App\Http\Controllers\ParticipantsController;
 use App\Http\Controllers\TestController;
 use App\Http\Controllers\ManagerDashboardController;
+<<<<<<< HEAD
+=======
+use App\Http\Controllers\DashboardController;
+use App\Http\Middleware\RoleMiddleware;
+>>>>>>> bb86ecaa55b485a82c9aadf05b230497c5c080ca
 
 Route::get('/', function () {
     return redirect('/login');
@@ -15,10 +20,8 @@ Route::get('/', function () {
 // Authenticated Users (All Roles)
 // =========================================================================
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Standard User Dashboard
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    // Dashboard
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Event Joining & Viewing
     Route::get('/join-events', [EventsController::class, 'joinEvents'])->name('join-events');

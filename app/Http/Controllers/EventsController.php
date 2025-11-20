@@ -115,7 +115,8 @@ class EventsController extends Controller
     {
         $events = Event::with(['participants'])
             ->where('status', 'published')
-            ->latest()
+            ->where('start_date', '>=', now())
+            ->orderBy('start_date', 'asc')
             ->get();
 
         return inertia('JoinEvents', [
