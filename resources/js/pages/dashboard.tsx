@@ -3,7 +3,7 @@ import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { CalendarDays, Bell, BarChart3, MapPin, Users, CheckCircle, XCircle } from "lucide-react";
+import { CalendarDays, Bell, BarChart3, MapPin } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -118,6 +118,30 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
   const handleRegister = (eventId: number, paymentProof?: File) => {
     setProcessing(true);
 
+    const handleSuccess = () => {
+      setPaymentProofEvent(null);
+      setPaymentProofFile(null);
+      setPaymentProofPreview(null);
+      setProcessing(false);
+
+      // Update selectedEvent with optimistic update - add pending participant
+      if (selectedEvent) {
+        const newParticipant: Participant = {
+          id: Date.now(), // Temporary ID
+          user_id: user.id,
+          event_id: eventId,
+          status: 'pending_approval',
+          registration_date: new Date().toISOString(),
+          last_updated: new Date().toISOString(),
+        };
+
+        setSelectedEvent({
+          ...selectedEvent,
+          participants: [...(selectedEvent.participants || []), newParticipant]
+        });
+      }
+    };
+
     if (paymentProof) {
       const formData = new FormData();
       formData.append('payment_proof', paymentProof);
@@ -125,12 +149,7 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
       router.post(`/events/${eventId}/register`, formData, {
         forceFormData: true,
         preserveScroll: true,
-        onSuccess: () => {
-          setPaymentProofEvent(null);
-          setPaymentProofFile(null);
-          setPaymentProofPreview(null);
-          setProcessing(false);
-        },
+        onSuccess: handleSuccess,
         onError: () => {
           setProcessing(false);
         },
@@ -138,9 +157,7 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
     } else {
       router.post(`/events/${eventId}/register`, {}, {
         preserveScroll: true,
-        onSuccess: () => {
-          setProcessing(false);
-        },
+        onSuccess: handleSuccess,
         onError: () => {
           setProcessing(false);
         },
@@ -150,7 +167,16 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
 
   const handleUnregister = (participantId: number) => {
     router.delete(`/participants/${participantId}`, {
-      onSuccess: () => setSelectedEvent(null),
+      preserveScroll: true,
+      onSuccess: () => {
+        // Update selectedEvent by removing the participant
+        if (selectedEvent) {
+          setSelectedEvent({
+            ...selectedEvent,
+            participants: selectedEvent.participants?.filter(p => p.id !== participantId) || []
+          });
+        }
+      },
     });
   };
 
@@ -177,19 +203,6 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
       status: participant ? participant.status : null,
       participantId: participant ? participant.id : null,
     };
-  };
-
-  const getStatusBadge = (status: string | null) => {
-    switch (status) {
-      case 'approved':
-        return <span className="text-green-600 font-semibold flex items-center gap-1"><CheckCircle className="h-4 w-4" /> Registered</span>;
-      case 'pending_approval':
-        return <span className="text-yellow-600 font-semibold">⏳ Pending Approval</span>;
-      case 'rejected':
-        return <span className="text-red-600 font-semibold flex items-center gap-1"><XCircle className="h-4 w-4" /> Rejected</span>;
-      default:
-        return null;
-    }
   };
 
   // Past events stats (for chart)
@@ -391,43 +404,28 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
                   <div>
                     <h3 className='font-semibold mb-1'>Participants</h3>
                     <p className='text-sm text-muted-foreground'>
-                      {selectedEvent.participants?.filter(p => p.status === 'approved' || p.status === 'pending_approval').length || 0}
+                      {selectedEvent.participants?.length || 0}
                       {selectedEvent.capacity ? ` / ${selectedEvent.capacity}` : ''}
                     </p>
                   </div>
                 </div>
-                {(() => {
-                  const { status } = getParticipantStatus(selectedEvent);
-                  return status && (
-                    <div className='pt-2 border-t'>
-                      <h3 className='font-semibold mb-2'>Registration Status</h3>
-                      {getStatusBadge(status)}
-                    </div>
-                  );
-                })()}
               </div>
               <DialogFooter className='gap-2'>
                 <Button variant='outline' onClick={() => setSelectedEvent(null)}>
                   Close
                 </Button>
                 {(() => {
-                  const { status, participantId } = getParticipantStatus(selectedEvent);
-                  const totalParticipants = selectedEvent.participants?.filter(p => p.status === 'approved' || p.status === 'pending_approval').length || 0;
+                  const { participantId } = getParticipantStatus(selectedEvent);
+                  const totalParticipants = selectedEvent.participants?.length || 0;
                   const isPaidEvent = selectedEvent.fee && selectedEvent.fee > 0;
 
-                  if (status === 'approved' || status === 'pending_approval') {
+                  if (participantId) {
                     return (
                       <Button
                         variant='destructive'
-                        onClick={() => participantId && handleUnregister(participantId)}
+                        onClick={() => handleUnregister(participantId)}
                       >
                         Unregister
-                      </Button>
-                    );
-                  } else if (status === 'rejected') {
-                    return (
-                      <Button variant='secondary' disabled>
-                        Registration Rejected
                       </Button>
                     );
                   } else {
