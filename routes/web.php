@@ -7,6 +7,7 @@ use App\Http\Controllers\EventsController;
 use App\Http\Controllers\ParticipantsController;
 use App\Http\Controllers\TestController;
 use App\Http\Controllers\ManagerDashboardController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Middleware\RoleMiddleware;
 
 Route::get('/', function () {
@@ -16,9 +17,7 @@ Route::get('/', function () {
 // Routes for authenticated and verified users
 Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Event joining and viewing (for all authenticated users)
     Route::get('/join-events', [EventsController::class, 'joinEvents'])->name('join-events');
