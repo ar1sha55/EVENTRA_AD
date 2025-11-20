@@ -9,7 +9,12 @@ test('registration screen can be rendered', function () {
 test('new users can register', function () {
     $response = $this->post(route('register.store'), [
         'name' => 'Test User',
-        'email' => 'test@example.com',
+        'email' => 'test@graduate.utm.my',
+        'matric_id' => 'A12345678',
+        'phone_number' => '0123456789',
+        'nationality' => 'malaysia',
+        'gender' => 'male',
+        'faculty' => 'fc',
         'password' => 'password',
         'password_confirmation' => 'password',
     ]);
