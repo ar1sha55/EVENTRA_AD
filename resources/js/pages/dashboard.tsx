@@ -3,8 +3,10 @@ import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { CalendarDays, Bell, BarChart3, MapPin } from "lucide-react";
+import { CalendarDays, Bell, BarChart3, MapPin, Award, Clock } from "lucide-react";
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useState, useRef } from 'react';
@@ -58,18 +60,59 @@ type User = {
   id: number;
   name: string;
   email: string;
+  faculty?: string;
+  profile_picture?: string;
 };
+
+interface TopVolunteer {
+  id: number;
+  name: string;
+  email: string;
+  faculty: string;
+  profile_picture?: string;
+  total_hours: number;
+  events_participated: number;
+}
 
 interface DashboardProps {
   upcomingEvents?: Event[];
   notificationEvents?: NotificationEvent[];
   stats?: Stats;
+  topVolunteers?: TopVolunteer[];
 }
 
-export default function Dashboard({ upcomingEvents = [], notificationEvents = [], stats = { totalEvents: 0, upcomingEventsCount: 0 } }: DashboardProps) {
+export default function Dashboard({ upcomingEvents = [], notificationEvents = [], stats = { totalEvents: 0, upcomingEventsCount: 0 }, topVolunteers = [] }: DashboardProps) {
   const page = usePage();
   const auth = page.props.auth as { user: User };
   const { user } = auth;
+
+  // Helper functions
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getMedalColor = (index: number) => {
+    switch (index) {
+      case 0: return 'from-yellow-400 to-yellow-600'; // Gold
+      case 1: return 'from-gray-300 to-gray-500'; // Silver
+      case 2: return 'from-orange-400 to-orange-600'; // Bronze
+      default: return 'from-blue-500 to-purple-600';
+    }
+  };
+
+  const getMedalBgColor = (index: number) => {
+    switch (index) {
+      case 0: return 'bg-yellow-50 border-yellow-200'; // Gold
+      case 1: return 'bg-gray-50 border-gray-200'; // Silver
+      case 2: return 'bg-orange-50 border-orange-200'; // Bronze
+      default: return 'bg-blue-50 border-blue-200';
+    }
+  };
 
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [paymentProofEvent, setPaymentProofEvent] = useState<Event | null>(null);
@@ -215,10 +258,26 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
     { name: "Jun", events: 6 },
   ];
 
-  // Top stats configuration
+  // Top stats configuration with colors
   const topStats = [
-    { title: 'Total Events', value: stats.totalEvents, icon: <CalendarDays className="h-4 w-4 text-muted-foreground" />, desc: 'All registered events' },
-    { title: 'Upcoming Events', value: stats.upcomingEventsCount, icon: <CalendarDays className="h-4 w-4 text-muted-foreground" />, desc: 'Published events' },
+    {
+      title: 'Total Events',
+      value: stats.totalEvents,
+      icon: <CalendarDays className="h-8 w-8 text-blue-600 dark:text-blue-400" />,
+      desc: 'All registered events',
+      bgColor: 'bg-blue-50 dark:bg-blue-950',
+      borderColor: 'border-blue-200 dark:border-blue-800',
+      textColor: 'text-blue-900 dark:text-blue-100'
+    },
+    {
+      title: 'Upcoming Events',
+      value: stats.upcomingEventsCount,
+      icon: <CalendarDays className="h-8 w-8 text-green-600 dark:text-green-400" />,
+      desc: 'Published events',
+      bgColor: 'bg-green-50 dark:bg-green-950',
+      borderColor: 'border-green-200 dark:border-green-800',
+      textColor: 'text-green-900 dark:text-green-100'
+    },
   ];
 
   return (
@@ -227,17 +286,25 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
 
       <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
 
+        {/* Greeting */}
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-yellow-500 bg-clip-text text-transparent">
+            Hi, {user.name}!
+          </h1>
+          <span className="text-3xl animate-wave">👋</span>
+        </div>
+
         {/* Top Stats */}
         <div className="grid gap-4 md:grid-cols-2">
           {topStats.map((stat, idx) => (
-            <Card key={idx} className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+            <Card key={idx} className={`transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${stat.bgColor} ${stat.borderColor}`}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                <CardTitle className={`text-sm font-medium ${stat.textColor}`}>{stat.title}</CardTitle>
                 {stat.icon}
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground">{stat.desc}</p>
+                <div className={`text-4xl font-bold ${stat.textColor}`}>{stat.value}</div>
+                <p className={`text-xs ${stat.textColor} opacity-70`}>{stat.desc}</p>
               </CardContent>
             </Card>
           ))}
@@ -330,25 +397,94 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
           </Card>
         </div>
 
-        {/* Past Events Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-muted-foreground" />
-              Past Events Overview
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={pastEventsStats}>
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="events" fill="#f97316" radius={[5,5,0,0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {/* Past Events Chart & Top Volunteers */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Past Events Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-muted-foreground" />
+                Past Events Overview
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={pastEventsStats}>
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="events" fill="#f97316" radius={[5,5,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Top Volunteers */}
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Award className="h-5 w-5 text-yellow-500" />
+                  Top Volunteers
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">Most hours logged by participants</p>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {topVolunteers && topVolunteers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    No volunteer hours logged yet
+                  </p>
+                ) : (
+                  topVolunteers?.slice(0, 5).map((volunteer, index) => (
+                    <div
+                      key={volunteer.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg border-2 ${getMedalBgColor(index)} transition-all hover:shadow-md`}
+                    >
+                      {/* Rank Badge */}
+                      <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getMedalColor(index)} flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md`}>
+                        {index + 1}
+                      </div>
+
+                      {/* Avatar */}
+                      <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
+                        {volunteer.profile_picture ? (
+                          <AvatarImage
+                            src={`/storage/${volunteer.profile_picture}`}
+                            alt={volunteer.name}
+                          />
+                        ) : null}
+                        <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500 text-white font-semibold">
+                          {getInitials(volunteer.name)}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      {/* Volunteer Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate">{volunteer.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {volunteer.faculty || 'No faculty'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {volunteer.events_participated} {volunteer.events_participated === 1 ? 'event' : 'events'}
+                        </p>
+                      </div>
+
+                      {/* Hours Badge */}
+                      <div className="flex flex-col items-end">
+                        <Badge variant="outline" className="bg-white border-2 font-bold whitespace-nowrap">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {volunteer.total_hours} hrs
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
       </div>
 
