@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('event_id')->constrained()->onDelete('cascade');
             $table->string('status')->default('PENDING');
+            $table->decimal('hours_logged', 8, 2)->default(0);
             $table->timestamp('registration_date')->nullable();
             $table->timestamp('last_updated')->nullable();
         });

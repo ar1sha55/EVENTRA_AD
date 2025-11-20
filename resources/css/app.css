@@ -163,6 +163,8 @@
 
 /* Enhanced Sidebar Hover Effects */
 @layer components {
+    
+
     /* Sidebar menu button hover effects */
     [data-sidebar] [data-sidebar-menu-button] {
         @apply transition-all duration-200 ease-in-out;

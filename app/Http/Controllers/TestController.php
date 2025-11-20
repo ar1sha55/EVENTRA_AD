@@ -52,4 +52,6 @@ class TestController extends Controller
     {
         return Inertia::render('Admin/SystemControl');
     }
+
+
 }

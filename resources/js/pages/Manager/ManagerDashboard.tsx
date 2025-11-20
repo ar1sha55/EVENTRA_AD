@@ -1,5 +1,4 @@
-// resources/js/Pages/Manager/ManagerDashboard.tsx
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +11,6 @@ import {
     CheckCircle, 
     ClipboardList,
     ArrowRight,
-    Bell,
     UserPlus,
     Calendar,
     UserCheck,
@@ -21,7 +19,6 @@ import {
     Award,
     Clock
 } from 'lucide-react';
-import axios from 'axios';
 
 // Types
 interface DashboardSummary {
@@ -39,7 +36,7 @@ interface ParticipantStatusBreakdown {
 }
 
 interface FacultyDistribution {
-    [facultyName: string]: number;  // e.g., "Engineering": 45
+    [facultyName: string]: number;  
 }
 
 interface UpcomingEvent {
@@ -60,7 +57,7 @@ interface Notification {
 }
 
 interface MemberEngagement {
-    [eventName: string]: number;  // Dynamic event names
+    [eventName: string]: number; 
 }
 
 interface TopParticipant {
@@ -83,41 +80,15 @@ interface DashboardData {
     top_participants: TopParticipant[];
 }
 
-export default function ManagerDashboard() {
-    const { auth } = usePage().props as any;  // Get authenticated user
-    const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-    const [loading, setLoading] = useState(true);
+interface PageProps {
+    auth: any;
+    dashboardData: DashboardData; // Data comes from Controller now
+}
 
-    useEffect(() => {
-        fetchDashboardData();
-    }, []);
+export default function ManagerDashboard({ dashboardData }: { dashboardData: DashboardData }) {
+    const { auth } = usePage().props as unknown as PageProps;  
 
-    const fetchDashboardData = async () => {
-        try {
-            const response = await axios.get('/api/manager/dashboard/summary');
-            setDashboardData(response.data);
-            setLoading(false);
-        } catch (error) {
-            console.error('Error fetching dashboard data:', error);
-            setLoading(false);
-        }
-    };
-
-    if (loading) {
-        return (
-            <AppLayout>
-                <Head title="Manager Dashboard" />
-                <div className="py-12">
-                    <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-center h-64">
-                            <p className="text-muted-foreground">Loading dashboard...</p>
-                        </div>
-                    </div>
-                </div>
-            </AppLayout>
-        );
-    }
-
+    // Fallback if data isn't passed (e.g., error in controller)
     if (!dashboardData) {
         return (
             <AppLayout>
@@ -125,7 +96,7 @@ export default function ManagerDashboard() {
                 <div className="py-12">
                     <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                         <div className="flex items-center justify-center h-64">
-                            <p className="text-muted-foreground">Failed to load dashboard data.</p>
+                            <p className="text-muted-foreground">No dashboard data available.</p>
                         </div>
                     </div>
                 </div>
@@ -135,7 +106,6 @@ export default function ManagerDashboard() {
 
     const { 
         summary, 
-        participant_status_breakdown, 
         participants_faculty_distribution, 
         upcoming_events, 
         recent_notifications, 
@@ -146,35 +116,18 @@ export default function ManagerDashboard() {
     // Calculate total participants for percentages
     const totalParticipants = Object.values(participants_faculty_distribution).reduce((sum, val) => sum + val, 0);
 
-    // Colors for the pie chart segments (expanded for more faculties)
+    // Colors for the pie chart segments
     const facultyColors = [
-        'bg-purple-500',
-        'bg-blue-500',
-        'bg-red-500',
-        'bg-yellow-500',
-        'bg-green-500',
-        'bg-pink-500',
-        'bg-indigo-500',
-        'bg-orange-500'
+        'bg-purple-500', 'bg-blue-500', 'bg-red-500', 'bg-yellow-500', 'bg-green-500',
+        'bg-pink-500', 'bg-indigo-500', 'bg-orange-500'
     ];
 
     const facultyColorHex = [
-        '#a855f7',
-        '#3b82f6',
-        '#ef4444',
-        '#eab308',
-        '#22c55e',
-        '#ec4899',
-        '#6366f1',
-        '#f97316'
+        '#a855f7', '#3b82f6', '#ef4444', '#eab308', '#22c55e', '#ec4899', '#6366f1', '#f97316'
     ];
 
     const engagementColors = [
-        'bg-purple-500',
-        'bg-blue-500',
-        'bg-yellow-500',
-        'bg-green-500',
-        'bg-red-500'
+        'bg-purple-500', 'bg-blue-500', 'bg-yellow-500', 'bg-green-500', 'bg-red-500'
     ];
 
     // Medal colors for top participants
@@ -198,12 +151,7 @@ export default function ManagerDashboard() {
 
     // Get initials from name
     const getInitials = (name: string) => {
-        return name
-            .split(' ')
-            .map(word => word[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2);
+        return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
     };
 
     return (
@@ -213,7 +161,7 @@ export default function ManagerDashboard() {
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
                     {/* Header */}
                     <div className="flex justify-between items-center">
-                        <div className="pb-4 border-b-2 border-primary/20">
+                        <div className="pb-4 border-b-2 border-primary/20 w-full">
                             <h1 className="text-4xl font-bold flex items-center gap-2">
                             <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                             Hi, Manager {auth?.user?.name || 'User'}!
@@ -305,12 +253,12 @@ export default function ManagerDashboard() {
                                 {totalParticipants > 0 ? (
                                     <>
                                         <div className="flex items-center justify-center mb-4">
-                                            {/* Simple Pie Chart Representation */}
                                             <div className="relative w-48 h-48">
                                                 <svg viewBox="0 0 100 100" className="transform -rotate-90">
                                                     {(() => {
                                                         let currentAngle = 0;
                                                         const entries = Object.entries(participants_faculty_distribution);
+                                                        
                                                         return entries.map(([faculty, count], index) => {
                                                             const percentage = totalParticipants > 0 ? (count / totalParticipants) * 100 : 0;
                                                             const angle = (percentage / 100) * 360;
@@ -337,7 +285,6 @@ export default function ManagerDashboard() {
                                                             );
                                                         });
                                                     })()}
-                                                    {/* Center white circle for donut effect */}
                                                     <circle cx="50" cy="50" r="25" fill="white" />
                                                 </svg>
                                                 <div className="absolute inset-0 flex items-center justify-center">
@@ -349,7 +296,6 @@ export default function ManagerDashboard() {
                                             </div>
                                         </div>
                                         
-                                        {/* Legend */}
                                         <div className="space-y-2 max-h-40 overflow-y-auto">
                                             {Object.entries(participants_faculty_distribution).map(([faculty, count], index) => {
                                                 const percentage = totalParticipants > 0 ? Math.round((count / totalParticipants) * 100) : 0;
@@ -450,7 +396,6 @@ export default function ManagerDashboard() {
                                 {Object.keys(member_engagement).length > 0 ? (
                                     <>
                                         <div className="flex items-center justify-center mb-4">
-                                            {/* Donut Chart for Member Engagement */}
                                             <div className="relative w-48 h-48">
                                                 <svg viewBox="0 0 100 100" className="transform -rotate-90">
                                                     {(() => {
@@ -485,7 +430,6 @@ export default function ManagerDashboard() {
                                                             );
                                                         });
                                                     })()}
-                                                    {/* Center white circle for donut effect */}
                                                     <circle cx="50" cy="50" r="20" fill="white" />
                                                 </svg>
                                                 <div className="absolute inset-0 flex items-center justify-center">
@@ -499,12 +443,11 @@ export default function ManagerDashboard() {
                                             </div>
                                         </div>
                                         
-                                        {/* Legend */}
                                         <div className="space-y-2">
                                             {Object.entries(member_engagement).map(([eventType, count], index) => (
                                                 <div key={eventType} className="flex items-center justify-between text-sm">
                                                     <div className="flex items-center gap-2">
-                                                        <div className={`w-3 h-3 rounded-full ${engagementColors[index]}`} />
+                                                        <div className={`w-3 h-3 rounded-full ${engagementColors[index % engagementColors.length]}`} />
                                                         <span className="truncate" title={eventType}>{eventType}</span>
                                                     </div>
                                                     <span className="font-medium">{count}</span>
@@ -520,7 +463,7 @@ export default function ManagerDashboard() {
                             </CardContent>
                         </Card>
 
-                        {/* Top Participants by Hours Logged */}
+                        {/* Top Participants */}
                         <Card>
                             <CardHeader>
                                 <div>
@@ -544,12 +487,10 @@ export default function ManagerDashboard() {
                                                 className={`flex items-center gap-3 p-3 rounded-lg border-2 ${getMedalBgColor(index)} transition-all hover:shadow-md cursor-pointer`}
                                                 onClick={() => router.get(`/members/${participant.id}`)}
                                             >
-                                                {/* Rank Badge */}
                                                 <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getMedalColor(index)} flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md`}>
                                                     {index + 1}
                                                 </div>
                                                 
-                                                {/* Avatar */}
                                                 <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
                                                     {participant.profile_photo_path ? (
                                                         <AvatarImage 
@@ -562,7 +503,6 @@ export default function ManagerDashboard() {
                                                     </AvatarFallback>
                                                 </Avatar>
                                                 
-                                                {/* Participant Info */}
                                                 <div className="flex-1 min-w-0">
                                                     <p className="font-semibold truncate">{participant.name}</p>
                                                     <p className="text-xs text-muted-foreground truncate">
@@ -573,7 +513,6 @@ export default function ManagerDashboard() {
                                                     </p>
                                                 </div>
                                                 
-                                                {/* Hours Badge */}
                                                 <div className="flex flex-col items-end">
                                                     <Badge variant="outline" className="bg-white border-2 font-bold whitespace-nowrap">
                                                         <Clock className="h-3 w-3 mr-1" />
@@ -588,7 +527,7 @@ export default function ManagerDashboard() {
                         </Card>
                     </div>
 
-                    {/* Notifications Section (Full Width) */}
+                    {/* Recent Notifications */}
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between">
                             <div>
