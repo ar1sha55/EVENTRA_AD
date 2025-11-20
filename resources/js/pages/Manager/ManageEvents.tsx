@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Head, router, usePage } from '@inertiajs/react';
+import React, { useState, useMemo } from 'react';
+import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import EventFormModal from './Partials/EventFormModal';
+import EventViewModal from './Partials/EventViewModal';
 import { type BreadcrumbItem } from "@/types";
 import {
     AlertDialog,
@@ -23,14 +24,37 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
+    DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Users } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    MoreHorizontal,
+    Users,
+    Search,
+    ArrowUpDown, // Default icon
+    ArrowUp,     // Added for Ascending
+    ArrowDown,   // Added for Descending
+    Calendar,
+    DollarSign,
+    Eye,
+    CheckCircle,
+    Clock,
+    Archive,
+    FileText,
+    Plus,
+} from 'lucide-react';
+
+interface Participant {
+    id: number;
+    status: string;
+}
 
 interface Event {
     id: number;
@@ -45,6 +69,7 @@ interface Event {
     user_id: number;
     image_path?: string;
     qr_code_path?: string;
+    participants?: Participant[];
     user?: {
         id: number;
         name: string;
@@ -56,14 +81,22 @@ interface ManageEventsProps {
     events: Event[];
 }
 
+type SortField = 'name' | 'start_date' | 'end_date' | 'location' | 'fee';
+type SortDirection = 'asc' | 'desc';
+
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Manage Events', href: '/events' }];
 
 export default function ManageEvents({ events }: ManageEventsProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+    const [viewEvent, setViewEvent] = useState<Event | null>(null);
     const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
-    const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published' | 'archived'>('all');
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Default sort: Start Date, Descending (Newest first)
+    const [sortField, setSortField] = useState<SortField>('start_date');
+    const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
     const openCreateModal = () => {
         setEditingEvent(null);
@@ -80,6 +113,14 @@ export default function ManageEvents({ events }: ManageEventsProps) {
         setEditingEvent(null);
     };
 
+    const openViewModal = (event: Event) => {
+        setViewEvent(event);
+    };
+
+    const closeViewModal = () => {
+        setViewEvent(null);
+    };
+
     const handleDelete = () => {
         if (eventToDelete) {
             router.delete(`/events/${eventToDelete.id}`, {
@@ -89,130 +130,477 @@ export default function ManageEvents({ events }: ManageEventsProps) {
         }
     };
 
+    const handleQuickStatusChange = (event: Event, newStatus: 'draft' | 'published' | 'archived') => {
+        router.put(`/events/${event.id}`, {
+            ...event,
+            status: newStatus,
+        } as any, { // <--- ADD "as any" HERE
+            preserveScroll: true,
+        });
+    };
+
     const viewParticipants = (eventId: number) => {
         router.visit(`/events/${eventId}/participants`);
     };
 
-    // Filter events based on selected status
-    const filteredEvents = statusFilter === 'all' 
-        ? events 
-        : events.filter(event => event.status === statusFilter);
+    const handleSort = (field: SortField) => {
+        if (sortField === field) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDirection('asc');
+        }
+    };
 
-    // Count events by status
-    const statusCounts = {
-        all: events.length,
-        draft: events.filter(e => e.status === 'draft').length,
-        published: events.filter(e => e.status === 'published').length,
-        archived: events.filter(e => e.status === 'archived').length,
+    // Calculate statistics
+    const statistics = useMemo(() => {
+        const totalEvents = events.length;
+        const totalRevenue = events.reduce((sum, event) => {
+            if (event.fee && event.fee > 0 && event.participants) {
+                const approvedParticipants = event.participants.filter(p => p.status === 'approved').length;
+                return sum + (event.fee * approvedParticipants);
+            }
+            return sum;
+        }, 0);
+
+        const totalParticipants = events.reduce((sum, event) => {
+            // Count both approved and pending
+            const count = event.participants?.filter(p => p.status === 'approved' || p.status === 'pending_approval').length || 0;
+            return sum + count;
+        }, 0);
+
+        const upcomingEvents = events.filter(e =>
+            e.status === 'published' && new Date(e.start_date) > new Date()
+        ).length;
+
+        return {
+            total: totalEvents,
+            draft: events.filter(e => e.status === 'draft').length,
+            published: events.filter(e => e.status === 'published').length,
+            archived: events.filter(e => e.status === 'archived').length,
+            revenue: totalRevenue,
+            participants: totalParticipants,
+            upcoming: upcomingEvents,
+        };
+    }, [events]);
+
+    // Filter and sort events
+    const filteredAndSortedEvents = useMemo(() => {
+        // CRITICAL FIX: Create a shallow copy of the array before sorting
+        let filtered = [...events];
+
+        // Apply status filter
+        if (statusFilter !== 'all') {
+            filtered = filtered.filter(event => event.status === statusFilter);
+        }
+
+        // Apply search filter
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            filtered = filtered.filter(event =>
+                event.name.toLowerCase().includes(query) ||
+                event.location.toLowerCase().includes(query) ||
+                event.description.toLowerCase().includes(query)
+            );
+        }
+
+        // Apply sorting
+        filtered.sort((a, b) => {
+            let aValue: any = a[sortField];
+            let bValue: any = b[sortField];
+
+            // FIX: Handle nulls/undefined FIRST to prevent "cannot read property of null" crash
+            if (aValue === null || aValue === undefined) aValue = 0;
+            if (bValue === null || bValue === undefined) bValue = 0;
+
+            // Handle dates
+            if (sortField === 'start_date' || sortField === 'end_date') {
+                aValue = new Date(aValue).getTime();
+                bValue = new Date(bValue).getTime();
+            }
+            // Handle Fee specifically (Force numeric sort)
+            else if (sortField === 'fee') {
+                aValue = Number(aValue);
+                bValue = Number(bValue);
+            }
+            // Handle generic strings
+            else if (typeof aValue === 'string' && typeof bValue === 'string') {
+                aValue = aValue.toLowerCase();
+                bValue = bValue.toLowerCase();
+            }
+
+            if (sortDirection === 'asc') {
+                return aValue > bValue ? 1 : -1;
+            } else {
+                return aValue < bValue ? 1 : -1;
+            }
+        });
+
+        return filtered;
+    }, [events, statusFilter, searchQuery, sortField, sortDirection]);
+
+    const getParticipantStats = (event: Event) => {
+        if (!event.participants) return { approved: 0, pending: 0, total: 0 };
+        const approved = event.participants.filter(p => p.status === 'approved').length;
+        const pending = event.participants.filter(p => p.status === 'pending_approval').length;
+        return { approved, pending, total: approved + pending };
+    };
+
+    // UPDATED: SortButton with visual feedback
+    const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => {
+        const isActive = sortField === field;
+
+        return (
+            <button
+                onClick={() => handleSort(field)}
+                className={`flex items-center gap-1 transition-colors hover:text-foreground ${isActive ? 'text-foreground font-medium' : 'text-muted-foreground'
+                    }`}
+                title={isActive ? `Sorted ${sortDirection === 'asc' ? 'Ascending' : 'Descending'}` : 'Click to sort'}
+            >
+                {children}
+                <span className="flex flex-col justify-center h-4 w-4">
+                    {isActive ? (
+                        sortDirection === 'asc' ? (
+                            <ArrowUp className="h-3 w-3 text-primary" />
+                        ) : (
+                            <ArrowDown className="h-3 w-3 text-primary" />
+                        )
+                    ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-30" />
+                    )}
+                </span>
+            </button>
+        );
     };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Manage Events" />
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-background overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-foreground">
-                            <div className="flex justify-between items-center mb-4">
-                                <div className="flex gap-2">
-                                    <Button 
+            <div className="py-6 px-4 sm:px-6 lg:px-8">
+                <div className="max-w-7xl mx-auto space-y-6">
+                    {/* Header with Create Button */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight">Manage Events</h1>
+                            <p className="text-muted-foreground mt-1">Create and manage your volunteering events</p>
+                        </div>
+                        <Button onClick={openCreateModal} size="lg">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Event
+                        </Button>
+                    </div>
+
+                    {/* Statistics Cards */}
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Total Events</CardTitle>
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{statistics.total}</div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {statistics.upcoming} upcoming
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Total Participants</CardTitle>
+                                <Users className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{statistics.participants}</div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Registered members
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">RM {statistics.revenue.toFixed(2)}</div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    From paid events
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Published</CardTitle>
+                                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{statistics.published}</div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {statistics.draft} drafts, {statistics.archived} archived
+                                </p>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Filters and Search */}
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="flex flex-col lg:flex-row gap-4">
+                                {/* Search */}
+                                <div className="flex-1">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Search events by name, location, or description..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="pl-10"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Status Filter Buttons */}
+                                <div className="flex gap-2 flex-wrap">
+                                    <Button
                                         variant={statusFilter === 'all' ? 'default' : 'outline'}
                                         onClick={() => setStatusFilter('all')}
                                         size="sm"
                                     >
-                                        All ({statusCounts.all})
+                                        All ({statistics.total})
                                     </Button>
-                                    <Button 
+                                    <Button
                                         variant={statusFilter === 'draft' ? 'default' : 'outline'}
                                         onClick={() => setStatusFilter('draft')}
                                         size="sm"
                                     >
-                                        Draft ({statusCounts.draft})
+                                        <Clock className="h-3 w-3 mr-1" />
+                                        Draft ({statistics.draft})
                                     </Button>
-                                    <Button 
+                                    <Button
                                         variant={statusFilter === 'published' ? 'default' : 'outline'}
                                         onClick={() => setStatusFilter('published')}
                                         size="sm"
                                     >
-                                        Published ({statusCounts.published})
+                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                        Published ({statistics.published})
                                     </Button>
-                                    <Button 
+                                    <Button
                                         variant={statusFilter === 'archived' ? 'default' : 'outline'}
                                         onClick={() => setStatusFilter('archived')}
                                         size="sm"
                                     >
-                                        Archived ({statusCounts.archived})
+                                        <Archive className="h-3 w-3 mr-1" />
+                                        Archived ({statistics.archived})
                                     </Button>
                                 </div>
-                                <Button onClick={openCreateModal}>Create Event</Button>
                             </div>
 
-                            <Table>
-                                <TableCaption>
-                                    {filteredEvents.length === 0 
-                                        ? `No ${statusFilter === 'all' ? '' : statusFilter} events found`
-                                        : `A list of all your ${statusFilter === 'all' ? '' : statusFilter} events`}
-                                </TableCaption>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Location</TableHead>
-                                        <TableHead>Start Date</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Fee</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredEvents.length === 0 ? (
+                            {/* Active Filters Display */}
+                            {(searchQuery || statusFilter !== 'all') && (
+                                <div className="flex items-center gap-2 mt-4 pt-4 border-t">
+                                    <span className="text-sm text-muted-foreground">Active filters:</span>
+                                    {searchQuery && (
+                                        <Badge variant="secondary" className="gap-1">
+                                            Search: "{searchQuery}"
+                                            <button
+                                                onClick={() => setSearchQuery('')}
+                                                className="ml-1 hover:text-foreground"
+                                            >
+                                                ×
+                                            </button>
+                                        </Badge>
+                                    )}
+                                    {statusFilter !== 'all' && (
+                                        <Badge variant="secondary" className="gap-1">
+                                            Status: {statusFilter}
+                                            <button
+                                                onClick={() => setStatusFilter('all')}
+                                                className="ml-1 hover:text-foreground"
+                                            >
+                                                ×
+                                            </button>
+                                        </Badge>
+                                    )}
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            setSearchQuery('');
+                                            setStatusFilter('all');
+                                        }}
+                                        className="h-6 text-xs"
+                                    >
+                                        Clear all
+                                    </Button>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Events Table */}
+                    <Card>
+                        <CardContent className="p-0">
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableCaption className="py-4">
+                                        {filteredAndSortedEvents.length === 0 ? (
+                                            <div className="py-8">
+                                                <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                                                <p className="text-muted-foreground text-lg">
+                                                    {searchQuery || statusFilter !== 'all'
+                                                        ? 'No events match your filters'
+                                                        : 'No events created yet'}
+                                                </p>
+                                                {!searchQuery && statusFilter === 'all' && (
+                                                    <Button onClick={openCreateModal} className="mt-4">
+                                                        <Plus className="h-4 w-4 mr-2" />
+                                                        Create Your First Event
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            `Showing ${filteredAndSortedEvents.length} of ${statistics.total} events`
+                                        )}
+                                    </TableCaption>
+                                    <TableHeader>
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                                {statusFilter === 'all' 
-                                                    ? 'No events created yet. Click "Create Event" to get started.'
-                                                    : `No ${statusFilter} events found.`}
-                                            </TableCell>
+                                            <TableHead>Poster</TableHead>
+                                            <TableHead>
+                                                <SortButton field="name">Name</SortButton>
+                                            </TableHead>
+                                            <TableHead>
+                                                <SortButton field="location">Location</SortButton>
+                                            </TableHead>
+                                            <TableHead>
+                                                <SortButton field="start_date">Start Date</SortButton>
+                                            </TableHead>
+                                            <TableHead>
+                                                <SortButton field="end_date">End Date</SortButton>
+                                            </TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead>
+                                                <SortButton field="fee">Fee</SortButton>
+                                            </TableHead>
+                                            <TableHead>Participants</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
-                                    ) : (
-                                        filteredEvents.map((event) => (
-                                            <TableRow key={event.id}>
-                                                <TableCell className="font-medium">{event.name}</TableCell>
-                                                <TableCell>{event.location}</TableCell>
-                                                <TableCell>
-                                                    {new Date(event.start_date).toLocaleDateString()}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge
-                                                        variant={
-                                                            event.status === 'published'
-                                                                ? 'default'
-                                                                : event.status === 'draft'
-                                                                ? 'secondary'
-                                                                : 'outline'
-                                                        }
-                                                    >
-                                                        {event.status}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {event.fee && event.fee > 0 ? (
-                                                        <span className="text-blue-600 font-semibold">
-                                                            RM {Number(event.fee).toFixed(2)}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-muted-foreground">Free</span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => viewParticipants(event.id)}
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredAndSortedEvents.map((event) => {
+                                            const participantStats = getParticipantStats(event);
+                                            const isPastEvent = new Date(event.end_date) < new Date();
+                                            const isUpcoming = new Date(event.start_date) > new Date();
+
+                                            return (
+                                                <TableRow key={event.id} className={isPastEvent ? 'opacity-60' : ''}>
+                                                    <TableCell>
+                                                        {event.image_path ? (
+                                                            <div
+                                                                className="relative w-16 h-16 rounded-md overflow-hidden border cursor-pointer group"
+                                                                onClick={() => openViewModal(event)}
+                                                            >
+                                                                <img
+                                                                    src={`/storage/${event.image_path}`}
+                                                                    alt={event.name}
+                                                                    className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                                                />
+                                                                <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-semibold transition-opacity duration-200">
+                                                                    <Eye className="h-4 w-4" />
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="w-16 h-16 rounded-md border bg-muted flex items-center justify-center">
+                                                                <Calendar className="h-6 w-6 text-muted-foreground" />
+                                                            </div>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div>
+                                                            <p className="font-medium">{event.name}</p>
+                                                            {isUpcoming && event.status === 'published' && (
+                                                                <Badge variant="outline" className="mt-1 text-xs">
+                                                                    Upcoming
+                                                                </Badge>
+                                                            )}
+                                                            {isPastEvent && (
+                                                                <Badge variant="secondary" className="mt-1 text-xs">
+                                                                    Past Event
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <p className="text-sm">{event.location}</p>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <p className="text-sm">
+                                                            {new Date(event.start_date).toLocaleString("en-MY", {
+                                                                dateStyle: "medium",
+                                                                timeStyle: "short",
+                                                            })}
+                                                        </p>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <p className="text-sm">
+                                                            {new Date(event.end_date).toLocaleString("en-MY", {
+                                                                dateStyle: "medium",
+                                                                timeStyle: "short",
+                                                            })}
+                                                        </p>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge
+                                                            variant={
+                                                                event.status === "published"
+                                                                    ? "default"
+                                                                    : event.status === "draft"
+                                                                        ? "secondary"
+                                                                        : "outline"
+                                                            }
                                                         >
-                                                            <Users className="h-4 w-4 mr-1" />
-                                                            Participants
-                                                        </Button>
+                                                            {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {event.fee && event.fee > 0 ? (
+                                                            <div>
+                                                                <p className="text-green-600 font-semibold">
+                                                                    RM {Number(event.fee).toFixed(2)}
+                                                                </p>
+                                                                {participantStats.approved > 0 && (
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        Revenue: RM {(event.fee * participantStats.approved).toFixed(2)}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">Free</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-col gap-1">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => viewParticipants(event.id)}
+                                                                className="w-full justify-start"
+                                                            >
+                                                                <Users className="h-3 w-3 mr-1" />
+                                                                {participantStats.total}
+                                                                {event.capacity ? ` / ${event.capacity}` : ''}
+                                                            </Button>
+                                                            {participantStats.pending > 0 && (
+                                                                <Badge variant="secondary" className="text-xs">
+                                                                    {participantStats.pending} pending
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild>
                                                                 <Button variant="ghost" size="sm">
@@ -220,26 +608,62 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                                                 </Button>
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onClick={() => openViewModal(event)}>
+                                                                    <Eye className="h-4 w-4 mr-2" />
+                                                                    View Details
+                                                                </DropdownMenuItem>
                                                                 <DropdownMenuItem onClick={() => openEditModal(event)}>
+                                                                    <FileText className="h-4 w-4 mr-2" />
                                                                     Edit
                                                                 </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => viewParticipants(event.id)}>
+                                                                    <Users className="h-4 w-4 mr-2" />
+                                                                    View Participants
+                                                                </DropdownMenuItem>
+
+                                                                <DropdownMenuSeparator />
+
                                                                 <DropdownMenuItem
-                                                                    className="text-red-600"
+                                                                    onClick={() => handleQuickStatusChange(event, 'draft')}
+                                                                    disabled={event.status === 'draft'}
+                                                                >
+                                                                    <Clock className="h-4 w-4 mr-2" />
+                                                                    Set as Draft
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    onClick={() => handleQuickStatusChange(event, 'published')}
+                                                                    disabled={event.status === 'published'}
+                                                                >
+                                                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                                                    Publish
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    onClick={() => handleQuickStatusChange(event, 'archived')}
+                                                                    disabled={event.status === 'archived'}
+                                                                >
+                                                                    <Archive className="h-4 w-4 mr-2" />
+                                                                    Archive
+                                                                </DropdownMenuItem>
+
+                                                                <DropdownMenuSeparator />
+
+                                                                <DropdownMenuItem
+                                                                    className="text-red-600 focus:text-red-600"
                                                                     onClick={() => setEventToDelete(event)}
                                                                 >
-                                                                    Delete
+                                                                    Delete Event
                                                                 </DropdownMenuItem>
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
 
@@ -250,18 +674,36 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                 event={editingEvent}
             />
 
+            {/* Event View Modal */}
+            <EventViewModal
+                isOpen={!!viewEvent}
+                onClose={closeViewModal}
+                event={viewEvent}
+            />
+
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!eventToDelete} onOpenChange={() => setEventToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will permanently delete the event "{eventToDelete?.name}". This action cannot be undone.
+                            This will permanently delete the event "{eventToDelete?.name}".
+                            {eventToDelete?.participants && eventToDelete.participants.length > 0 && (
+                                <span className="block mt-2 text-red-600 font-semibold">
+                                    Warning: This event has {eventToDelete.participants.length} registered participant(s).
+                                </span>
+                            )}
+                            This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            Delete Event
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

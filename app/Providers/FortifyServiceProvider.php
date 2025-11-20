@@ -13,6 +13,10 @@ use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 
+// --- 1. Add these two imports ---
+use App\Http\Responses\LoginResponse;
+use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
+
 class FortifyServiceProvider extends ServiceProvider
 {
     /**
@@ -20,7 +24,9 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // --- 2. Bind the LoginResponse interface to your custom class ---
+        // This tells Fortify: "When a user logs in, ask 'App\Http\Responses\LoginResponse' where to go."
+        $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
     }
 
     /**

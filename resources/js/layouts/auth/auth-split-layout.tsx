@@ -49,7 +49,7 @@ export default function AuthSplitLayout({
                 </div>
             </div>
             <div className="w-full lg:p-8">
-                <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+                <div className="mx-auto flex w-full flex-col justify-center space-y-6 rounded-lg border bg-card p-8 shadow-2xl sm:w-[530px]">
                     <Link
                         href={home()}
                         className="relative z-20 flex items-center justify-center lg:hidden"
