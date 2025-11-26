@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\EventsController;
+use App\Http\Controllers\EventBlastController;
 use App\Http\Controllers\ParticipantsController;
 use App\Http\Controllers\TestController;
 use App\Http\Controllers\ManagerDashboardController;
@@ -56,9 +57,16 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->group(function ()
     
     // --- Other Manager Pages ---
     Route::get('/manager/manage-members', [TestController::class, 'manageMembers'])->name('manage-members');
-    Route::get('/manager/event-blast', [TestController::class, 'eventBlast'])->name('event-blast');
     Route::get('/manager/manage-analytics', [TestController::class, 'manageAnalytics'])->name('manage-analytics');
     Route::get('/manager/send-announcement', [TestController::class, 'sendAnnouncement'])->name('send-announcement');
+
+    // --- Event Blast Routes ---
+    Route::get('/manager/event-blast', [EventBlastController::class, 'index'])->name('event-blast');
+    Route::post('/manager/event-blast', [EventBlastController::class, 'store'])->name('event-blast.store');
+    Route::post('/manager/event-blast/generate-caption', [EventBlastController::class, 'generateCaption'])->name('event-blast.generate-caption');
+    Route::post('/manager/event-blast/{blast}/cancel', [EventBlastController::class, 'cancel'])->name('event-blast.cancel');
+    Route::post('/manager/event-blast/{blast}/retry', [EventBlastController::class, 'retry'])->name('event-blast.retry');
+    Route::get('/manager/blast-history', [EventBlastController::class, 'history'])->name('blast-history');
 });
 
 // =========================================================================

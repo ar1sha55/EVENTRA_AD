@@ -60,8 +60,12 @@ class TelegramService
     /**
      * Format event details into a Telegram message
      */
-    protected function formatEventMessage(Event $event): string
+    protected function formatEventMessage(Event $event, ?string $customCaption = null): string
     {
+        if ($customCaption) {
+            return $customCaption . "\n\n" . $this->getWebsiteLink();
+        }
+
         $message = "🎉 *New Event: {$event->name}*\n\n";
         $message .= "📝 " . strip_tags($event->description) . "\n\n";
         $message .= "📅 *Start:* " . $event->start_date->format('d M Y, h:i A') . "\n";
@@ -78,9 +82,53 @@ class TelegramService
             $message .= "🆓 *Free Event*\n";
         }
 
-        $message .= "\n✨ Register now on our website!";
+        $message .= "\n" . $this->getWebsiteLink();
 
         return $message;
+    }
+
+    /**
+     * Get formatted website link
+     */
+    protected function getWebsiteLink(): string
+    {
+        $websiteUrl = config('app.url');
+        return "🌐 *Register Now:* {$websiteUrl}\n✨ _Join us and make a difference!_";
+    }
+
+    /**
+     * Send a blast message (manual or automated)
+     */
+    public function sendBlast(Event $event, string $message, ?string $imagePath = null): ?int
+    {
+        if (!$this->botToken || !$this->channelId) {
+            Log::warning('Telegram bot token or channel ID not configured');
+            return null;
+        }
+
+        try {
+            // Add website link to blast message if not already included
+            if (!str_contains($message, config('app.url'))) {
+                $message .= "\n\n" . $this->getWebsiteLink();
+            }
+
+            $messageId = null;
+
+            // If custom image path is provided, use it; otherwise use event image
+            $finalImagePath = $imagePath ?? $event->image_path;
+
+            if ($finalImagePath && Storage::disk('public')->exists($finalImagePath)) {
+                $messageId = $this->sendPhotoByPath($finalImagePath, $message);
+            } else {
+                $messageId = $this->sendMessage($message);
+            }
+
+            return $messageId;
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send blast to Telegram: ' . $e->getMessage());
+            return null;
+        }
     }
 
     /**
@@ -118,6 +166,35 @@ class TelegramService
             'photo',
             file_get_contents($imagePath),
             basename($imagePath)
+        )->post("{$this->baseUrl}/sendPhoto", [
+            'chat_id' => $this->channelId,
+            'caption' => $caption,
+            'parse_mode' => 'Markdown',
+        ]);
+
+        if ($response->successful()) {
+            return $response->json('result.message_id');
+        }
+
+        return null;
+    }
+
+    /**
+     * Send a photo by path with caption
+     */
+    protected function sendPhotoByPath(string $imagePath, string $caption): ?int
+    {
+        $fullPath = Storage::disk('public')->path($imagePath);
+
+        if (!file_exists($fullPath)) {
+            Log::warning("Image not found: {$fullPath}");
+            return $this->sendMessage($caption);
+        }
+
+        $response = Http::attach(
+            'photo',
+            file_get_contents($fullPath),
+            basename($fullPath)
         )->post("{$this->baseUrl}/sendPhoto", [
             'chat_id' => $this->channelId,
             'caption' => $caption,

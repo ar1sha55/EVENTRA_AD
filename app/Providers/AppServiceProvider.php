@@ -21,7 +21,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Register Event Observer for Telegram automation
-        Event::observe(EventObserver::class);
+        // Automatic Telegram publishing is DISABLED
+        // Use the Event Blast page to manually send events to Telegram
+        // Event::observe(EventObserver::class);
     }
 }

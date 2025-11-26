@@ -4,7 +4,9 @@
       "Bash(php artisan:*)",
       "Bash(nul)",
       "Bash(php test_telegram.php:*)",
-      "Bash(php diagnose_telegram.php:*)"
+      "Bash(php diagnose_telegram.php:*)",
+      "Bash(php verify_system.php:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []
