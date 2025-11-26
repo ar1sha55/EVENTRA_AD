@@ -129,7 +129,7 @@ export default function ManageEvents({ events }: ManageEventsProps) {
     const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
     const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published' | 'archived'>('all');
     const [searchQuery, setSearchQuery] = useState('');
-
+    
     // Default sort: Start Date, Descending (Newest first)
     const [sortField, setSortField] = useState<SortField>('start_date');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -170,7 +170,7 @@ export default function ManageEvents({ events }: ManageEventsProps) {
         router.put(`/events/${event.id}`, {
             ...event,
             status: newStatus,
-        } as any, { // <--- ADD "as any" HERE
+        } as any, { 
             preserveScroll: true,
         });
     };
@@ -200,8 +200,9 @@ export default function ManageEvents({ events }: ManageEventsProps) {
         }, 0);
 
         const totalParticipants = events.reduce((sum, event) => {
-            // Count both approved and pending
-            const count = event.participants?.filter(p => p.status === 'approved' || p.status === 'pending_approval').length || 0;
+            // FIXED: Only count approved participants
+            // Previous code counted 'pending_approval' too.
+            const count = event.participants?.filter(p => p.status === 'approved').length || 0;
             return sum + count;
         }, 0);
 
@@ -279,6 +280,8 @@ export default function ManageEvents({ events }: ManageEventsProps) {
         if (!event.participants) return { approved: 0, pending: 0, total: 0 };
         const approved = event.participants.filter(p => p.status === 'approved').length;
         const pending = event.participants.filter(p => p.status === 'pending_approval').length;
+        // Note: We keep 'total' here as approved + pending because for capacity limits (slots taken), 
+        // pending users DO take up a slot until they are rejected.
         return { approved, pending, total: approved + pending };
     };
 
@@ -323,7 +326,7 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                             <CardContent>
                                 <div className="text-2xl font-bold">{statistics.participants}</div>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Registered members
+                                    Approved members
                                 </p>
                             </CardContent>
                         </Card>

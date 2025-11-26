@@ -7,6 +7,7 @@ use App\Http\Controllers\ParticipantsController;
 use App\Http\Controllers\TestController;
 use App\Http\Controllers\ManagerDashboardController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ChatController;
 use App\Http\Middleware\RoleMiddleware;
 
 Route::get('/', function () {
@@ -31,6 +32,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/events-gallery', [TestController::class, 'eventsGallery'])->name('events-gallery');
     Route::get('/announcement', [TestController::class, 'announcement'])->name('announcement');
     Route::get('/contact-support', [TestController::class, 'contactSupport'])->name('contact-support');
+
+    // Chat
+    Route::post('/chat', [ChatController::class, 'chat']);
+    Route::post('/chat/clear', [ChatController::class, 'clear']);
 });
 
 // =========================================================================

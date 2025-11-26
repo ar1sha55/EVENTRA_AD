@@ -136,7 +136,7 @@ class EventsController extends Controller
             ->where('event_id', $event->id)
             ->first();
 
-        // LOGIC CHANGE: Allow re-registration ONLY if status is 'rejected'
+        // Allow re-registration ONLY if status is 'rejected'
         if ($existingParticipant && $existingParticipant->status !== 'rejected') {
             return back()->with('error', 'You are already registered for this event.');
         }
@@ -212,6 +212,7 @@ class EventsController extends Controller
     {
         $participants = Participant::with('user')
             ->where('event_id', $event->id)
+            ->whereHas('user') // Ensure user exists
             ->latest()
             ->get();
 

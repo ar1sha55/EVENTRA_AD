@@ -1,15 +1,15 @@
+import React, { useState, useRef } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { CalendarDays, Bell, BarChart3, MapPin, Award, Clock, User } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { CalendarDays, Bell, BarChart3, MapPin, Award, Clock, User, Hand, CheckCircle, ArrowRight, Calendar, ClipboardList, Mail, History } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { useState, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -20,6 +20,7 @@ const breadcrumbs: BreadcrumbItem[] = [
   },
 ];
 
+// --- Types ---
 type Participant = {
   id: number;
   user_id: number;
@@ -43,6 +44,7 @@ interface Event {
   image_path?: string;
   qr_code_path?: string;
   participants?: Participant[];
+  participants_count?: number; 
 }
 
 interface NotificationEvent {
@@ -72,6 +74,12 @@ interface TopVolunteer {
   profile_picture?: string;
   total_hours: number;
   events_participated: number;
+  participated_events?: Array<{
+      id: number;
+      name: string;
+      date: string;
+      hours: number;
+  }>;
 }
 
 interface RegisteredEvent {
@@ -93,28 +101,77 @@ interface DashboardProps {
   registeredEvents?: RegisteredEvent[];
 }
 
+// --- Helper Components ---
+
+const SummaryCard = ({ 
+    title, 
+    value, 
+    icon: Icon, 
+    subtext, 
+    className,
+    titleColor,
+    valueColor,
+    iconColor
+}: { 
+    title: string; 
+    value: number | string; 
+    icon: any; 
+    subtext?: React.ReactNode; 
+    className: string;
+    titleColor: string;
+    valueColor: string;
+    iconColor: string;
+}) => (
+    <Card className={`${className} shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 cursor-default`}>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className={`text-sm font-medium ${titleColor}`}>
+                {title}
+            </CardTitle>
+            <Icon className={`h-8 w-8 ${iconColor}`} />
+        </CardHeader>
+        <CardContent>
+            <div className={`text-4xl font-bold ${valueColor}`}>
+                {value}
+            </div>
+            {subtext && <div className="mt-1">{subtext}</div>}
+        </CardContent>
+    </Card>
+);
+
+// Empty State Helper
+const EmptyState = ({ icon: Icon, message, action }: { icon: any; message: string; action?: React.ReactNode }) => (
+    <div className="flex flex-col items-center justify-center py-10 text-muted-foreground bg-muted/5 rounded-lg border border-dashed">
+        <Icon className="h-10 w-10 mb-3 opacity-20" />
+        <p className="text-sm mb-3">{message}</p>
+        {action}
+    </div>
+);
+
 export default function Dashboard({ upcomingEvents = [], notificationEvents = [], stats = { totalEvents: 0, upcomingEventsCount: 0 }, topVolunteers = [], registeredEvents = [] }: DashboardProps) {
   const page = usePage();
   const auth = page.props.auth as { user: User };
   const { user } = auth;
 
   // Helper functions
+  const getInitials = (name: string) => name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+  // Colors for leaderboards
   const getMedalColor = (index: number) => {
-    switch (index) {
-      case 0: return 'from-yellow-400 to-yellow-600'; // Gold
-      case 1: return 'from-gray-300 to-gray-500'; // Silver
-      case 2: return 'from-orange-400 to-orange-600'; // Bronze
-      default: return 'from-blue-500 to-purple-600';
-    }
+      switch (index) {
+          case 0: return 'from-yellow-400 to-yellow-600'; // Gold
+          case 1: return 'from-gray-300 to-gray-500'; // Silver
+          case 2: return 'from-orange-400 to-orange-600'; // Bronze
+          default: return 'from-blue-500 to-purple-600';
+      }
   };
 
   const getMedalBgColor = (index: number) => {
-    switch (index) {
-      case 0: return 'bg-yellow-50 border-yellow-200'; // Gold
-      case 1: return 'bg-gray-50 border-gray-200'; // Silver
-      case 2: return 'bg-orange-50 border-orange-200'; // Bronze
-      default: return 'bg-blue-50 border-blue-200';
-    }
+      switch (index) {
+          case 0: return 'bg-yellow-50 border-yellow-200'; // Gold
+          case 1: return 'bg-gray-50 border-gray-200'; // Silver
+          case 2: return 'bg-orange-50 border-orange-200'; // Bronze
+          default: return 'bg-blue-50 border-blue-200';
+      }
   };
 
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -124,63 +181,50 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
   const [processing, setProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Function to calculate and format countdown
+  // Add state for volunteer modal
+  const [selectedVolunteer, setSelectedVolunteer] = useState<TopVolunteer | null>(null);
+  const [isVolunteerModalOpen, setIsVolunteerModalOpen] = useState(false);
+
+  // Countdown Logic
   const getCountdown = (startDate: string) => {
     const now = new Date();
     const eventDate = new Date(startDate);
     const diffTime = eventDate.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) {
-      return { text: 'Today!', color: 'text-red-600 font-semibold' };
-    } else if (diffDays === 1) {
-      return { text: 'Tomorrow', color: 'text-orange-600 font-semibold' };
-    } else if (diffDays <= 7) {
-      return { text: `in ${diffDays} days`, color: 'text-orange-500' };
-    } else if (diffDays <= 14) {
-      const weeks = Math.floor(diffDays / 7);
-      return { text: `in ${weeks} ${weeks === 1 ? 'week' : 'weeks'}`, color: 'text-blue-600' };
-    } else if (diffDays <= 30) {
-      const weeks = Math.floor(diffDays / 7);
-      return { text: `in ${weeks} weeks`, color: 'text-blue-500' };
-    } else {
-      const months = Math.floor(diffDays / 30);
-      return { text: `in ${months} ${months === 1 ? 'month' : 'months'}`, color: 'text-gray-600' };
-    }
+    if (diffDays === 0) return { text: 'Today!', color: 'text-red-600 bg-red-50' };
+    if (diffDays === 1) return { text: 'Tomorrow', color: 'text-orange-600 bg-orange-50' };
+    if (diffDays <= 7) return { text: `in ${diffDays} days`, color: 'text-yellow-600 bg-yellow-50' };
+    return { text: `in ${diffDays} days`, color: 'text-blue-600 bg-blue-50' };
   };
 
+  // Handlers
   const handleRegisterClick = (event: Event) => {
-    // If event has a fee, show payment proof upload dialog
     if (event.fee && event.fee > 0) {
       setPaymentProofEvent(event);
       setPaymentProofFile(null);
       setPaymentProofPreview(null);
     } else {
-      // Free event - register immediately
       handleRegister(event.id);
     }
   };
 
   const handleRegister = (eventId: number, paymentProof?: File) => {
     setProcessing(true);
-
     const handleSuccess = () => {
       setPaymentProofEvent(null);
       setPaymentProofFile(null);
       setPaymentProofPreview(null);
       setProcessing(false);
-
-      // Update selectedEvent with optimistic update - add pending participant
       if (selectedEvent) {
         const newParticipant: Participant = {
-          id: Date.now(), // Temporary ID
+          id: Date.now(),
           user_id: user.id,
           event_id: eventId,
           status: 'pending_approval',
           registration_date: new Date().toISOString(),
           last_updated: new Date().toISOString(),
         };
-
         setSelectedEvent({
           ...selectedEvent,
           participants: [...(selectedEvent.participants || []), newParticipant]
@@ -191,22 +235,12 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
     if (paymentProof) {
       const formData = new FormData();
       formData.append('payment_proof', paymentProof);
-
       router.post(`/events/${eventId}/register`, formData, {
-        forceFormData: true,
-        preserveScroll: true,
-        onSuccess: handleSuccess,
-        onError: () => {
-          setProcessing(false);
-        },
+        forceFormData: true, preserveScroll: true, onSuccess: handleSuccess, onError: () => setProcessing(false),
       });
     } else {
       router.post(`/events/${eventId}/register`, {}, {
-        preserveScroll: true,
-        onSuccess: handleSuccess,
-        onError: () => {
-          setProcessing(false);
-        },
+        preserveScroll: true, onSuccess: handleSuccess, onError: () => setProcessing(false),
       });
     }
   };
@@ -215,7 +249,6 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
     router.delete(`/participants/${participantId}`, {
       preserveScroll: true,
       onSuccess: () => {
-        // Update selectedEvent by removing the participant
         if (selectedEvent) {
           setSelectedEvent({
             ...selectedEvent,
@@ -251,544 +284,401 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
     };
   };
 
-  // Past events stats (for chart)
-  const pastEventsStats = [
-    { name: "Jan", events: 2 },
-    { name: "Feb", events: 4 },
-    { name: "Mar", events: 3 },
-    { name: "Apr", events: 5 },
-    { name: "May", events: 4 },
-    { name: "Jun", events: 6 },
-  ];
+  // Handle volunteer click
+  const handleVolunteerClick = (volunteer: TopVolunteer) => {
+    setSelectedVolunteer(volunteer);
+    setIsVolunteerModalOpen(true);
+  };
 
-  // Top stats configuration with colors
-  const topStats = [
-    {
-      title: 'Total Events',
-      value: stats.totalEvents,
-      icon: <CalendarDays className="h-8 w-8 text-blue-600 dark:text-blue-400" />,
-      desc: 'All registered events',
-      bgColor: 'bg-blue-50 dark:bg-blue-950',
-      borderColor: 'border-blue-200 dark:border-blue-800',
-      textColor: 'text-blue-900 dark:text-blue-100'
-    },
-    {
-      title: 'Upcoming Events',
-      value: stats.upcomingEventsCount,
-      icon: <CalendarDays className="h-8 w-8 text-green-600 dark:text-green-400" />,
-      desc: 'Published events',
-      bgColor: 'bg-green-50 dark:bg-green-950',
-      borderColor: 'border-green-200 dark:border-green-800',
-      textColor: 'text-green-900 dark:text-green-100'
-    },
+  // Chart Data
+  const pastEventsStats = [
+    { name: "Jan", events: 2 }, { name: "Feb", events: 4 },
+    { name: "Mar", events: 3 }, { name: "Apr", events: 5 },
+    { name: "May", events: 4 }, { name: "Jun", events: 6 },
   ];
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Dashboard" />
 
-      <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
+      <div className="py-8 px-4 sm:px-6 lg:px-8 bg-gray-50/50 min-h-screen">
+        <div className="max-w-7xl mx-auto space-y-8">
 
-        {/* Greeting */}
-        <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-yellow-500 bg-clip-text text-transparent">
-            Hi, {user.name}!
-          </h1>
-          <span className="text-3xl animate-wave">👋</span>
-        </div>
-
-        {/* Top Stats */}
-        <div className="grid gap-4 md:grid-cols-2">
-          {topStats.map((stat, idx) => (
-            <Card key={idx} className={`transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${stat.bgColor} ${stat.borderColor}`}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className={`text-sm font-medium ${stat.textColor}`}>{stat.title}</CardTitle>
-                {stat.icon}
-              </CardHeader>
-              <CardContent>
-                <div className={`text-4xl font-bold ${stat.textColor}`}>{stat.value}</div>
-                <p className={`text-xs ${stat.textColor} opacity-70`}>{stat.desc}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Registered Events */}
-        {registeredEvents.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarDays className="h-5 w-5 text-purple-600" />
-                My Registered Events
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3">
-                {registeredEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="flex items-center justify-between rounded-lg border p-4 transition-all hover:bg-muted/40"
-                  >
-                    <div className="flex items-center gap-4 flex-1">
-                      {/* Event Image */}
-                      {event.image_path && (
-                        <img
-                          src={`/storage/${event.image_path}`}
-                          alt={event.name}
-                          className="w-16 h-16 object-cover rounded-md"
-                        />
-                      )}
-
-                      {/* Event Details */}
-                      <div className="flex flex-col flex-1">
-                        <span className="font-semibold text-base">{event.name}</span>
-                        <span className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                          <CalendarDays className="h-3 w-3" />
-                          {new Date(event.start_date).toLocaleDateString('en-MY', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          })}
-                          {event.end_date && ` - ${new Date(event.end_date).toLocaleDateString('en-MY', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          })}`}
+            {/* 1. Header Section */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b-2 border-primary/10 pb-6">
+                <div>
+                    <h1 className="text-4xl font-bold flex items-center gap-2">
+                        <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            Hi, {user.name.split(' ')[0]}!
                         </span>
-                        <span className="text-sm text-muted-foreground flex items-center gap-2">
-                          <MapPin className="h-3 w-3" />
-                          {event.location}
-                        </span>
-                        <span className="text-xs text-muted-foreground mt-1">
-                          Registered on {new Date(event.registration_date).toLocaleDateString('en-MY', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          })}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Status Badge */}
-                    <div className="flex-shrink-0">
-                      {event.status === 'approved' && (
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-300">
-                          Approved
-                        </Badge>
-                      )}
-                      {event.status === 'pending_approval' && (
-                        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-300">
-                          Pending
-                        </Badge>
-                      )}
-                      {event.status === 'rejected' && (
-                        <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-300">
-                          Rejected
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Upcoming Events & Notifications */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-
-          {/* Upcoming Events */}
-          <Card className="lg:col-span-2">
-            <CardHeader className='flex flex-row items-center justify-between'>
-              <CardTitle>Upcoming Events</CardTitle>
-              <Button variant="outline" size="sm">View All</Button>
-            </CardHeader>
-            <CardContent>
-              {upcomingEvents.length > 0 ? (
-                <div className="relative space-y-4">
-                  {/* Timeline line */}
-                  <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-purple-500 via-blue-500 to-purple-500" />
-
-                  {upcomingEvents.map((event) => {
-                    const countdown = getCountdown(event.start_date);
-                    const now = new Date();
-                    const eventDate = new Date(event.start_date);
-                    const diffDays = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-                    // Determine timeline indicator color based on proximity
-                    const indicatorColor = diffDays === 0
-                      ? 'bg-red-500 ring-red-200'
-                      : diffDays === 1
-                      ? 'bg-orange-500 ring-orange-200'
-                      : diffDays <= 7
-                      ? 'bg-yellow-500 ring-yellow-200'
-                      : 'bg-blue-500 ring-blue-200';
-
-                    return (
-                      <div key={event.id} className="relative flex gap-4 group">
-                        {/* Timeline indicator */}
-                        <div className="relative flex-shrink-0">
-                          <div className={`w-6 h-6 rounded-full ${indicatorColor} ring-4 ring-background shadow-md z-10 relative`}>
-                            <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-current" />
-                          </div>
-                        </div>
-
-                        {/* Event card */}
-                        <div
-                          className="flex-1 rounded-lg border bg-card p-4 shadow-sm transition-all hover:shadow-md hover:border-primary/50 cursor-pointer group-hover:scale-[1.02]"
-                          onClick={() => setSelectedEvent(event)}
-                        >
-                          {/* Time indicator badge */}
-                          <div className="flex items-center justify-between mb-2">
-                            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${countdown.color} bg-opacity-10`}>
-                              {countdown.text}
-                            </span>
-                            {event.fee && event.fee > 0 && (
-                              <span className="text-xs font-semibold text-blue-600 bg-blue-50 dark:bg-blue-950 px-2 py-1 rounded">
-                                RM {Number(event.fee).toFixed(2)}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Event details */}
-                          <h3 className="font-semibold text-base mb-2 group-hover:text-primary transition-colors">
-                            {event.name}
-                          </h3>
-
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <CalendarDays className="h-4 w-4 flex-shrink-0" />
-                              <span>
-                                {new Date(event.start_date).toLocaleDateString('en-MY', {
-                                  weekday: 'short',
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric'
-                                })}
-                                {' at '}
-                                {new Date(event.start_date).toLocaleTimeString('en-MY', {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <MapPin className="h-4 w-4 flex-shrink-0" />
-                              <span className="truncate">{event.location}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                        <Hand className="h-10 w-10 text-yellow-500 inline-block animate-pulse" />
+                    </h1>
+                    <p className="text-muted-foreground mt-2">Here's an overview of your volunteer activities.</p>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">No upcoming events at the moment.</p>
-              )}
-            </CardContent>
-          </Card>
+                <Button onClick={() => router.get('/join-events')} size="lg" className="shadow-md">
+                    <CalendarDays className="mr-2 h-5 w-5" /> Browse Events
+                </Button>
+            </div>
 
-          {/* Notifications */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-4 w-4" />
-                Notifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {notificationEvents.length > 0 ? (
-                notificationEvents.map((event) => {
-                  const countdown = getCountdown(event.start_date);
-                  return (
-                    <div key={event.id} className="flex items-start gap-3 rounded-lg border p-3 transition-all hover:bg-muted/40">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                        <Bell className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {event.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(event.start_date).toLocaleDateString('en-MY', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          })}
-                        </p>
-                        <p className={`text-xs font-medium ${countdown.color}`}>
-                          {countdown.text}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">No upcoming events</p>
-              )}
-            </CardContent>
-          </Card>
+            {/* 2. Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <SummaryCard 
+                    title="Total Registered"
+                    value={stats.totalEvents}
+                    icon={ClipboardList}
+                    className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800"
+                    titleColor="text-blue-900 dark:text-blue-100"
+                    valueColor="text-blue-900 dark:text-blue-100"
+                    iconColor="text-blue-600 dark:text-blue-400"
+                    subtext={<span className="text-xs text-blue-700">All time registrations</span>}
+                />
+                <SummaryCard 
+                    title="Upcoming Events"
+                    value={stats.upcomingEventsCount}
+                    icon={CalendarDays}
+                    className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800"
+                    titleColor="text-yellow-900 dark:text-yellow-100"
+                    valueColor="text-yellow-900 dark:text-yellow-100"
+                    iconColor="text-yellow-600 dark:text-yellow-400"
+                    subtext={<span className="text-xs text-yellow-700">Events happening soon</span>}
+                />
+                <SummaryCard 
+                    title="Pending Approvals"
+                    value={registeredEvents.filter(e => e.status === 'pending_approval').length}
+                    icon={Clock}
+                    className="bg-orange-50 border-orange-200 dark:bg-orange-950 dark:border-orange-800"
+                    titleColor="text-orange-900 dark:text-orange-100"
+                    valueColor="text-orange-900 dark:text-orange-100"
+                    iconColor="text-orange-600 dark:text-orange-400"
+                    subtext={<span className="text-xs text-orange-700">Awaiting confirmation</span>}
+                />
+            </div>
+
+            {/* 3. Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                {/* Left Column (2/3 width) */}
+                <div className="lg:col-span-2 space-y-8">
+                    
+                    {/* My Registered Events */}
+                    <Card className="shadow-sm">
+                        <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+                            <div className="space-y-1">
+                                <CardTitle className="text-xl flex items-center gap-2">
+                                    <Award className="h-5 w-5 text-purple-600" />
+                                    My Registered Events
+                                </CardTitle>
+                                <CardDescription>Events you are actively participating in</CardDescription>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            {registeredEvents.length > 0 ? (
+                                <div className="divide-y">
+                                    {registeredEvents.map((event) => (
+                                        <div key={event.id} className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors group">
+                                            <div className="h-14 w-14 rounded-lg overflow-hidden flex-shrink-0 border bg-muted">
+                                                {event.image_path ? (
+                                                    <img src={`/storage/${event.image_path}`} alt={event.name} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="h-full w-full flex items-center justify-center bg-primary/5 text-primary">
+                                                        <Calendar className="h-6 w-6 opacity-50" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between gap-2 mb-1">
+                                                    <h4 className="font-semibold text-base text-foreground truncate group-hover:text-primary transition-colors">
+                                                        {event.name}
+                                                    </h4>
+                                                    <div className="flex-shrink-0">
+                                                        {event.status === 'approved' && <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200 shadow-none">Approved</Badge>}
+                                                        {event.status === 'pending_approval' && <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200 shadow-none">Pending</Badge>}
+                                                        {event.status === 'rejected' && <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200 shadow-none">Rejected</Badge>}
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                                    <span className="flex items-center gap-1">
+                                                        <CalendarDays className="h-3.5 w-3.5" /> 
+                                                        {new Date(event.start_date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })}
+                                                    </span>
+                                                    <span className="flex items-center gap-1 truncate">
+                                                        <MapPin className="h-3.5 w-3.5" /> {event.location}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <EmptyState 
+                                    icon={Calendar} 
+                                    message="You haven't registered for any events yet." 
+                                    action={<Button variant="link" onClick={() => router.get('/join-events')}>Browse events now</Button>}
+                                />
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Activity Overview Chart */}
+                    <Card className="shadow-sm">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <BarChart3 className="h-5 w-5 text-gray-500" />
+                                Activity Overview
+                            </CardTitle>
+                            <CardDescription>Events participated over the last 6 months</CardDescription>
+                        </CardHeader>
+                        <CardContent className="h-[300px] pt-4">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={pastEventsStats} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} />
+                                    <Tooltip 
+                                        cursor={{ fill: '#f3f4f6' }}
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Bar dataKey="events" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={32} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+
+                    {/* Upcoming Opportunities */}
+                    <Card className="shadow-sm">
+                         <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+                            <div className="space-y-1">
+                                <CardTitle className="text-lg">Upcoming Opportunities</CardTitle>
+                                <CardDescription>Events open for registration</CardDescription>
+                            </div>
+                            <Button variant="ghost" onClick={() => router.get('/join-events')} className="text-primary hover:text-primary/80">
+                                View All <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="divide-y">
+                                {upcomingEvents.length === 0 ? (
+                                    <EmptyState icon={Calendar} message="No upcoming events available." />
+                                ) : (
+                                    upcomingEvents.slice(0, 3).map((event) => {
+                                        const countdown = getCountdown(event.start_date);
+                                        return (
+                                            <div 
+                                                key={event.id} 
+                                                className="flex items-center gap-4 p-4 hover:bg-muted/40 transition-colors cursor-pointer group"
+                                                onClick={() => router.get(`/join-events`)}
+                                            >
+                                                <div className="flex flex-col items-center justify-center w-14 h-14 bg-green-50 rounded-lg text-green-700 border border-green-100 group-hover:bg-green-100 transition-colors">
+                                                    <span className="text-[10px] font-bold uppercase tracking-wide">
+                                                        {new Date(event.start_date).toLocaleDateString('en-US', { month: 'short' })}
+                                                    </span>
+                                                    <span className="text-xl font-bold leading-none">
+                                                        {new Date(event.start_date).getDate()}
+                                                    </span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="font-semibold text-base text-foreground truncate group-hover:text-primary transition-colors">
+                                                        {event.name}
+                                                    </h4>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${countdown.color}`}>
+                                                            {countdown.text}
+                                                        </span>
+                                                        {event.fee && event.fee > 0 && (
+                                                            <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                                                                RM {event.fee}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <ArrowRight className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Right Column (1/3 width) */}
+                <div className="space-y-8">
+                    
+                    {/* Notifications */}
+                    <Card className="shadow-sm">
+                        <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <Bell className="h-5 w-5 text-gray-500" />
+                                Notifications
+                            </CardTitle>
+                            <CardDescription>Latest updates</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                             <div className="space-y-0 relative">
+                                {/* Timeline Line */}
+                                <div className="absolute left-5 top-2 bottom-2 w-px bg-gray-200" />
+
+                                {notificationEvents.length === 0 ? (
+                                    <EmptyState icon={Bell} message="No new notifications." />
+                                ) : (
+                                    notificationEvents.slice(0, 5).map((event, index) => {
+                                        const countdown = getCountdown(event.start_date);
+                                        // Extract just text color for the timeline text
+                                        const textColorClass = countdown.color.split(' ')[0]; 
+                                        
+                                        return (
+                                            <div key={event.id} className="relative flex gap-4 pb-6 last:pb-0 group">
+                                                <div className="relative z-10 w-10 h-10 flex items-center justify-center bg-white rounded-full border border-gray-200 shadow-sm group-hover:border-orange-300 transition-colors">
+                                                    <Calendar className="h-4 w-4 text-orange-500" />
+                                                </div>
+                                                <div className="flex-1 pt-1">
+                                                    <p className="text-sm font-medium text-gray-900 line-clamp-2 leading-snug">{event.name}</p>
+                                                    <p className={`text-xs mt-1 font-medium ${textColorClass}`}>
+                                                        Starting {countdown.text}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Leaderboard */}
+                    <Card className="shadow-sm h-full">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <Award className="h-5 w-5 text-yellow-500" />
+                                Top Volunteers
+                            </CardTitle>
+                            <CardDescription>Community leaderboard</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {topVolunteers.length === 0 ? (
+                                    <EmptyState icon={Award} message="No data available." />
+                                ) : (
+                                    topVolunteers.slice(0, 5).map((volunteer, index) => (
+                                        <div 
+                                            key={volunteer.id} 
+                                            className={`flex items-center gap-3 p-2 rounded-lg border transition-all hover:shadow-sm cursor-pointer ${getMedalBgColor(index)} bg-opacity-40`}
+                                            onClick={() => handleVolunteerClick(volunteer)}
+                                        >
+                                            <div className={`
+                                                w-8 h-8 flex items-center justify-center rounded-full text-xs font-bold text-white shadow-sm flex-shrink-0
+                                                ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-blue-500'}
+                                            `}>
+                                                {index + 1}
+                                            </div>
+                                            
+                                            <Avatar className="h-10 w-10 border border-gray-200 flex-shrink-0">
+                                                {volunteer.profile_picture && <AvatarImage src={`/storage/${volunteer.profile_picture}`} />}
+                                                <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
+                                                    {getInitials(volunteer.name)}
+                                                </AvatarFallback>
+                                            </Avatar>
+
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-semibold truncate">{volunteer.name}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{volunteer.faculty || 'Faculty N/A'}</p>
+                                            </div>
+                                            
+                                            <Badge variant="secondary" className="font-mono text-xs whitespace-nowrap">
+                                                {volunteer.total_hours}h
+                                            </Badge>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                </div>
+            </div>
         </div>
-
-        {/* Past Events Chart & Top Volunteers */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Past Events Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-muted-foreground" />
-                Past Events Overview
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={pastEventsStats}>
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="events" fill="#f97316" radius={[5,5,0,0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Top Volunteers */}
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Award className="h-5 w-5 text-yellow-500" />
-                  Top Volunteers
-                </CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">Most hours logged by participants</p>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {topVolunteers && topVolunteers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    No volunteer hours logged yet
-                  </p>
-                ) : (
-                  topVolunteers?.slice(0, 5).map((volunteer, index) => (
-                    <div
-                      key={volunteer.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border-2 ${getMedalBgColor(index)} transition-all hover:shadow-md`}
-                    >
-                      {/* Rank Badge */}
-                      <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getMedalColor(index)} flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md`}>
-                        {index + 1}
-                      </div>
-
-                      {/* Avatar */}
-                      <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
-                        {volunteer.profile_picture ? (
-                          <AvatarImage
-                            src={`/storage/${volunteer.profile_picture}`}
-                            alt={volunteer.name}
-                          />
-                        ) : null}
-                        <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500">
-                          <User className="h-6 w-6 text-white" />
-                        </AvatarFallback>
-                      </Avatar>
-
-                      {/* Volunteer Info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate">{volunteer.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {volunteer.faculty || 'No faculty'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {volunteer.events_participated} {volunteer.events_participated === 1 ? 'event' : 'events'}
-                        </p>
-                      </div>
-
-                      {/* Hours Badge */}
-                      <div className="flex flex-col items-end">
-                        <Badge variant="outline" className="bg-white border-2 font-bold whitespace-nowrap">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {volunteer.total_hours} hrs
-                        </Badge>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
       </div>
 
-      {/* Event Details Dialog */}
-      <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
-        <DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
-          {selectedEvent && (
-            <>
-              <DialogHeader>
-                <DialogTitle>{selectedEvent.name}</DialogTitle>
-              </DialogHeader>
-              {selectedEvent.image_path && (
-                <img
-                  src={`/storage/${selectedEvent.image_path}`}
-                  alt={selectedEvent.name}
-                  className='w-full h-64 object-cover rounded-lg'
-                />
-              )}
-              <div className='space-y-4'>
-                <div>
-                  <h3 className='font-semibold mb-2'>Description</h3>
-                  <p className='text-muted-foreground'>{selectedEvent.description}</p>
-                </div>
-                <div className='grid grid-cols-2 gap-4'>
-                  <div>
-                    <h3 className='font-semibold mb-1'>Start Date</h3>
-                    <p className='text-sm text-muted-foreground'>
-                      {new Date(selectedEvent.start_date).toLocaleString('en-MY')}
-                    </p>
-                  </div>
-                  <div>
-                    <h3 className='font-semibold mb-1'>End Date</h3>
-                    <p className='text-sm text-muted-foreground'>
-                      {selectedEvent.end_date ? new Date(selectedEvent.end_date).toLocaleString('en-MY') : 'N/A'}
-                    </p>
-                  </div>
-                  <div>
-                    <h3 className='font-semibold mb-1'>Location</h3>
-                    <p className='text-sm text-muted-foreground'>{selectedEvent.location}</p>
-                  </div>
-                  <div>
-                    <h3 className='font-semibold mb-1'>Capacity</h3>
-                    <p className='text-sm text-muted-foreground'>
-                      {selectedEvent.capacity || 'Unlimited'}
-                    </p>
-                  </div>
-                  {selectedEvent.fee && selectedEvent.fee > 0 && (
-                    <div>
-                      <h3 className='font-semibold mb-1'>Fee</h3>
-                      <p className='text-sm text-muted-foreground'>RM {Number(selectedEvent.fee).toFixed(2)}</p>
+      {/* Volunteer Details Modal (Read-Only - No Email Button) */}
+      <Dialog open={isVolunteerModalOpen} onOpenChange={setIsVolunteerModalOpen}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                    <Award className="h-5 w-5 text-yellow-500" />
+                    Volunteer Profile
+                </DialogTitle>
+                <DialogDescription>Participant achievements and history.</DialogDescription>
+            </DialogHeader>
+            {selectedVolunteer && (
+                <div className="flex flex-col items-center space-y-6 py-4">
+                    <div className="text-center space-y-2">
+                        <Avatar className="h-24 w-24 border-4 border-white shadow-lg mx-auto">
+                            {selectedVolunteer.profile_picture && (
+                                <AvatarImage src={`/storage/${selectedVolunteer.profile_picture}`} />
+                            )}
+                            <AvatarFallback className="text-3xl font-bold bg-blue-100 text-blue-600">
+                                {getInitials(selectedVolunteer.name)}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div>
+                            <h3 className="text-xl font-bold">{selectedVolunteer.name}</h3>
+                            {/* UPDATED: Removed truncate class to show full faculty name */}
+                            <p className="text-muted-foreground font-medium">{selectedVolunteer.faculty}</p>
+                        </div>
                     </div>
-                  )}
-                  <div>
-                    <h3 className='font-semibold mb-1'>Participants</h3>
-                    <p className='text-sm text-muted-foreground'>
-                      {selectedEvent.participants?.length || 0}
-                      {selectedEvent.capacity ? ` / ${selectedEvent.capacity}` : ''}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <DialogFooter className='gap-2'>
-                <Button variant='outline' onClick={() => setSelectedEvent(null)}>
-                  Close
-                </Button>
-                {(() => {
-                  const { participantId } = getParticipantStatus(selectedEvent);
-                  const totalParticipants = selectedEvent.participants?.length || 0;
-                  const isPaidEvent = selectedEvent.fee && selectedEvent.fee > 0;
 
-                  if (participantId) {
-                    return (
-                      <Button
-                        variant='destructive'
-                        onClick={() => handleUnregister(participantId)}
-                      >
-                        Unregister
-                      </Button>
-                    );
-                  } else {
-                    return (
-                      <Button
-                        onClick={() => handleRegisterClick(selectedEvent)}
-                        disabled={selectedEvent.capacity ? totalParticipants >= selectedEvent.capacity : false}
-                      >
-                        {isPaidEvent ? 'Register (Paid)' : 'Register'}
-                      </Button>
-                    );
-                  }
-                })()}
-              </DialogFooter>
-            </>
-          )}
+                    <div className="grid grid-cols-2 gap-4 w-full">
+                        <div className="bg-blue-50 p-4 rounded-xl text-center border border-blue-100">
+                            <p className="text-3xl font-bold text-blue-600">{selectedVolunteer.total_hours}</p>
+                            <p className="text-xs text-blue-700 font-bold uppercase tracking-wider mt-1">Total Hours</p>
+                        </div>
+                        <div className="bg-green-50 p-4 rounded-xl text-center border border-green-100">
+                            <p className="text-3xl font-bold text-green-600">{selectedVolunteer.events_participated}</p>
+                            <p className="text-xs text-green-700 font-bold uppercase tracking-wider mt-1">Events Joined</p>
+                        </div>
+                    </div>
+
+                    {/* Event History */}
+                    <div className="w-full">
+                        <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                            <History className="h-4 w-4 text-muted-foreground" />
+                            Participation History
+                        </h4>
+                        <div className="space-y-2 max-h-40 overflow-y-auto pr-1 border rounded-lg p-2 bg-muted/10">
+                            {selectedVolunteer.participated_events && selectedVolunteer.participated_events.length > 0 ? (
+                                selectedVolunteer.participated_events.map((event) => (
+                                    <div key={event.id} className="flex justify-between items-center text-sm p-2 hover:bg-white rounded-md transition-colors">
+                                        <div className="flex-1 min-w-0 mr-2">
+                                            <p className="font-medium truncate" title={event.name}>{event.name}</p>
+                                            <p className="text-xs text-muted-foreground">{new Date(event.date).toLocaleDateString()}</p>
+                                        </div>
+                                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 whitespace-nowrap flex-shrink-0">
+                                            {event.hours} hrs
+                                        </Badge>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-4 text-muted-foreground text-sm">
+                                    No detailed event history available.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end w-full">
+                        {/* Changed: Removed Email Button, only Close button spans full width */}
+                        <Button variant="outline" onClick={() => setIsVolunteerModalOpen(false)} className="w-full">
+                            Close
+                        </Button>
+                    </div>
+                </div>
+            )}
         </DialogContent>
       </Dialog>
 
-      {/* Payment Proof Upload Dialog */}
-      <Dialog open={!!paymentProofEvent} onOpenChange={() => setPaymentProofEvent(null)}>
-        <DialogContent className='max-w-md'>
-          {paymentProofEvent && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Upload Payment Proof</DialogTitle>
-                <DialogDescription>
-                  This is a paid event (RM {Number(paymentProofEvent.fee).toFixed(2)}). Please scan the QR code to make payment, then upload your payment proof to complete registration.
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className='space-y-4'>
-                {paymentProofEvent.qr_code_path && (
-                  <div className='border rounded-lg p-4 bg-gray-50'>
-                    <Label className='text-sm font-semibold mb-3 block'>Scan QR Code to Make Payment:</Label>
-                    <img
-                      src={`/storage/${paymentProofEvent.qr_code_path}`}
-                      alt='Payment QR Code'
-                      className='w-full max-w-xs mx-auto rounded-lg shadow-sm'
-                    />
-                    <p className='text-xs text-center text-muted-foreground mt-3'>
-                      Scan this QR code with your banking app to make payment
-                    </p>
-                  </div>
-                )}
-
-                <div>
-                  <Label htmlFor='payment_proof'>Payment Proof *</Label>
-                  <Input
-                    id='payment_proof'
-                    type='file'
-                    accept='image/*'
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className='mt-2'
-                    required
-                  />
-                  <p className='text-xs text-muted-foreground mt-1'>
-                    Upload a screenshot or photo of your payment receipt after making payment
-                  </p>
-                </div>
-
-                {paymentProofPreview && (
-                  <div className='border rounded-lg p-2'>
-                    <Label className='text-sm font-semibold mb-2 block'>Preview:</Label>
-                    <img
-                      src={paymentProofPreview}
-                      alt='Payment proof preview'
-                      className='w-full h-48 object-contain rounded'
-                    />
-                  </div>
-                )}
-              </div>
-
-              <DialogFooter>
-                <Button
-                  variant='outline'
-                  onClick={() => setPaymentProofEvent(null)}
-                  disabled={processing}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSubmitPaymentProof}
-                  disabled={!paymentProofFile || processing}
-                >
-                  {processing ? 'Submitting...' : 'Submit Registration'}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+     
     </AppLayout>
   );
 }
