@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan:*)",
+      "Bash(nul)",
+      "Bash(php test_telegram.php:*)",
+      "Bash(php diagnose_telegram.php:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

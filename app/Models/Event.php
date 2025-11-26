@@ -23,6 +23,7 @@ class Event extends Model
         'user_id',
         'image_path',
         'qr_code_path',
+        'telegram_message_id',
     ];
 
     /**
