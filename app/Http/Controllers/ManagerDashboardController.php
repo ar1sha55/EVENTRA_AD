@@ -8,49 +8,61 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 
 class ManagerDashboardController extends Controller
 {
     /**
-     * Get consolidated dashboard summary data.
-     * Returns event statistics, participant data, and member engagement metrics.
+     * Faculty code to full name mapping
      */
-    public function getSummary()
+    private function getFacultyFullName($code)
+    {
+        $faculties = [
+            'fke' => 'Faculty of Electrical Engineering',
+            'fkm' => 'Faculty of Mechanical Engineering',
+            'fc' => 'Faculty of Computing',
+            'fab' => 'Faculty of Built Environment and Surveying',
+            'fka' => 'Faculty of Civil Engineering',
+            'fs' => 'Faculty of Science',
+            'fcee' => 'Faculty of Chemical and Energy Engineering',
+            'fm' => 'Faculty of Management',
+            'fssh' => 'Faculty of Social Sciences and Humanities',
+        ];
+
+        return $faculties[strtolower($code)] ?? ucfirst($code);
+    }
+
+    /**
+     * Display the manager dashboard page.
+     * Data is injected directly via props, no API call needed.
+     */
+    public function index()
     {
         try {
-            // Get upcoming events count
+            // --- 1. Calculate Summary Statistics ---
             $upcomingEventsCount = Event::where('status', 'published')
                 ->where('start_date', '>', now())
                 ->count();
 
-            // Get completed events count
             $completedEventsCount = Event::where('status', 'published')
                 ->where('end_date', '<', now())
                 ->count();
 
-            // Get total members count
-            $totalMembersCount = User::where(function($query) {
-                $query->whereNotIn('role', ['manager', 'admin'])
-                      ->orWhereNull('role');
-            })->count();
+            // Count members (not managers or admins)
+            $totalMembersCount = User::where('role', 'member')->count();
             
-            // Get total registrations (all participants across all events)
             $totalRegistrationsCount = Participant::count();
-
-            // Get pending participant registrations count
             $pendingRegistrationsCount = Participant::where('status', 'PENDING')->count();
 
-            // Get participant status breakdown across all events
+            // --- 2. Charts Data ---
             $participantStatusBreakdown = Participant::select('status', DB::raw('count(*) as count'))
                 ->groupBy('status')
-                ->get()
                 ->pluck('count', 'status')
                 ->toArray();
 
-            // Get participants faculty distribution
             $participantsFacultyDistribution = $this->getParticipantsFacultyDistribution();
 
-            // Get upcoming events list with participant counts
+            // --- 3. Upcoming Events List ---
             $upcomingEvents = Event::where('status', 'published')
                 ->where('start_date', '>', now())
                 ->withCount('participants')
@@ -68,79 +80,63 @@ class ManagerDashboardController extends Controller
                     ];
                 });
 
-            // Get recent notifications/activity
+            // --- 4. Other Metrics ---
             $recentNotifications = $this->getRecentNotifications();
-
-            // Get member engagement metrics (events participation breakdown)
             $memberEngagement = $this->getMemberEngagementMetrics();
-
-            // Get top participants by hours logged
             $topParticipants = $this->getTopParticipantsByHours();
 
-            return response()->json([
-                'summary' => [
-                    'upcoming_events' => $upcomingEventsCount,
-                    'completed_events' => $completedEventsCount,
-                    'total_members' => $totalMembersCount,
-                    'total_registrations' => $totalRegistrationsCount,
-                    'pending_registrations' => $pendingRegistrationsCount,
-                ],
-                'participant_status_breakdown' => $participantStatusBreakdown,
-                'participants_faculty_distribution' => $participantsFacultyDistribution,
-                'upcoming_events' => $upcomingEvents,
-                'recent_notifications' => $recentNotifications,
-                'member_engagement' => $memberEngagement,
-                'top_participants' => $topParticipants,
-            ]);
-        } catch (\Exception $e) {
-            // Log the error for debugging
-            Log::error('Dashboard API Error: ' . $e->getMessage(), [
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+            // --- 5. Return Inertia Response ---
+            return Inertia::render('Manager/ManagerDashboard', [
+                'dashboardData' => [
+                    'summary' => [
+                        'upcoming_events' => $upcomingEventsCount,
+                        'completed_events' => $completedEventsCount,
+                        'total_members' => $totalMembersCount,
+                        'total_registrations' => $totalRegistrationsCount,
+                        'pending_registrations' => $pendingRegistrationsCount,
+                    ],
+                    'participant_status_breakdown' => $participantStatusBreakdown,
+                    'participants_faculty_distribution' => $participantsFacultyDistribution,
+                    'upcoming_events' => $upcomingEvents,
+                    'recent_notifications' => $recentNotifications,
+                    'member_engagement' => $memberEngagement,
+                    'top_participants' => $topParticipants,
+                ]
             ]);
 
-            // Return error response with details
-            return response()->json([
-                'error' => true,
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'summary' => [
-                    'upcoming_events' => 0,
-                    'completed_events' => 0,
-                    'total_members' => 0,
-                    'total_registrations' => 0,
-                    'pending_registrations' => 0,
-                ],
-                'participant_status_breakdown' => [],
-                'participants_faculty_distribution' => [],
-                'upcoming_events' => [],
-                'recent_notifications' => [],
-                'member_engagement' => [],
-                'top_participants' => [],
-            ], 500);
+        } catch (\Exception $e) {
+            Log::error('Dashboard Load Error: ' . $e->getMessage());
+            
+            // In case of error, return with empty data or redirect
+            return redirect()->route('dashboard')->with('error', 'Unable to load dashboard data.');
         }
     }
 
+    // --- Helper Methods ---
+
     /**
-     * Get participants faculty distribution.
-     * Groups participants by their faculty from the users table.
+     * Get participants faculty distribution with full faculty names
      */
     private function getParticipantsFacultyDistribution()
     {
         try {
-            // Get distinct participants with their faculty information
-            $facultyDistribution = DB::table('participants')
+            $rawDistribution = DB::table('participants')
                 ->join('users', 'participants.user_id', '=', 'users.id')
                 ->select('users.faculty', DB::raw('count(distinct participants.user_id) as count'))
                 ->whereNotNull('users.faculty')
                 ->where('users.faculty', '!=', '')
                 ->groupBy('users.faculty')
-                ->pluck('count', 'faculty')
-                ->toArray();
+                ->get();
 
-            return $facultyDistribution;
+            // Convert faculty codes to full names
+            $distribution = [];
+            foreach ($rawDistribution as $item) {
+                $fullName = $this->getFacultyFullName($item->faculty);
+                $distribution[$fullName] = $item->count;
+            }
+
+            return $distribution;
+
         } catch (\Exception $e) {
             Log::error('Error fetching faculty distribution: ' . $e->getMessage());
             return [];
@@ -148,59 +144,90 @@ class ManagerDashboardController extends Controller
     }
 
     /**
-     * Get top participants by total hours logged.
-     * Returns top 5 participants with most volunteer hours.
+     * Get top participants by total volunteer hours with full faculty names
      */
     private function getTopParticipantsByHours()
-{
-    try {
-        $topParticipants = DB::table('participants')
-            ->join('users', 'participants.user_id', '=', 'users.id')
-            ->join('events', 'participants.event_id', '=', 'events.id')
-            ->select(
-                'users.id',
-                'users.name',
-                'users.email',
-                'users.faculty',
-                'users.profile_photo_path',
-                DB::raw('SUM(TIMESTAMPDIFF(HOUR, events.start_date, events.end_date)) as total_hours'),
-                DB::raw('COUNT(participants.id) as events_participated')
-            )
-            ->where('participants.status', 'APPROVED')
-            ->groupBy('users.id', 'users.name', 'users.email', 'users.faculty', 'users.profile_photo_path')
-            ->orderByDesc('total_hours')
-            ->limit(5)
-            ->get()
-            ->map(function ($participant) {
-                return [
-                    'id' => $participant->id,
-                    'name' => $participant->name,
-                    'email' => $participant->email,
-                    'faculty' => $participant->faculty,
-                    'profile_photo_path' => $participant->profile_photo_path,
-                    'total_hours' => (float) $participant->total_hours,
-                    'events_participated' => (int) $participant->events_participated,
+    {
+        try {
+            $topParticipantIds = DB::table('participants')
+                ->join('users', 'participants.user_id', '=', 'users.id')
+                ->join('events', 'participants.event_id', '=', 'events.id')
+                ->select(
+                    'users.id',
+                    DB::raw('SUM(TIMESTAMPDIFF(HOUR, events.start_date, events.end_date)) as total_hours')
+                )
+                ->where('participants.status', 'APPROVED')
+                ->whereNotNull('events.start_date')
+                ->whereNotNull('events.end_date')
+                ->whereNotNull('users.name')
+                ->groupBy('users.id')
+                ->orderByDesc('total_hours')
+                ->limit(10)
+                ->pluck('id')
+                ->toArray();
+
+            // Now fetch full details for these top participants
+            $topParticipants = [];
+            foreach ($topParticipantIds as $userId) {
+                $user = User::find($userId);
+                if (!$user) continue;
+
+                // Get all events this user participated in
+                $participatedEvents = DB::table('participants')
+                    ->join('events', 'participants.event_id', '=', 'events.id')
+                    ->where('participants.user_id', $userId)
+                    ->where('participants.status', 'APPROVED')
+                    ->whereNotNull('events.start_date')
+                    ->whereNotNull('events.end_date')
+                    ->select(
+                        'events.id',
+                        'events.name',
+                        'events.start_date',
+                        DB::raw('TIMESTAMPDIFF(HOUR, events.start_date, events.end_date) as hours')
+                    )
+                    ->orderBy('events.start_date', 'desc')
+                    ->get();
+
+                $totalHours = $participatedEvents->sum('hours');
+                $eventsParticipated = $participatedEvents->count();
+
+                $topParticipants[] = [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'faculty' => $user->faculty ? $this->getFacultyFullName($user->faculty) : 'Not Specified',
+                    'faculty_code' => $user->faculty,
+                    'profile_picture' => $user->profile_picture,
+                    'total_hours' => (float) $totalHours,
+                    'events_participated' => $eventsParticipated,
+                    'participated_events' => $participatedEvents->map(function($event) {
+                        return [
+                            'id' => $event->id,
+                            'name' => $event->name,
+                            'date' => $event->start_date,
+                            'hours' => (float) $event->hours,
+                        ];
+                    })->toArray(),
                 ];
-            })
-            ->toArray();
+            }
 
-        return $topParticipants;
+            return $topParticipants;
 
-    } catch (\Exception $e) {
-        Log::error('Error fetching top participants: ' . $e->getMessage());
-        return [];
+        } catch (\Exception $e) {
+            Log::error('Error fetching top participants: ' . $e->getMessage());
+            return [];
+        }
     }
-}
 
     /**
-     * Get recent notifications for the dashboard.
+     * Get recent notifications for dashboard
      */
     private function getRecentNotifications()
     {
         try {
             $notifications = [];
 
-            // Get recent membership requests (pending participants)
+            // Get pending participation requests
             $recentRequests = Participant::with(['user', 'event'])
                 ->where('status', 'PENDING')
                 ->latest('registration_date')
@@ -208,12 +235,13 @@ class ManagerDashboardController extends Controller
                 ->get();
 
             foreach ($recentRequests as $request) {
-                if ($request->user) {
+                if ($request->user && $request->event) {
                     $notifications[] = [
                         'type' => 'membership_request',
-                        'message' => '"' . $request->user->name . '" requested to participate.',
+                        'message' => '"' . $request->user->name . '" requested to join "' . $request->event->name . '".',
                         'timestamp' => $request->registration_date,
                         'user_name' => $request->user->name,
+                        'event_name' => $request->event->name,
                     ];
                 }
             }
@@ -233,7 +261,7 @@ class ManagerDashboardController extends Controller
                 ];
             }
 
-            // Get recent event participations
+            // Get recent approved participations
             $recentParticipations = Participant::with(['user', 'event'])
                 ->where('status', 'APPROVED')
                 ->latest('last_updated')
@@ -244,7 +272,7 @@ class ManagerDashboardController extends Controller
                 if ($participation->user && $participation->event) {
                     $notifications[] = [
                         'type' => 'event_participation',
-                        'message' => '"' . $participation->user->name . '" participated in "' . $participation->event->name . '".',
+                        'message' => '"' . $participation->user->name . '" joined "' . $participation->event->name . '".',
                         'timestamp' => $participation->last_updated,
                         'user_name' => $participation->user->name,
                         'event_name' => $participation->event->name,
@@ -257,7 +285,8 @@ class ManagerDashboardController extends Controller
                 return strtotime($b['timestamp']) - strtotime($a['timestamp']);
             });
 
-            return array_slice($notifications, 0, 10); // Return top 10
+            return array_slice($notifications, 0, 10);
+
         } catch (\Exception $e) {
             Log::error('Error fetching notifications: ' . $e->getMessage());
             return [];
@@ -265,12 +294,11 @@ class ManagerDashboardController extends Controller
     }
 
     /**
-     * Get member engagement metrics showing event participation distribution.
+     * Get top 5 events by member engagement (approved participants)
      */
     private function getMemberEngagementMetrics()
     {
         try {
-            // Get top 5 events by participant count
             $topEvents = Event::withCount(['participants' => function ($query) {
                 $query->where('status', 'APPROVED');
             }])
@@ -281,7 +309,6 @@ class ManagerDashboardController extends Controller
 
             $engagement = [];
             
-            // Use actual event names and participant counts
             foreach ($topEvents as $event) {
                 if ($event->participants_count > 0) {
                     $engagement[$event->name] = $event->participants_count;
@@ -289,6 +316,7 @@ class ManagerDashboardController extends Controller
             }
 
             return $engagement;
+
         } catch (\Exception $e) {
             Log::error('Error fetching member engagement: ' . $e->getMessage());
             return [];
@@ -296,8 +324,7 @@ class ManagerDashboardController extends Controller
     }
 
     /**
-     * Broadcast notification to event participants.
-     * This is a stub for future notification integration.
+     * Broadcast notification to event participants (stub for future implementation)
      */
     public function broadcast(Request $request, Event $event)
     {
@@ -306,7 +333,6 @@ class ManagerDashboardController extends Controller
             'recipient_type' => 'required|in:all,approved,pending',
         ]);
 
-        // Get recipients based on type
         $query = Participant::where('event_id', $event->id);
         
         if ($validated['recipient_type'] === 'approved') {
@@ -317,22 +343,14 @@ class ManagerDashboardController extends Controller
 
         $participants = $query->with('user')->get();
 
-        // TODO: Implement actual notification system
-        // For now, just log the broadcast attempt
         Log::info('Broadcast to ' . $event->name, [
             'message' => $validated['message'],
             'recipient_count' => $participants->count(),
             'recipient_type' => $validated['recipient_type'],
         ]);
 
-        return back()->with('success', "Broadcast sent to {$participants->count()} participants!");
-    }
+        // TODO: Implement actual notification system (email, SMS, push notifications)
 
-    /**
-     * Display the manager dashboard page.
-     */
-    public function index()
-    {
-        return inertia('Manager/ManagerDashboard');
+        return back()->with('success', "Broadcast sent to {$participants->count()} participants!");
     }
 }

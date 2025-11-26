@@ -13,6 +13,12 @@ use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 
+// --- 1. Add these imports ---
+use App\Http\Responses\LoginResponse;
+use App\Http\Responses\RegisterResponse;
+use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
+use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
+
 class FortifyServiceProvider extends ServiceProvider
 {
     /**
@@ -20,7 +26,10 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // --- 2. Bind the LoginResponse and RegisterResponse interfaces to custom classes ---
+        // This tells Fortify where to redirect users after login/registration
+        $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
+        $this->app->singleton(RegisterResponseContract::class, RegisterResponse::class);
     }
 
     /**

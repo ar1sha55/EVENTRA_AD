@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useInitials } from '@/hooks/use-initials';
 import { type User } from '@/types';
+import { User as UserIcon } from 'lucide-react';
 
 export function UserInfo({
     user,
@@ -11,7 +11,6 @@ export function UserInfo({
     showEmail?: boolean;
     showRole?: boolean;
 }) {
-    const getInitials = useInitials();
     const profilePictureSrc = user.profile_picture
         ? `/storage/${user.profile_picture}`
         : user.avatar;
@@ -20,8 +19,8 @@ export function UserInfo({
         <>
             <Avatar className="h-8 w-8 overflow-hidden rounded-full">
                 <AvatarImage src={profilePictureSrc} alt={user.name} />
-                <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                    {getInitials(user.name)}
+                <AvatarFallback className="rounded-lg bg-neutral-200 dark:bg-neutral-700">
+                    <UserIcon className="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
                 </AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">

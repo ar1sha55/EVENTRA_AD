@@ -7,11 +7,10 @@ import {
   CardHeader,
   CardTitle,
   CardContent,
-  CardDescription,
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Info, ImageIcon } from "lucide-react";
+import { CalendarDays, Info, ImageIcon, MapPin, Clock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -52,6 +51,23 @@ export default function EventsGallery() {
     });
   };
 
+  const getMonthYear = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-MY', {
+      year: 'numeric',
+      month: 'long'
+    });
+  };
+
+  // Group events by month
+  const groupedEvents = events.reduce((acc: Record<string, EventItem[]>, event) => {
+    const monthYear = getMonthYear(event.start_date);
+    if (!acc[monthYear]) {
+      acc[monthYear] = [];
+    }
+    acc[monthYear].push(event);
+    return acc;
+  }, {});
+
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Volunteering Events Gallery" />
@@ -73,54 +89,109 @@ export default function EventsGallery() {
           )}
         </div>
 
-        {/* Gallery Grid */}
+        {/* Timeline View */}
         {events.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {events.map((event) => (
-              <Card
-                key={event.id}
-                className="overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200 rounded-xl"
-              >
-                {/* Event Image */}
-                {event.image_path ? (
-                  <img
-                    src={`/storage/${event.image_path}`}
-                    alt={event.name}
-                    className="aspect-[16/9] object-cover w-full"
-                  />
-                ) : (
-                  <div className="aspect-[16/9] bg-gray-200 flex items-center justify-center text-gray-500">
-                    <ImageIcon className="h-8 w-8" />
+          <div className="relative max-w-5xl mx-auto">
+            {/* Timeline Line */}
+            <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-500 via-blue-500 to-purple-500" />
+
+            <div className="space-y-12">
+              {Object.entries(groupedEvents).map(([monthYear, monthEvents]) => (
+                <div key={monthYear} className="relative">
+                  {/* Month Header */}
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="relative z-10 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-2 rounded-full shadow-lg">
+                      <CalendarDays className="inline h-4 w-4 mr-2" />
+                      <span className="font-semibold">{monthYear}</span>
+                    </div>
+                    <div className="flex-1 h-px bg-gradient-to-r from-purple-200 to-transparent dark:from-purple-800" />
                   </div>
-                )}
 
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold">
-                    {event.name}
-                  </CardTitle>
-                  <CardDescription className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <CalendarDays className="h-4 w-4" />
-                    {formatDate(event.start_date)} · {event.location}
-                  </CardDescription>
-                </CardHeader>
+                  {/* Events for this month */}
+                  <div className="space-y-6">
+                    {monthEvents.map((event) => (
+                      <div key={event.id} className="relative flex gap-6 group pl-4">
+                        {/* Timeline dot */}
+                        <div className="absolute left-[27px] top-6">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 ring-4 ring-background shadow-lg z-10 flex items-center justify-center">
+                            <div className="w-3 h-3 rounded-full bg-white" />
+                          </div>
+                        </div>
 
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    {event.description}
-                  </p>
-                </CardContent>
+                        {/* Event Card */}
+                        <div className="flex-1 ml-12">
+                          <Card className="overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group-hover:scale-[1.02] border-l-4 border-l-purple-500">
+                            <div className="grid md:grid-cols-3 gap-0">
+                              {/* Event Image */}
+                              <div className="md:col-span-1">
+                                {event.image_path ? (
+                                  <img
+                                    src={`/storage/${event.image_path}`}
+                                    alt={event.name}
+                                    className="aspect-[4/3] md:aspect-auto md:h-full object-cover w-full cursor-pointer hover:opacity-90 transition-opacity"
+                                    onClick={() => setSelectedEvent(event)}
+                                  />
+                                ) : (
+                                  <div className="aspect-[4/3] md:aspect-auto md:h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
+                                    <ImageIcon className="h-12 w-12 text-gray-400" />
+                                  </div>
+                                )}
+                              </div>
 
-                <CardFooter className="flex justify-end">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setSelectedEvent(event)}
-                  >
-                    <Info className="mr-2 h-4 w-4" /> View Details
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
+                              {/* Event Details */}
+                              <div className="md:col-span-2 p-6">
+                                <CardHeader className="p-0 mb-4">
+                                  <CardTitle className="text-xl font-bold group-hover:text-purple-600 transition-colors">
+                                    {event.name}
+                                  </CardTitle>
+                                </CardHeader>
+
+                                <CardContent className="p-0 space-y-3">
+                                  {/* Date & Time */}
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Clock className="h-4 w-4 text-purple-500" />
+                                    <span className="font-medium">
+                                      {new Date(event.start_date).toLocaleDateString('en-MY', {
+                                        weekday: 'long',
+                                        day: 'numeric',
+                                        month: 'long',
+                                        year: 'numeric'
+                                      })}
+                                    </span>
+                                  </div>
+
+                                  {/* Location */}
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <MapPin className="h-4 w-4 text-blue-500" />
+                                    <span>{event.location}</span>
+                                  </div>
+
+                                  {/* Description */}
+                                  <p className="text-sm text-muted-foreground line-clamp-2 mt-3">
+                                    {event.description}
+                                  </p>
+                                </CardContent>
+
+                                <CardFooter className="p-0 mt-4">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setSelectedEvent(event)}
+                                    className="hover:bg-purple-50 hover:text-purple-600 hover:border-purple-300 dark:hover:bg-purple-950"
+                                  >
+                                    <Info className="mr-2 h-4 w-4" /> View Details
+                                  </Button>
+                                </CardFooter>
+                              </div>
+                            </div>
+                          </Card>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <Card className="p-8">

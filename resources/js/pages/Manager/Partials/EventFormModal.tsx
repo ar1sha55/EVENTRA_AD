@@ -18,6 +18,22 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { 
+    Calendar, 
+    MapPin, 
+    FileText, 
+    Users, 
+    DollarSign, 
+    Image as ImageIcon,
+    QrCode,
+    AlertCircle,
+    Upload,
+    X,
+    ChevronDown,
+    ChevronUp,
+} from 'lucide-react';
 
 interface Event {
     id: number;
@@ -39,7 +55,12 @@ interface ModalProps {
     event: Event | null;
 }
 
+interface FormErrors {
+    [key: string]: string;
+}
+
 export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
+    const [expandedSection, setExpandedSection] = useState<string | null>('basic');
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -56,10 +77,25 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
     const [preview, setPreview] = useState<string | null>(null);
     const [qrCodePreview, setQrCodePreview] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
-    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [errors, setErrors] = useState<FormErrors>({});
+    const [dragActive, setDragActive] = useState(false);
+    const [qrDragActive, setQrDragActive] = useState(false);
+    
     const fileInputRef = useRef<HTMLInputElement>(null);
     const qrCodeFileInputRef = useRef<HTMLInputElement>(null);
 
+    // Fee presets for quick selection
+    const feePresets = [
+        { label: 'Free', value: 0 },
+        { label: 'RM 5', value: 5 },
+        { label: 'RM 10', value: 10 },
+        { label: 'RM 20', value: 20 },
+        { label: 'RM 50', value: 50 },
+    ];
+
+    // Initialize form data when modal opens or event changes
+    // This is a valid use case for setState in useEffect for form initialization
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => {
         if (isOpen) {
             if (event) {
@@ -78,13 +114,18 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
                 setPreview(event.image_path ? `/storage/${event.image_path}` : null);
                 setQrCodePreview(event.qr_code_path ? `/storage/${event.qr_code_path}` : null);
             } else {
+                // Smart defaults for new events
+                const now = new Date();
+                const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+                const endTime = new Date(tomorrow.getTime() + 2 * 60 * 60 * 1000); // 2 hours duration
+
                 setFormData({
                     name: '',
                     description: '',
-                    start_date: '',
-                    end_date: '',
+                    start_date: tomorrow.toISOString().slice(0, 16),
+                    end_date: endTime.toISOString().slice(0, 16),
                     location: '',
-                    capacity: 0,
+                    capacity: 50,
                     fee: null,
                     status: 'draft',
                     image: null,
@@ -94,14 +135,89 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
                 setQrCodePreview(null);
             }
             setErrors({});
+            setExpandedSection('basic');
         }
     }, [event, isOpen]);
 
+    // Validation functions
+    const validateForm = (): boolean => {
+        const newErrors: FormErrors = {};
+
+        if (!formData.name.trim()) {
+            newErrors.name = 'Event name is required';
+        }
+
+        if (!formData.description.trim()) {
+            newErrors.description = 'Description is required';
+        }
+
+        if (!formData.location.trim()) {
+            newErrors.location = 'Location is required';
+        }
+
+        if (!formData.start_date) {
+            newErrors.start_date = 'Start date is required';
+        }
+
+        if (!formData.end_date) {
+            newErrors.end_date = 'End date is required';
+        }
+
+        if (formData.start_date && formData.end_date) {
+            const startDate = new Date(formData.start_date);
+            const endDate = new Date(formData.end_date);
+            
+            if (endDate <= startDate) {
+                newErrors.end_date = 'End date must be after start date';
+            }
+
+            if (!event && startDate < new Date()) {
+                newErrors.start_date = 'Start date cannot be in the past';
+            }
+        }
+
+        if (formData.capacity < 0) {
+            newErrors.capacity = 'Capacity cannot be negative';
+        }
+
+        if (formData.fee !== null && formData.fee < 0) {
+            newErrors.fee = 'Fee cannot be negative';
+        }
+
+        // QR code validation for paid events
+        const isPaidEvent = formData.fee !== null && formData.fee > 0;
+        if (isPaidEvent && !formData.qr_code_image && !event?.qr_code_path) {
+            newErrors.qr_code_image = 'QR code is required for paid events';
+        }
+
+        // Image size validation
+        if (formData.image) {
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            if (formData.image.size > maxSize) {
+                newErrors.image = 'Image size must be less than 5MB';
+            }
+        }
+
+        if (formData.qr_code_image) {
+            const maxSize = 2 * 1024 * 1024; // 2MB
+            if (formData.qr_code_image.size > maxSize) {
+                newErrors.qr_code_image = 'QR code image size must be less than 2MB';
+            }
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (!validateForm()) {
+            return;
+        }
+
         setProcessing(true);
 
-        // Create FormData for file upload support
         const data = new FormData();
         data.append('name', formData.name);
         data.append('description', formData.description);
@@ -110,30 +226,24 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
         data.append('location', formData.location);
         data.append('status', formData.status);
 
-        // Only append capacity if it's greater than 0
         if (formData.capacity && formData.capacity > 0) {
             data.append('capacity', formData.capacity.toString());
         }
 
-        // Append fee (including 0 or null to allow clearing)
         if (formData.fee !== null && formData.fee !== undefined && formData.fee > 0) {
             data.append('fee', formData.fee.toString());
         } else {
-            // Explicitly set fee to 0 if null or 0 (for clearing fees)
             data.append('fee', '0');
         }
 
-        // Append image if selected
         if (formData.image) {
             data.append('image', formData.image);
         }
 
-        // Append QR code image if selected
         if (formData.qr_code_image) {
             data.append('qr_code_image', formData.qr_code_image);
         }
 
-        // For updates, add _method field for Laravel
         if (event) {
             data.append('_method', 'PUT');
         }
@@ -156,7 +266,6 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
 
     const updateFormData = (field: string, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
-        // Clear error for this field when user starts typing
         if (errors[field]) {
             setErrors(prev => {
                 const newErrors = { ...prev };
@@ -166,169 +275,382 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
         }
     };
 
-    // Check if fee is set and greater than 0
+    const handleStartDateChange = (value: string) => {
+        updateFormData('start_date', value);
+        
+        if (!formData.end_date || new Date(formData.end_date) <= new Date(value)) {
+            const newEndDate = new Date(value);
+            newEndDate.setHours(newEndDate.getHours() + 2);
+            updateFormData('end_date', newEndDate.toISOString().slice(0, 16));
+        }
+    };
+
+    const handleDrag = (e: React.DragEvent, type: 'image' | 'qr') => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.type === "dragenter" || e.type === "dragover") {
+            type === 'image' ? setDragActive(true) : setQrDragActive(true);
+        } else if (e.type === "dragleave") {
+            type === 'image' ? setDragActive(false) : setQrDragActive(false);
+        }
+    };
+
+    const handleDrop = (e: React.DragEvent, type: 'image' | 'qr') => {
+        e.preventDefault();
+        e.stopPropagation();
+        type === 'image' ? setDragActive(false) : setQrDragActive(false);
+
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            handleFileSelect(file, type);
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'qr') => {
+        const file = e.target.files?.[0];
+        if (file) {
+            handleFileSelect(file, type);
+        }
+    };
+
+    const handleFileSelect = (file: File, type: 'image' | 'qr') => {
+        if (type === 'image') {
+            updateFormData('image', file);
+            setPreview(URL.createObjectURL(file));
+        } else {
+            updateFormData('qr_code_image', file);
+            setQrCodePreview(URL.createObjectURL(file));
+        }
+    };
+
+    const removeImage = (type: 'image' | 'qr') => {
+        if (type === 'image') {
+            updateFormData('image', null);
+            setPreview(event?.image_path ? `/storage/${event.image_path}` : null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        } else {
+            updateFormData('qr_code_image', null);
+            setQrCodePreview(event?.qr_code_path ? `/storage/${event.qr_code_path}` : null);
+            if (qrCodeFileInputRef.current) {
+                qrCodeFileInputRef.current.value = '';
+            }
+        }
+    };
+
+    const toggleSection = (section: string) => {
+        setExpandedSection(expandedSection === section ? null : section);
+    };
+
     const isPaidEvent = formData.fee !== null && formData.fee > 0;
+
+    const Section = ({ 
+        id, 
+        title, 
+        icon: Icon, 
+        children, 
+        hasError 
+    }: { 
+        id: string; 
+        title: string; 
+        icon: any; 
+        children: React.ReactNode;
+        hasError?: boolean;
+    }) => {
+        const isExpanded = expandedSection === id;
+        
+        return (
+            <div className="border rounded-lg">
+                <button
+                    type="button"
+                    onClick={() => toggleSection(id)}
+                    className={`w-full px-4 py-3 flex items-center justify-between hover:bg-muted/50 transition-colors ${
+                        isExpanded ? 'bg-muted/50' : ''
+                    }`}
+                >
+                    <div className="flex items-center gap-2">
+                        <Icon className="h-4 w-4" />
+                        <span className="font-medium">{title}</span>
+                        {hasError && (
+                            <Badge variant="destructive" className="text-xs">Error</Badge>
+                        )}
+                    </div>
+                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+                {isExpanded && (
+                    <div className="p-4 border-t space-y-4">
+                        {children}
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
                 <DialogHeader>
-                    <DialogTitle>{event ? 'Edit Event' : 'Create Event'}</DialogTitle>
+                    <DialogTitle className="text-2xl">
+                        {event ? 'Edit Event' : 'Create Event'}
+                    </DialogTitle>
+                    {Object.keys(errors).length > 0 && (
+                        <Alert variant="destructive" className="mt-2">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>
+                                Please fix the errors before submitting
+                            </AlertDescription>
+                        </Alert>
+                    )}
                 </DialogHeader>
-                <form onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+
+                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto space-y-3">
+                    {/* Basic Information */}
+                    <Section 
+                        id="basic" 
+                        title="Basic Information" 
+                        icon={FileText}
+                        hasError={!!(errors.name || errors.description || errors.location)}
+                    >
                         <div>
-                            <Label htmlFor="name">Name *</Label>
+                            <Label htmlFor="name">Event Name <span className="text-red-500">*</span></Label>
                             <Input
                                 id="name"
                                 value={formData.name}
                                 onChange={(e) => updateFormData('name', e.target.value)}
-                                required
+                                placeholder="e.g., Beach Cleanup Day"
+                                className={errors.name ? 'border-red-500' : ''}
                             />
-                            {errors.name && <div className="text-red-500 text-sm mt-1">{errors.name}</div>}
+                            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
                         </div>
 
                         <div>
-                            <Label htmlFor="location">Location *</Label>
+                            <Label htmlFor="description">Description <span className="text-red-500">*</span></Label>
+                            <Textarea
+                                id="description"
+                                value={formData.description}
+                                onChange={(e) => updateFormData('description', e.target.value)}
+                                placeholder="Describe your event..."
+                                rows={4}
+                                className={errors.description ? 'border-red-500' : ''}
+                            />
+                            {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+                        </div>
+
+                        <div>
+                            <Label htmlFor="location">Location <span className="text-red-500">*</span></Label>
                             <Input
                                 id="location"
                                 value={formData.location}
                                 onChange={(e) => updateFormData('location', e.target.value)}
-                                required
+                                placeholder="e.g., Senai Beach, Johor"
+                                className={errors.location ? 'border-red-500' : ''}
                             />
-                            {errors.location && <div className="text-red-500 text-sm mt-1">{errors.location}</div>}
+                            {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
                         </div>
+                    </Section>
 
+                    {/* Schedule */}
+                    <Section 
+                        id="schedule" 
+                        title="Schedule" 
+                        icon={Calendar}
+                        hasError={!!(errors.start_date || errors.end_date)}
+                    >
                         <div>
-                            <Label htmlFor="start_date">Start Date *</Label>
+                            <Label htmlFor="start_date">Start Date & Time <span className="text-red-500">*</span></Label>
                             <Input
                                 id="start_date"
                                 type="datetime-local"
                                 value={formData.start_date}
-                                onChange={(e) => updateFormData('start_date', e.target.value)}
-                                required
+                                onChange={(e) => handleStartDateChange(e.target.value)}
+                                className={errors.start_date ? 'border-red-500' : ''}
                             />
-                            {errors.start_date && <div className="text-red-500 text-sm mt-1">{errors.start_date}</div>}
+                            {errors.start_date && <p className="text-red-500 text-sm mt-1">{errors.start_date}</p>}
                         </div>
 
                         <div>
-                            <Label htmlFor="end_date">End Date *</Label>
+                            <Label htmlFor="end_date">End Date & Time <span className="text-red-500">*</span></Label>
                             <Input
                                 id="end_date"
                                 type="datetime-local"
                                 value={formData.end_date}
                                 onChange={(e) => updateFormData('end_date', e.target.value)}
-                                required
+                                min={formData.start_date}
+                                className={errors.end_date ? 'border-red-500' : ''}
                             />
-                            {errors.end_date && <div className="text-red-500 text-sm mt-1">{errors.end_date}</div>}
+                            {errors.end_date && <p className="text-red-500 text-sm mt-1">{errors.end_date}</p>}
                         </div>
+                    </Section>
 
-                        <div className="md:col-span-2">
-                            <Label htmlFor="description">Description *</Label>
-                            <Textarea
-                                id="description"
-                                value={formData.description}
-                                onChange={(e) => updateFormData('description', e.target.value)}
-                                rows={4}
-                                required
-                            />
-                            {errors.description && <div className="text-red-500 text-sm mt-1">{errors.description}</div>}
-                        </div>
-
+                    {/* Registration */}
+                    <Section 
+                        id="registration" 
+                        title="Registration" 
+                        icon={Users}
+                        hasError={!!(errors.capacity || errors.fee)}
+                    >
                         <div>
-                            <Label htmlFor="capacity">Capacity (Optional)</Label>
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => updateFormData('capacity', Math.max(0, (formData.capacity || 0) - 1))}
-                                >
-                                    -
-                                </Button>
-                                <Input
-                                    id="capacity"
-                                    type="number"
-                                    value={formData.capacity}
-                                    onChange={(e) => updateFormData('capacity', parseInt(e.target.value) || 0)}
-                                    className="text-center"
-                                    min="0"
-                                />
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => updateFormData('capacity', (formData.capacity || 0) + 1)}
-                                >
-                                    +
-                                </Button>
-                            </div>
+                            <Label htmlFor="capacity">Capacity <span className="text-muted-foreground text-xs">(Optional)</span></Label>
+                            <Input
+                                id="capacity"
+                                type="number"
+                                value={formData.capacity}
+                                onChange={(e) => updateFormData('capacity', parseInt(e.target.value) || 0)}
+                                min="0"
+                                placeholder="0 = unlimited"
+                                className={errors.capacity ? 'border-red-500' : ''}
+                            />
                             <p className="text-xs text-muted-foreground mt-1">Set to 0 for unlimited capacity</p>
-                            {errors.capacity && <div className="text-red-500 text-sm mt-1">{errors.capacity}</div>}
+                            {errors.capacity && <p className="text-red-500 text-sm mt-1">{errors.capacity}</p>}
                         </div>
 
                         <div>
-                            <Label htmlFor="fee">Fee (RM) (Optional)</Label>
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => updateFormData('fee', Math.max(0, (formData.fee || 0) - 1))}
-                                >
-                                    -
-                                </Button>
-                                <div className="relative w-full">
-                                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-                                        RM
-                                    </span>
-                                    <Input
-                                        id="fee"
-                                        type="number"
-                                        step="0.01"
-                                        value={formData.fee ?? ''}
-                                        onBlur={(e) => {
-                                            const value = parseFloat(e.target.value);
-                                            if (!isNaN(value) && value > 0) {
-                                                updateFormData('fee', parseFloat(value.toFixed(2)));
-                                            } else {
-                                                updateFormData('fee', null);
-                                            }
-                                        }}
-                                        onChange={(e) => {
-                                            const value = e.target.value;
-                                            if (value === '' || value === null) {
-                                                updateFormData('fee', null);
-                                            } else {
-                                                const numValue = parseFloat(value);
-                                                updateFormData('fee', isNaN(numValue) ? null : numValue);
-                                            }
-                                        }}
-                                        className="pl-12 text-center"
-                                        min="0"
-                                    />
-                                </div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => updateFormData('fee', (formData.fee || 0) + 1)}
-                                >
-                                    +
-                                </Button>
+                            <Label>Registration Fee <span className="text-muted-foreground text-xs">(Optional)</span></Label>
+                            <div className="flex gap-2 flex-wrap mb-2">
+                                {feePresets.map((preset) => (
+                                    <Button
+                                        key={preset.value}
+                                        type="button"
+                                        variant={formData.fee === preset.value ? 'default' : 'outline'}
+                                        size="sm"
+                                        onClick={() => updateFormData('fee', preset.value === 0 ? null : preset.value)}
+                                    >
+                                        {preset.label}
+                                    </Button>
+                                ))}
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1">Leave empty or set to 0 for free events</p>
-                            {errors.fee && <div className="text-red-500 text-sm mt-1">{errors.fee}</div>}
+                            <div className="relative">
+                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">RM</span>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.fee ?? ''}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        updateFormData('fee', value === '' ? null : parseFloat(value));
+                                    }}
+                                    className={`pl-12 ${errors.fee ? 'border-red-500' : ''}`}
+                                    min="0"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            {errors.fee && <p className="text-red-500 text-sm mt-1">{errors.fee}</p>}
+                            {isPaidEvent && (
+                                <Alert className="mt-2">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertDescription>Payment QR code required (see Media section)</AlertDescription>
+                                </Alert>
+                            )}
+                        </div>
+                    </Section>
+
+                    {/* Media */}
+                    <Section 
+                        id="media" 
+                        title="Media" 
+                        icon={ImageIcon}
+                        hasError={!!(errors.image || errors.qr_code_image)}
+                    >
+                        {/* Event Poster */}
+                        <div>
+                            <Label>Event Poster</Label>
+                            <div
+                                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                                    dragActive ? 'border-primary bg-primary/10' : 'border-muted-foreground/25'
+                                } ${errors.image ? 'border-red-500' : ''}`}
+                                onDragEnter={(e) => handleDrag(e, 'image')}
+                                onDragLeave={(e) => handleDrag(e, 'image')}
+                                onDragOver={(e) => handleDrag(e, 'image')}
+                                onDrop={(e) => handleDrop(e, 'image')}
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <Input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => handleFileChange(e, 'image')}
+                                />
+                                {preview ? (
+                                    <div className="relative inline-block">
+                                        <img src={preview} alt="Preview" className="max-h-48 rounded-lg" />
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="sm"
+                                            className="absolute -top-2 -right-2"
+                                            onClick={(e) => { e.stopPropagation(); removeImage('image'); }}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                                        <p className="text-sm text-muted-foreground">Drag and drop or click to upload</p>
+                                    </div>
+                                )}
+                            </div>
+                            {errors.image && <p className="text-red-500 text-sm mt-1">{errors.image}</p>}
                         </div>
 
-                        <div className="md:col-span-2">
-                            <Label htmlFor="status">Status *</Label>
+                        {/* QR Code for Paid Events */}
+                        {isPaidEvent && (
+                            <div className="border-t pt-4">
+                                <Label>Payment QR Code <span className="text-red-500">*</span></Label>
+                                <div
+                                    className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                                        qrDragActive ? 'border-primary bg-primary/10' : 'border-muted-foreground/25'
+                                    } ${errors.qr_code_image ? 'border-red-500' : ''}`}
+                                    onDragEnter={(e) => handleDrag(e, 'qr')}
+                                    onDragLeave={(e) => handleDrag(e, 'qr')}
+                                    onDragOver={(e) => handleDrag(e, 'qr')}
+                                    onDrop={(e) => handleDrop(e, 'qr')}
+                                    onClick={() => qrCodeFileInputRef.current?.click()}
+                                >
+                                    <Input
+                                        ref={qrCodeFileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => handleFileChange(e, 'qr')}
+                                    />
+                                    {qrCodePreview ? (
+                                        <div className="relative inline-block">
+                                            <img src={qrCodePreview} alt="QR Preview" className="max-h-48 rounded-lg" />
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="sm"
+                                                className="absolute -top-2 -right-2"
+                                                onClick={(e) => { e.stopPropagation(); removeImage('qr'); }}
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <QrCode className="h-8 w-8 mx-auto text-muted-foreground" />
+                                            <p className="text-sm text-muted-foreground">Upload payment QR code</p>
+                                        </div>
+                                    )}
+                                </div>
+                                {errors.qr_code_image && <p className="text-red-500 text-sm mt-1">{errors.qr_code_image}</p>}
+                            </div>
+                        )}
+                    </Section>
+
+                    {/* Publishing */}
+                    <Section id="publish" title="Publishing Status" icon={AlertCircle}>
+                        <div>
+                            <Label htmlFor="status">Status <span className="text-red-500">*</span></Label>
                             <Select
                                 value={formData.status}
                                 onValueChange={(value) => updateFormData('status', value as 'draft' | 'published' | 'archived')}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select a status" />
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="draft">Draft</SelectItem>
@@ -337,105 +659,20 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
                                 </SelectContent>
                             </Select>
                             <p className="text-xs text-muted-foreground mt-1">
-                                Only published events will be visible to members
+                                Only published events are visible to members
                             </p>
-                            {errors.status && <div className="text-red-500 text-sm mt-1">{errors.status}</div>}
                         </div>
-
-                        <div className="md:col-span-2">
-                            <Label htmlFor="image">Event Poster {event && '(Upload new to replace)'}</Label>
-                            <Input
-                                id="image"
-                                type="file"
-                                accept="image/*"
-                                ref={fileInputRef}
-                                className="hidden"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0] || null;
-                                    updateFormData('image', file);
-                                    if (file) {
-                                        setPreview(URL.createObjectURL(file));
-                                    }
-                                }}
-                            />
-                            <div className="mt-2">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => fileInputRef.current?.click()}
-                                >
-                                    Choose File
-                                </Button>
-                                {formData.image && <span className="ml-2 text-sm">{formData.image.name}</span>}
-                            </div>
-                            {preview && (
-                                <div className="mt-2">
-                                    <img src={preview} alt="preview" className="h-32 w-auto object-cover rounded border" />
-                                </div>
-                            )}
-                            {errors.image && <div className="text-red-500 text-sm mt-1">{errors.image}</div>}
-                        </div>
-
-                        {isPaidEvent && (
-                            <div className="md:col-span-2 border-t pt-4">
-                                <Label htmlFor="qr_code_image" className="text-base font-semibold">
-                                    Payment QR Code (Required for Paid Events) {event && '(Upload new to replace)'}
-                                </Label>
-                                <p className="text-xs text-muted-foreground mb-2">
-                                    Upload a QR code image that participants can scan to make payment
-                                </p>
-                                <Input
-                                    id="qr_code_image"
-                                    type="file"
-                                    accept="image/*"
-                                    ref={qrCodeFileInputRef}
-                                    className="hidden"
-                                    onChange={(e) => {
-                                        const file = e.target.files?.[0] || null;
-                                        updateFormData('qr_code_image', file);
-                                        if (file) {
-                                            setQrCodePreview(URL.createObjectURL(file));
-                                        }
-                                    }}
-                                />
-                                <div className="mt-2">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => qrCodeFileInputRef.current?.click()}
-                                    >
-                                        {qrCodePreview ? 'Change QR Code' : 'Upload QR Code'}
-                                    </Button>
-                                    {formData.qr_code_image && <span className="ml-2 text-sm">{formData.qr_code_image.name}</span>}
-                                </div>
-                                {qrCodePreview && (
-                                    <div className="mt-2 border rounded-lg p-4 bg-gray-50">
-                                        <p className="text-sm font-medium mb-2">QR Code Preview:</p>
-                                        <img src={qrCodePreview} alt="QR Code Preview" className="h-48 w-auto object-contain rounded border bg-white mx-auto" />
-                                    </div>
-                                )}
-                                {errors.qr_code_image && <div className="text-red-500 text-sm mt-1">{errors.qr_code_image}</div>}
-                            </div>
-                        )}
-                    </div>
-
-                    <DialogFooter>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={onClose}
-                            disabled={processing}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="submit"
-                            disabled={processing}
-                        >
-                            {processing ? 'Saving...' : event ? 'Update Event' : 'Create Event'}
-                        </Button>
-                    </DialogFooter>
+                    </Section>
                 </form>
+
+                <DialogFooter className="mt-4 gap-2">
+                    <Button type="button" variant="outline" onClick={onClose} disabled={processing}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSubmit} disabled={processing}>
+                        {processing ? 'Saving...' : event ? 'Update Event' : 'Create Event'}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

@@ -20,9 +20,10 @@ return new class extends Migration
             $table->string('location');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->integer('capacity')->nullable();
-            $table->decimal('fee', 8, 2)->nullable(); // Changed from price to fee, and made nullable
+            $table->decimal('fee', 8, 2)->nullable(); // nullable
             $table->string('status')->default('draft');
             $table->string('image_path')->nullable();
+            $table->string('qr_code_path')->nullable(); // removed ->after
             $table->timestamps();
         });
     }

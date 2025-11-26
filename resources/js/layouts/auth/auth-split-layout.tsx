@@ -42,14 +42,14 @@ export default function AuthSplitLayout({
                 <div className="absolute bottom-10 left-10 z-20">
                     <blockquote className="max-w-md space-y-2">
                         <p className="text-xl italic">
-                            &ldquo;Your small contribution can make a big difference.&rdquo;
+                            &ldquo;A Free Yet Priceless Act.&rdquo;
                         </p>
                     </blockquote>
                     <div className="mt-4 text-sm">Powered by Eventra</div>
                 </div>
             </div>
             <div className="w-full lg:p-8">
-                <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+                <div className="mx-auto flex w-full flex-col justify-center space-y-6 rounded-lg border bg-card p-8 shadow-2xl sm:w-[530px]">
                     <Link
                         href={home()}
                         className="relative z-20 flex items-center justify-center lg:hidden"
