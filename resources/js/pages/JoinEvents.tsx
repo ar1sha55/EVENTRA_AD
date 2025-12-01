@@ -93,7 +93,7 @@ export default function JoinEvents() {
         }
         const participant = event.participants.find((p: Participant) => p.user_id === user.id);
         return {
-            status: participant ? participant.status : null,
+            status: participant ? participant.status.toLowerCase() : null,
             participantId: participant ? participant.id : null,
         };
     };
@@ -137,12 +137,13 @@ export default function JoinEvents() {
 
             router.post(`/events/${eventId}/register`, formData, {
                 forceFormData: true,
-                preserveScroll: true,
                 onSuccess: () => {
                     setPaymentProofEvent(null);
                     setPaymentProofFile(null);
                     setPaymentProofPreview(null);
                     setProcessing(false);
+                    // Force reload to get fresh data
+                    router.visit('/join-events', { preserveState: false });
                 },
                 onError: () => {
                     setProcessing(false);
@@ -150,9 +151,10 @@ export default function JoinEvents() {
             });
         } else {
             router.post(`/events/${eventId}/register`, {}, {
-                preserveScroll: true,
                 onSuccess: () => {
                     setProcessing(false);
+                    // Force reload to get fresh data
+                    router.visit('/join-events', { preserveState: false });
                 },
                 onError: () => {
                     setProcessing(false);
@@ -170,10 +172,11 @@ export default function JoinEvents() {
     const executeUnregister = () => {
         if (participantToUnregister) {
             router.delete(`/participants/${participantToUnregister}`, {
-                preserveScroll: true,
                 onSuccess: () => {
                     setSelectedEvent(null);
                     setParticipantToUnregister(null);
+                    // Force reload to get fresh data
+                    router.visit('/join-events', { preserveState: false });
                 },
                 onFinish: () => setParticipantToUnregister(null),
             });
@@ -236,7 +239,7 @@ export default function JoinEvents() {
                     <div className='grid gap-6 sm:grid-cols-2 lg:grid-cols-3'>
                         {publishedEvents.map((event: Event) => {
                             const { status, participantId } = getParticipantStatus(event);
-                            const totalParticipants = event.participants?.filter(p => p.status === 'approved' || p.status === 'pending_approval').length || 0;
+                            const totalParticipants = event.participants?.filter(p => p.status.toLowerCase() === 'approved' || p.status.toLowerCase() === 'pending_approval').length || 0;
                             const slotsLeft = event.capacity ? event.capacity - totalParticipants : 'Unlimited';
                             const isPaidEvent = event.fee && event.fee > 0;
                             const isFull = event.capacity ? totalParticipants >= event.capacity : false;
@@ -459,7 +462,7 @@ export default function JoinEvents() {
                                 </Button>
                                 {(() => {
                                     const { status } = getParticipantStatus(selectedEvent);
-                                    const totalParticipants = selectedEvent.participants?.filter(p => p.status === 'approved' || p.status === 'pending_approval').length || 0;
+                                    const totalParticipants = selectedEvent.participants?.filter(p => p.status.toLowerCase() === 'approved' || p.status.toLowerCase() === 'pending_approval').length || 0;
                                     const isFull = selectedEvent.capacity ? totalParticipants >= selectedEvent.capacity : false;
                                     const isPaidEvent = selectedEvent.fee && selectedEvent.fee > 0;
 

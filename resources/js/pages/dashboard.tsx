@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
+import { edit as profileEdit } from '@/routes/profile';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { CalendarDays, Bell, BarChart3, MapPin, Award, Clock, User, Hand, CheckCircle, ArrowRight, Calendar, ClipboardList, Mail, History } from "lucide-react";
+import { CalendarDays, Bell, BarChart3, MapPin, Award, Clock, User, Hand, CheckCircle, ArrowRight, Calendar, ClipboardList, Mail, History, AlertCircle } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,6 +13,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const breadcrumbs: BreadcrumbItem[] = [
   {
@@ -44,13 +46,7 @@ interface Event {
   image_path?: string;
   qr_code_path?: string;
   participants?: Participant[];
-  participants_count?: number; 
-}
-
-interface NotificationEvent {
-  id: number;
-  name: string;
-  start_date: string;
+  participants_count?: number;
 }
 
 interface Stats {
@@ -62,6 +58,8 @@ type User = {
   id: number;
   name: string;
   email: string;
+  secondary_email?: string;
+  phone_number?: string;
   faculty?: string;
   profile_picture?: string;
 };
@@ -93,12 +91,26 @@ interface RegisteredEvent {
   registration_date: string;
 }
 
+interface DashboardNotification {
+  id: number;
+  type: string;
+  title: string;
+  message: string;
+  data: {
+    event_id?: number;
+    event_name?: string;
+    start_date?: string;
+  };
+  read_at: string | null;
+  created_at: string;
+}
+
 interface DashboardProps {
   upcomingEvents?: Event[];
-  notificationEvents?: NotificationEvent[];
   stats?: Stats;
   topVolunteers?: TopVolunteer[];
   registeredEvents?: RegisteredEvent[];
+  recentNotifications?: DashboardNotification[];
 }
 
 // --- Helper Components ---
@@ -147,13 +159,24 @@ const EmptyState = ({ icon: Icon, message, action }: { icon: any; message: strin
     </div>
 );
 
-export default function Dashboard({ upcomingEvents = [], notificationEvents = [], stats = { totalEvents: 0, upcomingEventsCount: 0 }, topVolunteers = [], registeredEvents = [] }: DashboardProps) {
+export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 0, upcomingEventsCount: 0 }, topVolunteers = [], registeredEvents = [], recentNotifications = [] }: DashboardProps) {
   const page = usePage();
   const auth = page.props.auth as { user: User };
   const { user } = auth;
 
   // Helper functions
   const getInitials = (name: string) => name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+  // Check if profile is complete
+  const isProfileComplete = user.profile_picture && user.secondary_email && user.phone_number && user.faculty;
+  const getMissingFields = () => {
+    const missing = [];
+    if (!user.profile_picture) missing.push('profile picture');
+    if (!user.secondary_email) missing.push('secondary email');
+    if (!user.phone_number) missing.push('phone number');
+    if (!user.faculty) missing.push('faculty');
+    return missing;
+  };
 
   // Colors for leaderboards
   const getMedalColor = (index: number) => {
@@ -216,38 +239,23 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
       setPaymentProofFile(null);
       setPaymentProofPreview(null);
       setProcessing(false);
-      if (selectedEvent) {
-        const newParticipant: Participant = {
-          id: Date.now(),
-          user_id: user.id,
-          event_id: eventId,
-          status: 'pending_approval',
-          registration_date: new Date().toISOString(),
-          last_updated: new Date().toISOString(),
-        };
-        setSelectedEvent({
-          ...selectedEvent,
-          participants: [...(selectedEvent.participants || []), newParticipant]
-        });
-      }
     };
 
     if (paymentProof) {
       const formData = new FormData();
       formData.append('payment_proof', paymentProof);
       router.post(`/events/${eventId}/register`, formData, {
-        forceFormData: true, preserveScroll: true, onSuccess: handleSuccess, onError: () => setProcessing(false),
+        forceFormData: true, onSuccess: handleSuccess, onError: () => setProcessing(false),
       });
     } else {
       router.post(`/events/${eventId}/register`, {}, {
-        preserveScroll: true, onSuccess: handleSuccess, onError: () => setProcessing(false),
+        onSuccess: handleSuccess, onError: () => setProcessing(false),
       });
     }
   };
 
   const handleUnregister = (participantId: number) => {
     router.delete(`/participants/${participantId}`, {
-      preserveScroll: true,
       onSuccess: () => {
         if (selectedEvent) {
           setSelectedEvent({
@@ -279,7 +287,7 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
     }
     const participant = event.participants.find((p: Participant) => p.user_id === user.id);
     return {
-      status: participant ? participant.status : null,
+      status: participant ? participant.status.toLowerCase() : null,
       participantId: participant ? participant.id : null,
     };
   };
@@ -320,6 +328,37 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
                 </Button>
             </div>
 
+            {/* Profile Completion Alert */}
+            {!isProfileComplete && (
+                <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800">
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    <AlertTitle className="text-amber-900 dark:text-amber-100 font-semibold">
+                        Complete Your Profile
+                    </AlertTitle>
+                    <AlertDescription className="text-amber-800 dark:text-amber-200">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-2">
+                            <p>
+                                Please complete your profile by adding your{' '}
+                                {getMissingFields().map((field, index) => (
+                                    <span key={field}>
+                                        <strong>{field}</strong>
+                                        {index < getMissingFields().length - 1 && ' and '}
+                                    </span>
+                                ))}.
+                            </p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => router.visit(profileEdit().url)}
+                                className="bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 whitespace-nowrap"
+                            >
+                                Update Profile
+                            </Button>
+                        </div>
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {/* 2. Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <SummaryCard 
@@ -359,7 +398,99 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
                 
                 {/* Left Column (2/3 width) */}
                 <div className="lg:col-span-2 space-y-8">
-                    
+
+                    {/* Upcoming Opportunities */}
+                    <Card className="shadow-sm">
+                         <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+                            <div className="space-y-1">
+                                <CardTitle className="text-lg">Upcoming Opportunities</CardTitle>
+                                <CardDescription>Events open for registration</CardDescription>
+                            </div>
+                            <Button variant="ghost" onClick={() => router.get('/join-events')} className="text-primary hover:text-primary/80">
+                                View All <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="divide-y">
+                                {upcomingEvents.length === 0 ? (
+                                    <EmptyState icon={Calendar} message="No upcoming events available." />
+                                ) : (
+                                    upcomingEvents.slice(0, 3).map((event) => {
+                                        const countdown = getCountdown(event.start_date);
+                                        const { status } = getParticipantStatus(event);
+                                        const totalParticipants = event.participants?.filter(p => p.status.toLowerCase() === 'approved' || p.status.toLowerCase() === 'pending_approval').length || 0;
+                                        const slotsLeft = event.capacity ? event.capacity - totalParticipants : null;
+
+                                        return (
+                                            <div
+                                                key={event.id}
+                                                className="flex items-center gap-4 p-4 hover:bg-muted/40 transition-colors cursor-pointer group"
+                                                onClick={() => router.get(`/join-events`)}
+                                            >
+                                                <div className="h-14 w-14 rounded-lg overflow-hidden flex-shrink-0 border bg-muted">
+                                                    {event.image_path ? (
+                                                        <img src={`/storage/${event.image_path}`} alt={event.name} className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        <div className="h-full w-full flex items-center justify-center bg-green-50 text-green-700 border border-green-100 group-hover:bg-green-100 transition-colors">
+                                                            <div className="flex flex-col items-center justify-center">
+                                                                <span className="text-[10px] font-bold uppercase tracking-wide">
+                                                                    {new Date(event.start_date).toLocaleDateString('en-US', { month: 'short' })}
+                                                                </span>
+                                                                <span className="text-xl font-bold leading-none">
+                                                                    {new Date(event.start_date).getDate()}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="font-semibold text-base text-foreground truncate group-hover:text-primary transition-colors">
+                                                        {event.name}
+                                                    </h4>
+                                                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                                                        <span className="flex items-center gap-1">
+                                                            <CalendarDays className="h-3.5 w-3.5" />
+                                                            {new Date(event.start_date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })}
+                                                        </span>
+                                                        <span className="flex items-center gap-1 truncate">
+                                                            <MapPin className="h-3.5 w-3.5" />
+                                                            {event.location}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${countdown.color}`}>
+                                                            {countdown.text}
+                                                        </span>
+                                                        {event.fee && event.fee > 0 && (
+                                                            <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                                                                RM {event.fee}
+                                                            </span>
+                                                        )}
+                                                        {slotsLeft !== null && (
+                                                            <span className="text-[10px] font-medium text-gray-600 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
+                                                                {slotsLeft} {slotsLeft === 1 ? 'slot' : 'slots'} left
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {status && (
+                                                        <div className="mt-2">
+                                                            {status === 'approved' && <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200 shadow-none text-xs">Registered</Badge>}
+                                                            {status === 'pending_approval' && <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200 shadow-none text-xs">Pending Approval</Badge>}
+                                                            {status === 'rejected' && <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200 shadow-none text-xs">Rejected</Badge>}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <ArrowRight className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     {/* My Registered Events */}
                     <Card className="shadow-sm">
                         <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
@@ -398,7 +529,7 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
                                                 </div>
                                                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                                     <span className="flex items-center gap-1">
-                                                        <CalendarDays className="h-3.5 w-3.5" /> 
+                                                        <CalendarDays className="h-3.5 w-3.5" />
                                                         {new Date(event.start_date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })}
                                                     </span>
                                                     <span className="flex items-center gap-1 truncate">
@@ -410,9 +541,9 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
                                     ))}
                                 </div>
                             ) : (
-                                <EmptyState 
-                                    icon={Calendar} 
-                                    message="You haven't registered for any events yet." 
+                                <EmptyState
+                                    icon={Calendar}
+                                    message="You haven't registered for any events yet."
                                     action={<Button variant="link" onClick={() => router.get('/join-events')}>Browse events now</Button>}
                                 />
                             )}
@@ -434,71 +565,13 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} />
-                                    <Tooltip 
+                                    <Tooltip
                                         cursor={{ fill: '#f3f4f6' }}
                                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                     />
                                     <Bar dataKey="events" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={32} />
                                 </BarChart>
                             </ResponsiveContainer>
-                        </CardContent>
-                    </Card>
-
-                    {/* Upcoming Opportunities */}
-                    <Card className="shadow-sm">
-                         <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-                            <div className="space-y-1">
-                                <CardTitle className="text-lg">Upcoming Opportunities</CardTitle>
-                                <CardDescription>Events open for registration</CardDescription>
-                            </div>
-                            <Button variant="ghost" onClick={() => router.get('/join-events')} className="text-primary hover:text-primary/80">
-                                View All <ArrowRight className="ml-2 h-4 w-4" />
-                            </Button>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <div className="divide-y">
-                                {upcomingEvents.length === 0 ? (
-                                    <EmptyState icon={Calendar} message="No upcoming events available." />
-                                ) : (
-                                    upcomingEvents.slice(0, 3).map((event) => {
-                                        const countdown = getCountdown(event.start_date);
-                                        return (
-                                            <div 
-                                                key={event.id} 
-                                                className="flex items-center gap-4 p-4 hover:bg-muted/40 transition-colors cursor-pointer group"
-                                                onClick={() => router.get(`/join-events`)}
-                                            >
-                                                <div className="flex flex-col items-center justify-center w-14 h-14 bg-green-50 rounded-lg text-green-700 border border-green-100 group-hover:bg-green-100 transition-colors">
-                                                    <span className="text-[10px] font-bold uppercase tracking-wide">
-                                                        {new Date(event.start_date).toLocaleDateString('en-US', { month: 'short' })}
-                                                    </span>
-                                                    <span className="text-xl font-bold leading-none">
-                                                        {new Date(event.start_date).getDate()}
-                                                    </span>
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <h4 className="font-semibold text-base text-foreground truncate group-hover:text-primary transition-colors">
-                                                        {event.name}
-                                                    </h4>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${countdown.color}`}>
-                                                            {countdown.text}
-                                                        </span>
-                                                        {event.fee && event.fee > 0 && (
-                                                            <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
-                                                                RM {event.fee}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <ArrowRight className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        );
-                                    })
-                                )}
-                            </div>
                         </CardContent>
                     </Card>
                 </div>
@@ -508,42 +581,101 @@ export default function Dashboard({ upcomingEvents = [], notificationEvents = []
                     
                     {/* Notifications */}
                     <Card className="shadow-sm">
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Bell className="h-5 w-5 text-gray-500" />
-                                Notifications
-                            </CardTitle>
-                            <CardDescription>Latest updates</CardDescription>
+                        <CardHeader className="flex flex-row items-center justify-between pb-4">
+                            <div>
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Bell className="h-5 w-5 text-purple-600" />
+                                    Notifications
+                                </CardTitle>
+                                <CardDescription>Recent updates and alerts</CardDescription>
+                            </div>
+                            {recentNotifications.length > 0 && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => router.visit('/notifications')}
+                                    className="text-xs"
+                                >
+                                    View All
+                                </Button>
+                            )}
                         </CardHeader>
                         <CardContent>
-                             <div className="space-y-0 relative">
-                                {/* Timeline Line */}
-                                <div className="absolute left-5 top-2 bottom-2 w-px bg-gray-200" />
+                            {recentNotifications.length === 0 ? (
+                                <EmptyState icon={Bell} message="No notifications yet" />
+                            ) : (
+                                <div className="space-y-3">
+                                    {recentNotifications.map((notification) => {
+                                        const getNotificationIcon = () => {
+                                            switch (notification.type) {
+                                                case 'event_upcoming': return { icon: Calendar, color: 'text-yellow-600 bg-yellow-50' };
+                                                case 'event_new': return { icon: CalendarDays, color: 'text-blue-600 bg-blue-50' };
+                                                case 'registration_approved': return { icon: CheckCircle, color: 'text-green-600 bg-green-50' };
+                                                case 'registration_rejected': return { icon: Bell, color: 'text-red-600 bg-red-50' };
+                                                case 'ranking_update': return { icon: Award, color: 'text-purple-600 bg-purple-50' };
+                                                case 'registration_pending': return { icon: Clock, color: 'text-orange-600 bg-orange-50' };
+                                                case 'new_registration': return { icon: User, color: 'text-indigo-600 bg-indigo-50' };
+                                                case 'profile_incomplete': return { icon: AlertCircle, color: 'text-amber-600 bg-amber-50' };
+                                                default: return { icon: Bell, color: 'text-gray-600 bg-gray-50' };
+                                            }
+                                        };
 
-                                {notificationEvents.length === 0 ? (
-                                    <EmptyState icon={Bell} message="No new notifications." />
-                                ) : (
-                                    notificationEvents.slice(0, 5).map((event, index) => {
-                                        const countdown = getCountdown(event.start_date);
-                                        // Extract just text color for the timeline text
-                                        const textColorClass = countdown.color.split(' ')[0]; 
-                                        
+                                        const formatTime = (dateString: string) => {
+                                            const date = new Date(dateString);
+                                            const now = new Date();
+                                            const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+                                            if (diffInSeconds < 60) return 'Just now';
+                                            if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+                                            if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+                                            if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+                                            return date.toLocaleDateString();
+                                        };
+
+                                        const { icon: NotifIcon, color } = getNotificationIcon();
+
                                         return (
-                                            <div key={event.id} className="relative flex gap-4 pb-6 last:pb-0 group">
-                                                <div className="relative z-10 w-10 h-10 flex items-center justify-center bg-white rounded-full border border-gray-200 shadow-sm group-hover:border-orange-300 transition-colors">
-                                                    <Calendar className="h-4 w-4 text-orange-500" />
+                                            <div
+                                                key={notification.id}
+                                                className={`flex gap-3 p-3 rounded-lg border transition-all cursor-pointer hover:shadow-sm ${
+                                                    notification.read_at ? 'bg-white' : 'bg-blue-50/50 border-blue-200'
+                                                }`}
+                                                onClick={() => {
+                                                    if (notification.type === 'profile_incomplete') {
+                                                        // Redirect to profile page
+                                                        router.visit(profileEdit().url);
+                                                    } else if (notification.data.event_id) {
+                                                        // For manager notifications, redirect to participant page
+                                                        if (notification.type === 'registration_pending' || notification.type === 'new_registration') {
+                                                            router.visit(`/events/${notification.data.event_id}/participants`);
+                                                        } else {
+                                                            // For member notifications, go to join-events
+                                                            router.visit('/join-events');
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${color}`}>
+                                                    <NotifIcon className="h-5 w-5" />
                                                 </div>
-                                                <div className="flex-1 pt-1">
-                                                    <p className="text-sm font-medium text-gray-900 line-clamp-2 leading-snug">{event.name}</p>
-                                                    <p className={`text-xs mt-1 font-medium ${textColorClass}`}>
-                                                        Starting {countdown.text}
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold text-gray-900 line-clamp-1">
+                                                        {notification.title}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                                                        {notification.message}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                        {formatTime(notification.created_at)}
                                                     </p>
                                                 </div>
+                                                {!notification.read_at && (
+                                                    <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-2"></div>
+                                                )}
                                             </div>
                                         );
-                                    })
-                                )}
-                            </div>
+                                    })}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 

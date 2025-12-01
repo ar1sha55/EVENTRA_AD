@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Event;
 use App\Models\Participant;
+use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -50,7 +52,15 @@ class EventsController extends Controller
 
         $validated['user_id'] = Auth::id();
 
-        Event::create($validated);
+        $event = Event::create($validated);
+
+        // Send notification to all members when a new event is published
+        if ($event->status === 'published') {
+            $members = User::where('role', 'member')->get();
+            foreach ($members as $member) {
+                NotificationService::notifyNewEvent($member, $event);
+            }
+        }
 
         return back()->with('success', 'Event created successfully!');
     }
@@ -92,7 +102,16 @@ class EventsController extends Controller
             $validated['qr_code_path'] = null;
         }
 
+        $oldStatus = $event->status;
         $event->update($validated);
+
+        // Send notification to all members when event changes to published
+        if ($oldStatus !== 'published' && $validated['status'] === 'published') {
+            $members = User::where('role', 'member')->get();
+            foreach ($members as $member) {
+                NotificationService::notifyNewEvent($member, $event);
+            }
+        }
 
         return back()->with('success', 'Event updated successfully!');
     }
@@ -113,6 +132,11 @@ class EventsController extends Controller
     
     public function joinEvents()
     {
+        $user = Auth::user();
+
+        // Check and notify about incomplete profile
+        NotificationService::checkAndNotifyIncompleteProfile($user);
+
         $events = Event::with(['participants'])
             ->where('status', 'published')
             ->where('start_date', '>=', now())
@@ -128,7 +152,7 @@ class EventsController extends Controller
     {
         // 1. Check if event is published
         if ($event->status !== 'published') {
-            return back()->with('error', 'This event is not available for registration.');
+            return redirect()->route('join-events')->with('error', 'This event is not available for registration.');
         }
 
         // 2. Check if user is already registered
@@ -138,7 +162,7 @@ class EventsController extends Controller
 
         // Allow re-registration ONLY if status is 'rejected'
         if ($existingParticipant && $existingParticipant->status !== 'rejected') {
-            return back()->with('error', 'You are already registered for this event.');
+            return redirect()->route('join-events')->with('error', 'You are already registered for this event.');
         }
 
         // 3. Check capacity (Count approved and pending, ignore rejected)
@@ -148,7 +172,7 @@ class EventsController extends Controller
                 ->count();
 
             if ($currentParticipants >= $event->capacity) {
-                return back()->with('error', 'This event is fully booked.');
+                return redirect()->route('join-events')->with('error', 'This event is fully booked.');
             }
         }
 
@@ -162,7 +186,7 @@ class EventsController extends Controller
 
             if ($existingParticipant) {
                 // RE-REGISTRATION (Paid): Update existing record
-                
+
                 // Delete old rejected proof to clean up storage
                 if ($existingParticipant->payment_proof_path && Storage::disk('public')->exists($existingParticipant->payment_proof_path)) {
                     Storage::disk('public')->delete($existingParticipant->payment_proof_path);
@@ -174,17 +198,24 @@ class EventsController extends Controller
                     'registration_date' => now(), // Update date
                 ]);
 
-                return back()->with('success', 'Re-registration submitted! Please wait for approval.');
+                return redirect()->route('join-events')->with('success', 'Re-registration submitted! Please wait for approval.');
             } else {
                 // NEW REGISTRATION (Paid)
-                Participant::create([
+                $participant = Participant::create([
                     'user_id' => Auth::id(),
                     'event_id' => $event->id,
                     'status' => 'pending_approval',
                     'payment_proof_path' => $paymentProofPath,
                     'registration_date' => now(),
                 ]);
-                return back()->with('success', 'Registration submitted! Your payment proof will be verified.');
+
+                // Notify managers about new registration
+                $managers = User::where('role', 'manager')->get();
+                foreach ($managers as $manager) {
+                    NotificationService::notifyManagerPendingRegistration($manager, Auth::user(), $event);
+                }
+
+                return redirect()->route('join-events')->with('success', 'Registration submitted! Your payment proof will be verified.');
             }
         }
 
@@ -195,16 +226,23 @@ class EventsController extends Controller
                 'status' => 'approved',
                 'registration_date' => now(),
             ]);
-             return back()->with('success', 'You have successfully re-registered for the event!');
+             return redirect()->route('join-events')->with('success', 'You have successfully re-registered for the event!');
         } else {
             // NEW REGISTRATION (Free)
-            Participant::create([
+            $participant = Participant::create([
                 'user_id' => Auth::id(),
                 'event_id' => $event->id,
                 'status' => 'approved',
                 'registration_date' => now(),
             ]);
-            return back()->with('success', 'Successfully registered for the event!');
+
+            // Notify managers about new registration
+            $managers = User::where('role', 'manager')->get();
+            foreach ($managers as $manager) {
+                NotificationService::notifyManagerNewRegistration($manager, Auth::user(), $event);
+            }
+
+            return redirect()->route('join-events')->with('success', 'Successfully registered for the event!');
         }
     }
 
