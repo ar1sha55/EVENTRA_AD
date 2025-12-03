@@ -198,6 +198,12 @@ class EventsController extends Controller
                     'registration_date' => now(), // Update date
                 ]);
 
+                // Notify managers about re-registration
+                $managers = User::where('role', 'manager')->orWhere('role', 'admin')->get();
+                foreach ($managers as $manager) {
+                    NotificationService::notifyManagerPendingRegistration($manager, Auth::user(), $event);
+                }
+
                 return redirect()->route('join-events')->with('success', 'Re-registration submitted! Please wait for approval.');
             } else {
                 // NEW REGISTRATION (Paid)
@@ -210,7 +216,7 @@ class EventsController extends Controller
                 ]);
 
                 // Notify managers about new registration
-                $managers = User::where('role', 'manager')->get();
+                $managers = User::where('role', 'manager')->orWhere('role', 'admin')->get();
                 foreach ($managers as $manager) {
                     NotificationService::notifyManagerPendingRegistration($manager, Auth::user(), $event);
                 }
@@ -237,7 +243,7 @@ class EventsController extends Controller
             ]);
 
             // Notify managers about new registration
-            $managers = User::where('role', 'manager')->get();
+            $managers = User::where('role', 'manager')->orWhere('role', 'admin')->get();
             foreach ($managers as $manager) {
                 NotificationService::notifyManagerNewRegistration($manager, Auth::user(), $event);
             }
