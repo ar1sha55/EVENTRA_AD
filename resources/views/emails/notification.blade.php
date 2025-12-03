@@ -51,6 +51,7 @@
         .type-ranking_update { background-color: #fce7f3; color: #831843; }
         .type-registration_pending { background-color: #fed7aa; color: #92400e; }
         .type-new_registration { background-color: #e0e7ff; color: #3730a3; }
+        .type-profile_incomplete { background-color: #fef9c3; color: #854d0e; }
         .message {
             font-size: 16px;
             margin: 20px 0;

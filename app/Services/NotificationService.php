@@ -147,7 +147,7 @@ class NotificationService
                 'rank' => $newRank,
                 'total_hours' => $totalHours,
             ],
-            false // Don't send email for ranking updates
+            true // Send email for ranking updates
         );
     }
 
@@ -320,7 +320,7 @@ class NotificationService
                 'Complete Your Profile',
                 $message,
                 ['missing_fields' => $missingFields],
-                false // Don't send email for profile reminders
+                true // Send email for profile reminders
             );
         }
     }
