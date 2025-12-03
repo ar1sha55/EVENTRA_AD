@@ -10,6 +10,7 @@ use App\Http\Controllers\ManagerDashboardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\MailController;
 use App\Http\Middleware\RoleMiddleware;
 
 Route::get('/', function () {
@@ -69,6 +70,9 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->group(function ()
     Route::get('/manager/manage-members', [TestController::class, 'manageMembers'])->name('manage-members');
     Route::get('/manager/manage-analytics', [TestController::class, 'manageAnalytics'])->name('manage-analytics');
     Route::get('/manager/send-announcement', [TestController::class, 'sendAnnouncement'])->name('send-announcement');
+
+    // --- Email Management ---
+    Route::post('/manager/send-email', [MailController::class, 'sendToMember'])->name('mail.send');
 
     // --- Event Blast Routes ---
     Route::get('/manager/event-blast', [EventBlastController::class, 'index'])->name('event-blast');
