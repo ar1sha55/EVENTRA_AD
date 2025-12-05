@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import {
@@ -188,6 +188,18 @@ export default function ManageParticipants({ event, participants }: ManagePartic
 
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+
+    // Check for status URL parameter and set active tab
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const status = urlParams.get('status');
+
+        if (status && ['all', 'pending', 'approved', 'rejected'].includes(status)) {
+            setActiveTab(status as 'all' | 'pending' | 'approved' | 'rejected');
+            // Clean up URL without reloading
+            window.history.replaceState({}, '', `/events/${event.id}/participants`);
+        }
+    }, [event.id]);
 
     const handleStatusChange = (participantId: number, status: 'approved' | 'rejected') => {
         router.put(`/participants/${participantId}/status`, { status }, {

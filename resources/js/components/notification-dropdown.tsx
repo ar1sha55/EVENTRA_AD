@@ -117,6 +117,8 @@ export function NotificationDropdown() {
       ranking_update: 'text-purple-600',
       registration_pending: 'text-orange-600',
       new_registration: 'text-indigo-600',
+      manager_approved_registration: 'text-green-600',
+      manager_rejected_registration: 'text-red-600',
     };
     return colors[type as keyof typeof colors] || 'text-gray-600';
   };
@@ -130,6 +132,8 @@ export function NotificationDropdown() {
       ranking_update: { label: 'Ranking', color: 'bg-purple-100 text-purple-800' },
       registration_pending: { label: 'Pending', color: 'bg-orange-100 text-orange-800' },
       new_registration: { label: 'New Member', color: 'bg-indigo-100 text-indigo-800' },
+      manager_approved_registration: { label: 'Action Confirmed', color: 'bg-green-100 text-green-800' },
+      manager_rejected_registration: { label: 'Action Confirmed', color: 'bg-red-100 text-red-800' },
     };
     return badges[type as keyof typeof badges] || { label: 'Info', color: 'bg-gray-100 text-gray-800' };
   };
@@ -143,11 +147,29 @@ export function NotificationDropdown() {
     if (notification.data.event_id) {
       setIsOpen(false);
 
-      // For manager notifications (pending/new registrations), go to participant page
-      if (notification.type === 'registration_pending' || notification.type === 'new_registration') {
-        router.visit(`/events/${notification.data.event_id}/participants`);
-      } else {
-        // For member notifications, go to join-events page
+      // For manager-specific action confirmations, go to participant page with status filter
+      if (notification.type === 'manager_approved_registration') {
+        router.visit(`/events/${notification.data.event_id}/participants?status=approved`);
+      }
+      else if (notification.type === 'manager_rejected_registration') {
+        router.visit(`/events/${notification.data.event_id}/participants?status=rejected`);
+      }
+      // For pending/new registration notifications, go to pending section
+      else if (
+        notification.type === 'registration_pending' ||
+        notification.type === 'new_registration'
+      ) {
+        router.visit(`/events/${notification.data.event_id}/participants?status=pending`);
+      }
+      // For member approval/rejection notifications, go to join-events with event dialog
+      else if (
+        notification.type === 'registration_approved' ||
+        notification.type === 'registration_rejected'
+      ) {
+        router.visit(`/join-events?event_id=${notification.data.event_id}`);
+      }
+      // For other event notifications, go to join-events page
+      else {
         router.visit('/join-events');
       }
     }

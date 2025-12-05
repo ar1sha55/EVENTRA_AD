@@ -309,7 +309,7 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Dashboard" />
 
-      <div className="py-8 px-4 sm:px-6 lg:px-8 bg-gray-50/50 min-h-screen">
+      <div className="py-8 px-4 sm:px-6 lg:px-8 bg-gray-50/50">
         <div className="max-w-7xl mx-auto space-y-8">
 
             {/* 1. Header Section */}
@@ -425,7 +425,7 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                                             <div
                                                 key={event.id}
                                                 className="flex items-center gap-4 p-4 hover:bg-muted/40 transition-colors cursor-pointer group"
-                                                onClick={() => router.get(`/join-events`)}
+                                                onClick={() => router.get(`/join-events?event_id=${event.id}`)}
                                             >
                                                 <div className="h-14 w-14 rounded-lg overflow-hidden flex-shrink-0 border bg-muted">
                                                     {event.image_path ? (
@@ -506,7 +506,11 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                             {registeredEvents.length > 0 ? (
                                 <div className="divide-y">
                                     {registeredEvents.map((event) => (
-                                        <div key={event.id} className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors group">
+                                        <div
+                                            key={event.id}
+                                            className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors group cursor-pointer"
+                                            onClick={() => router.get(`/join-events?event_id=${event.id}`)}
+                                        >
                                             <div className="h-14 w-14 rounded-lg overflow-hidden flex-shrink-0 border bg-muted">
                                                 {event.image_path ? (
                                                     <img src={`/storage/${event.image_path}`} alt={event.name} className="h-full w-full object-cover" />
@@ -680,7 +684,7 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                     </Card>
 
                     {/* Leaderboard */}
-                    <Card className="shadow-sm h-full">
+                    <Card className="shadow-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-lg">
                                 <Award className="h-5 w-5 text-yellow-500" />

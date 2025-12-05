@@ -22,7 +22,7 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #ef6f0dff 0%, #764ba2 100%);
             color: white;
             padding: 30px 20px;
             text-align: center;
@@ -59,7 +59,7 @@
         }
         .event-info {
             background-color: #f9fafb;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid #764ba2;
             padding: 15px;
             margin: 20px 0;
             border-radius: 4px;
@@ -69,7 +69,7 @@
             font-size: 14px;
         }
         .event-info strong {
-            color: #667eea;
+            color: #764ba2;
         }
         .footer {
             background-color: #f9fafb;
@@ -82,7 +82,7 @@
         .button {
             display: inline-block;
             padding: 12px 24px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #ef6f0dff 0%, #764ba2 100%);
             color: white;
             text-decoration: none;
             border-radius: 6px;
@@ -121,8 +121,8 @@
             @endif
 
             @if(isset($notification->data['event_id']))
-            <a href="{{ config('app.url') }}/events/{{ $notification->data['event_id'] }}" class="button">
-                View Event Details
+            <a href="{{ config('app.url') }}:8000/join-events" class="button" style="color: white; text-decoration: none;">
+                View Events
             </a>
             @endif
         </div>

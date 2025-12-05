@@ -32,6 +32,8 @@ class Notification extends Model
     const TYPE_REGISTRATION_PENDING = 'registration_pending';
     const TYPE_NEW_REGISTRATION = 'new_registration';
     const TYPE_PROFILE_INCOMPLETE = 'profile_incomplete';
+    const TYPE_MANAGER_APPROVED_REGISTRATION = 'manager_approved_registration';
+    const TYPE_MANAGER_REJECTED_REGISTRATION = 'manager_rejected_registration';
 
     /**
      * Relationship with User

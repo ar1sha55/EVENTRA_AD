@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, usePage, router } from '@inertiajs/react';
@@ -75,10 +75,28 @@ export default function JoinEvents() {
     
     // State for unregistration confirmation
     const [participantToUnregister, setParticipantToUnregister] = useState<number | null>(null);
-    
+
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const publishedEvents = events.filter((event: Event) => event.status === 'published');
+
+    // Check for event_id URL parameter and open event dialog automatically
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventId = urlParams.get('event_id');
+
+        if (eventId) {
+            const event = events.find((e) => e.id === parseInt(eventId));
+            if (event) {
+                // Defer state update to avoid cascading renders
+                setTimeout(() => {
+                    setSelectedEvent(event);
+                }, 0);
+                // Clean up URL without reloading
+                window.history.replaceState({}, '', '/join-events');
+            }
+        }
+    }, [events]);
 
     const handleCardClick = (event: Event, e: React.MouseEvent) => {
         if ((e.target as HTMLElement).closest('button')) {

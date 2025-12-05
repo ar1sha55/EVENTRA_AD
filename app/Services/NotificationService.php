@@ -213,6 +213,36 @@ class NotificationService
     }
 
     /**
+     * Notify manager about their action (approval/rejection) confirmation
+     */
+    public static function notifyManagerActionConfirmation($manager, User $user, $event, string $action): void
+    {
+        $type = $action === 'approved'
+            ? Notification::TYPE_MANAGER_APPROVED_REGISTRATION
+            : Notification::TYPE_MANAGER_REJECTED_REGISTRATION;
+
+        $title = $action === 'approved'
+            ? 'Registration Approved'
+            : 'Registration Rejected';
+
+        $message = "You have {$action} {$user->name}'s registration for '{$event->name}'.";
+
+        self::create(
+            $manager,
+            $type,
+            $title,
+            $message,
+            [
+                'event_id' => $event->id,
+                'event_name' => $event->name,
+                'user_id' => $user->id,
+                'user_name' => $user->name,
+                'action' => $action,
+            ]
+        );
+    }
+
+    /**
      * Mark notification as read
      */
     public static function markAsRead(int $notificationId, int $userId): bool

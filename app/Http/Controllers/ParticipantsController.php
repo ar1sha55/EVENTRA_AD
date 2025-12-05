@@ -31,8 +31,12 @@ class ParticipantsController extends Controller
 
             if ($newStatus === 'approved') {
                 NotificationService::notifyRegistrationApproved($user, $event);
+                // Notify manager that they approved the registration
+                NotificationService::notifyManagerActionConfirmation(Auth::user(), $user, $event, 'approved');
             } elseif ($newStatus === 'rejected') {
                 NotificationService::notifyRegistrationRejected($user, $event);
+                // Notify manager that they rejected the registration
+                NotificationService::notifyManagerActionConfirmation(Auth::user(), $user, $event, 'rejected');
             }
         }
 

@@ -26,6 +26,10 @@ interface Notification {
     start_date?: string;
     user_id?: number;
     user_name?: string;
+    handled?: boolean;
+    handled_status?: string;
+    handled_at?: string;
+    handled_by?: string;
   };
   read_at: string | null;
   created_at: string;
@@ -60,6 +64,8 @@ export default function Notifications({ notifications }: NotificationsProps) {
       case 'ranking_update': return { icon: Award, color: 'text-purple-600 bg-purple-50 border-purple-200' };
       case 'registration_pending': return { icon: Clock, color: 'text-orange-600 bg-orange-50 border-orange-200' };
       case 'new_registration': return { icon: User, color: 'text-indigo-600 bg-indigo-50 border-indigo-200' };
+      case 'manager_approved_registration': return { icon: CheckCircle, color: 'text-green-600 bg-green-50 border-green-200' };
+      case 'manager_rejected_registration': return { icon: Bell, color: 'text-red-600 bg-red-50 border-red-200' };
       default: return { icon: Bell, color: 'text-gray-600 bg-gray-50 border-gray-200' };
     }
   };
@@ -73,6 +79,8 @@ export default function Notifications({ notifications }: NotificationsProps) {
       ranking_update: { label: 'Ranking', color: 'bg-purple-100 text-purple-800 border-purple-200' },
       registration_pending: { label: 'Pending', color: 'bg-orange-100 text-orange-800 border-orange-200' },
       new_registration: { label: 'New Member', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+      manager_approved_registration: { label: 'Action Confirmed', color: 'bg-green-100 text-green-800 border-green-200' },
+      manager_rejected_registration: { label: 'Action Confirmed', color: 'bg-red-100 text-red-800 border-red-200' },
     };
     return badges[type as keyof typeof badges] || { label: 'Info', color: 'bg-gray-100 text-gray-800 border-gray-200' };
   };
@@ -95,11 +103,29 @@ export default function Notifications({ notifications }: NotificationsProps) {
     }
 
     if (notification.data.event_id) {
-      // For manager notifications, redirect to participant page
-      if (notification.type === 'registration_pending' || notification.type === 'new_registration') {
-        router.visit(`/events/${notification.data.event_id}/participants`);
-      } else {
-        // For member notifications, go to join-events
+      // For manager-specific action confirmations, redirect to participant page with status filter
+      if (notification.type === 'manager_approved_registration') {
+        router.visit(`/events/${notification.data.event_id}/participants?status=approved`);
+      }
+      else if (notification.type === 'manager_rejected_registration') {
+        router.visit(`/events/${notification.data.event_id}/participants?status=rejected`);
+      }
+      // For pending/new registration notifications, go to pending section
+      else if (
+        notification.type === 'registration_pending' ||
+        notification.type === 'new_registration'
+      ) {
+        router.visit(`/events/${notification.data.event_id}/participants?status=pending`);
+      }
+      // For member approval/rejection notifications, go to join-events with event dialog
+      else if (
+        notification.type === 'registration_approved' ||
+        notification.type === 'registration_rejected'
+      ) {
+        router.visit(`/join-events?event_id=${notification.data.event_id}`);
+      }
+      // For other event notifications, go to join-events
+      else {
         router.visit('/join-events');
       }
     }
@@ -210,6 +236,18 @@ export default function Notifications({ notifications }: NotificationsProps) {
                             {!notification.read_at && (
                               <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                             )}
+                            {notification.data.handled && (
+                              <Badge
+                                variant="outline"
+                                className={`text-xs font-medium border ${
+                                  notification.data.handled_status === 'approved'
+                                    ? 'bg-green-100 text-green-800 border-green-200'
+                                    : 'bg-red-100 text-red-800 border-red-200'
+                                }`}
+                              >
+                                {notification.data.handled_status === 'approved' ? '✓ Approved' : '✗ Rejected'}
+                              </Badge>
+                            )}
                           </div>
 
                           <h3 className="font-semibold text-base mb-1">{notification.title}</h3>
@@ -220,6 +258,12 @@ export default function Notifications({ notifications }: NotificationsProps) {
                               <Calendar className="h-3 w-3" />
                               <span>{notification.data.event_name}</span>
                             </div>
+                          )}
+
+                          {notification.data.handled && (
+                            <p className="text-xs text-green-600 mt-2">
+                              Handled by {notification.data.handled_by} • {formatTime(notification.data.handled_at || '')}
+                            </p>
                           )}
 
                           <p className="text-xs text-muted-foreground mt-2">
