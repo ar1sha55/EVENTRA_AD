@@ -122,10 +122,18 @@
 
             @if(isset($notification->data['event_id']))
                 @php
-                    // Determine the correct URL based on notification type
+                    // Determine the correct URL based on notification type and title
                     $url = config('app.url') . ':8000';
 
-                    // Manager notifications - go to participants page
+                    // Detect if this is a manager notification by checking title
+                    $isManagerNotification = in_array($notification->title, [
+                        'Event Created Successfully',
+                        'Event Tomorrow - Action Required',
+                        'Event Starting Today!', // Manager version has different message
+                    ]) || str_contains($notification->message, 'Review participant registrations')
+                       || str_contains($notification->message, 'Members have been notified');
+
+                    // Manager notifications for participants - go to participants page
                     if ($notification->type === 'new_registration') {
                         $url .= '/events/' . $notification->data['event_id'] . '/participants';
                     } elseif ($notification->type === 'registration_pending') {
@@ -134,8 +142,13 @@
                         $url .= '/events/' . $notification->data['event_id'] . '/participants?status=approved';
                     } elseif ($notification->type === 'manager_rejected_registration') {
                         $url .= '/events/' . $notification->data['event_id'] . '/participants?status=rejected';
-                    } else {
-                        // Member notifications - go to join-events with event dialog
+                    }
+                    // Manager event notifications - go to manage events with modal
+                    elseif (($notification->type === 'event_new' || $notification->type === 'event_upcoming') && $isManagerNotification) {
+                        $url .= '/events?view_event_id=' . $notification->data['event_id'];
+                    }
+                    // Member notifications - go to join-events with event dialog
+                    else {
                         $url .= '/join-events?event_id=' . $notification->data['event_id'];
                     }
                 @endphp

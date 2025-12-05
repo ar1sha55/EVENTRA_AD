@@ -60,6 +60,9 @@ class EventsController extends Controller
             foreach ($members as $member) {
                 NotificationService::notifyNewEvent($member, $event);
             }
+
+            // Notify the manager who created the event
+            NotificationService::notifyManagerEventCreated(Auth::user(), $event);
         }
 
         return back()->with('success', 'Event created successfully!');
@@ -111,6 +114,9 @@ class EventsController extends Controller
             foreach ($members as $member) {
                 NotificationService::notifyNewEvent($member, $event);
             }
+
+            // Notify the manager who published the event
+            NotificationService::notifyManagerEventCreated(Auth::user(), $event);
         }
 
         return back()->with('success', 'Event updated successfully!');

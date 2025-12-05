@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Bell, Calendar, CalendarDays, CheckCircle, Clock, Award, User, Trash2, Check, MailX } from "lucide-react";
+import { Bell, Calendar, CalendarDays, CheckCircle, Clock, Award, User, Trash2, Check, MailX, AlertCircle } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import axios from 'axios';
 import type { BreadcrumbItem } from '@/types';
+import { edit as profileEdit } from '@/routes/profile';
 
 const breadcrumbs: BreadcrumbItem[] = [
   {
@@ -53,6 +54,8 @@ interface NotificationsProps {
 }
 
 export default function Notifications({ notifications }: NotificationsProps) {
+  const { props } = usePage();
+  const currentUser = (props as any).auth?.user;
   const [localNotifications, setLocalNotifications] = useState(notifications.data);
 
   const getNotificationIcon = (type: string) => {
@@ -66,6 +69,7 @@ export default function Notifications({ notifications }: NotificationsProps) {
       case 'new_registration': return { icon: User, color: 'text-indigo-600 bg-indigo-50 border-indigo-200' };
       case 'manager_approved_registration': return { icon: CheckCircle, color: 'text-green-600 bg-green-50 border-green-200' };
       case 'manager_rejected_registration': return { icon: Bell, color: 'text-red-600 bg-red-50 border-red-200' };
+      case 'profile_incomplete': return { icon: AlertCircle, color: 'text-amber-600 bg-amber-50 border-amber-200' };
       default: return { icon: Bell, color: 'text-gray-600 bg-gray-50 border-gray-200' };
     }
   };
@@ -81,6 +85,7 @@ export default function Notifications({ notifications }: NotificationsProps) {
       new_registration: { label: 'New Member', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
       manager_approved_registration: { label: 'Action Confirmed', color: 'bg-green-100 text-green-800 border-green-200' },
       manager_rejected_registration: { label: 'Action Confirmed', color: 'bg-red-100 text-red-800 border-red-200' },
+      profile_incomplete: { label: 'Profile', color: 'bg-amber-100 text-amber-800 border-amber-200' },
     };
     return badges[type as keyof typeof badges] || { label: 'Info', color: 'bg-gray-100 text-gray-800 border-gray-200' };
   };
@@ -97,9 +102,31 @@ export default function Notifications({ notifications }: NotificationsProps) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const getEventCountdown = (startDate: string) => {
+    const now = new Date();
+    const eventDate = new Date(startDate);
+    const diffTime = eventDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return null; // Event has passed
+    if (diffDays === 0) return { text: 'Today!', color: 'bg-red-100 text-red-800 border-red-200' };
+    if (diffDays === 1) return { text: '1 day left', color: 'bg-orange-100 text-orange-800 border-orange-200' };
+    if (diffDays === 2) return { text: '2 days left', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
+    if (diffDays === 3) return { text: '3 days left', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
+    if (diffDays <= 7) return { text: `${diffDays} days left`, color: 'bg-blue-100 text-blue-800 border-blue-200' };
+    if (diffDays <= 14) return { text: `${diffDays} days left`, color: 'bg-slate-100 text-slate-800 border-slate-200' };
+    return null; // Don't show countdown if more than 2 weeks away
+  };
+
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.read_at) {
       markAsRead(notification.id);
+    }
+
+    // Handle profile incomplete notification
+    if (notification.type === 'profile_incomplete') {
+      router.visit(profileEdit().url);
+      return;
     }
 
     if (notification.data.event_id) {
@@ -125,9 +152,15 @@ export default function Notifications({ notifications }: NotificationsProps) {
       ) {
         router.visit(`/join-events?event_id=${notification.data.event_id}`);
       }
-      // For new event notifications, go to join-events with event dialog
-      else if (notification.type === 'event_new') {
-        router.visit(`/join-events?event_id=${notification.data.event_id}`);
+      // For new event and upcoming event notifications
+      else if (notification.type === 'event_new' || notification.type === 'event_upcoming') {
+        // Managers go to manage events page with modal
+        if (currentUser?.role === 'manager' || currentUser?.role === 'admin') {
+          router.visit(`/events?view_event_id=${notification.data.event_id}`);
+        } else {
+          // Members go to join-events with event dialog
+          router.visit(`/join-events?event_id=${notification.data.event_id}`);
+        }
       }
       // For other event notifications, go to join-events
       else {
@@ -241,6 +274,14 @@ export default function Notifications({ notifications }: NotificationsProps) {
                             {!notification.read_at && (
                               <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                             )}
+                            {notification.type === 'event_upcoming' && notification.data.start_date && (() => {
+                              const countdown = getEventCountdown(notification.data.start_date);
+                              return countdown ? (
+                                <Badge variant="outline" className={`text-xs font-semibold border ${countdown.color}`}>
+                                  {countdown.text}
+                                </Badge>
+                              ) : null;
+                            })()}
                             {notification.data.handled && (
                               <Badge
                                 variant="outline"

@@ -54,23 +54,38 @@ class NotificationService
     }
 
     /**
-     * Notify user about upcoming event (3 days before)
+     * Notify user about upcoming event (7, 3, 2, 1 days before)
      */
     public static function notifyUpcomingEvent(User $user, $event): void
     {
         $daysUntil = now()->diffInDays($event->start_date);
 
+        // Create more specific messages based on days until event
+        $title = match(true) {
+            $daysUntil === 0 => 'Event Starting Today!',
+            $daysUntil === 1 => 'Event Tomorrow!',
+            $daysUntil <= 3 => 'Event Starting Soon',
+            default => 'Upcoming Event Reminder'
+        };
+
+        $dayText = $daysUntil === 1 ? 'day' : 'days';
+        $message = match(true) {
+            $daysUntil === 0 => "'{$event->name}' is starting today! Don't forget to attend.",
+            $daysUntil === 1 => "'{$event->name}' is starting tomorrow on " . date('F j, Y', strtotime($event->start_date)) . ". Get ready!",
+            default => "The event '{$event->name}' is starting in {$daysUntil} {$dayText} on " . date('F j, Y', strtotime($event->start_date)) . "."
+        };
+
         self::create(
             $user,
             Notification::TYPE_EVENT_UPCOMING,
-            'Upcoming Event Reminder',
-            "The event '{$event->name}' is starting in {$daysUntil} days on " .
-            date('F j, Y', strtotime($event->start_date)),
+            $title,
+            $message,
             [
                 'event_id' => $event->id,
                 'event_name' => $event->name,
                 'start_date' => $event->start_date,
-            ]
+            ],
+            true // Send email notification
         );
     }
 
@@ -84,6 +99,24 @@ class NotificationService
             Notification::TYPE_EVENT_NEW,
             'New Event Published',
             "A new event '{$event->name}' has been published. Register now!",
+            [
+                'event_id' => $event->id,
+                'event_name' => $event->name,
+                'start_date' => $event->start_date,
+            ]
+        );
+    }
+
+    /**
+     * Notify manager about successful event creation
+     */
+    public static function notifyManagerEventCreated(User $manager, $event): void
+    {
+        self::create(
+            $manager,
+            Notification::TYPE_EVENT_NEW,
+            'Event Created Successfully',
+            "Your event '{$event->name}' has been created and published successfully. Members have been notified.",
             [
                 'event_id' => $event->id,
                 'event_name' => $event->name,
@@ -190,25 +223,49 @@ class NotificationService
     }
 
     /**
+     * Notify a single manager about upcoming event
+     */
+    public static function notifyManagerUpcomingEvent(User $manager, $event): void
+    {
+        $daysUntil = now()->diffInDays($event->start_date);
+
+        $title = match(true) {
+            $daysUntil === 0 => 'Event Starting Today!',
+            $daysUntil === 1 => 'Event Tomorrow - Action Required',
+            $daysUntil <= 3 => 'Event Starting Soon',
+            default => 'Upcoming Event Reminder'
+        };
+
+        $dayText = $daysUntil === 1 ? 'day' : 'days';
+        $message = match(true) {
+            $daysUntil === 0 => "The event '{$event->name}' is starting today! Ensure all preparations are complete.",
+            $daysUntil === 1 => "The event '{$event->name}' is starting tomorrow. Review participant registrations and final preparations.",
+            default => "The event '{$event->name}' is starting in {$daysUntil} {$dayText}. Review participant registrations and preparations."
+        };
+
+        self::create(
+            $manager,
+            Notification::TYPE_EVENT_UPCOMING,
+            $title,
+            $message,
+            [
+                'event_id' => $event->id,
+                'event_name' => $event->name,
+                'start_date' => $event->start_date,
+            ],
+            true // Send email notification
+        );
+    }
+
+    /**
      * Notify all managers about upcoming event
      */
     public static function notifyManagersUpcomingEvent($event): void
     {
         $managers = User::where('role', 'manager')->get();
-        $daysUntil = now()->diffInDays($event->start_date);
 
         foreach ($managers as $manager) {
-            self::create(
-                $manager,
-                Notification::TYPE_EVENT_UPCOMING,
-                'Upcoming Event Reminder',
-                "The event '{$event->name}' is starting in {$daysUntil} days. Don't forget to review participant registrations.",
-                [
-                    'event_id' => $event->id,
-                    'event_name' => $event->name,
-                    'start_date' => $event->start_date,
-                ]
-            );
+            self::notifyManagerUpcomingEvent($manager, $event);
         }
     }
 

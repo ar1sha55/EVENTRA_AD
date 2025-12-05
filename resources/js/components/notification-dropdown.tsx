@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Check, CheckCheck, X, Trash2, MailX } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, MailX, AlertCircle, Calendar, CalendarDays, CheckCircle, Clock, Award, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -8,7 +8,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import axios from 'axios';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
+import { edit as profileEdit } from '@/routes/profile';
 
 interface Notification {
   id: number;
@@ -27,6 +28,8 @@ interface Notification {
 }
 
 export function NotificationDropdown() {
+  const { props } = usePage();
+  const currentUser = (props as any).auth?.user;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -109,18 +112,19 @@ export function NotificationDropdown() {
   };
 
   const getNotificationIcon = (type: string) => {
-    const colors = {
-      event_upcoming: 'text-yellow-600',
-      event_new: 'text-blue-600',
-      registration_approved: 'text-green-600',
-      registration_rejected: 'text-red-600',
-      ranking_update: 'text-purple-600',
-      registration_pending: 'text-orange-600',
-      new_registration: 'text-indigo-600',
-      manager_approved_registration: 'text-green-600',
-      manager_rejected_registration: 'text-red-600',
-    };
-    return colors[type as keyof typeof colors] || 'text-gray-600';
+    switch (type) {
+      case 'event_upcoming': return { icon: Calendar, color: 'text-yellow-600' };
+      case 'event_new': return { icon: CalendarDays, color: 'text-blue-600' };
+      case 'registration_approved': return { icon: CheckCircle, color: 'text-green-600' };
+      case 'registration_rejected': return { icon: Bell, color: 'text-red-600' };
+      case 'ranking_update': return { icon: Award, color: 'text-purple-600' };
+      case 'registration_pending': return { icon: Clock, color: 'text-orange-600' };
+      case 'new_registration': return { icon: User, color: 'text-indigo-600' };
+      case 'manager_approved_registration': return { icon: CheckCircle, color: 'text-green-600' };
+      case 'manager_rejected_registration': return { icon: Bell, color: 'text-red-600' };
+      case 'profile_incomplete': return { icon: AlertCircle, color: 'text-amber-600' };
+      default: return { icon: Bell, color: 'text-gray-600' };
+    }
   };
 
   const getNotificationBadge = (type: string) => {
@@ -134,6 +138,7 @@ export function NotificationDropdown() {
       new_registration: { label: 'New Member', color: 'bg-indigo-100 text-indigo-800' },
       manager_approved_registration: { label: 'Action Confirmed', color: 'bg-green-100 text-green-800' },
       manager_rejected_registration: { label: 'Action Confirmed', color: 'bg-red-100 text-red-800' },
+      profile_incomplete: { label: 'Profile', color: 'bg-amber-100 text-amber-800' },
     };
     return badges[type as keyof typeof badges] || { label: 'Info', color: 'bg-gray-100 text-gray-800' };
   };
@@ -141,6 +146,13 @@ export function NotificationDropdown() {
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.read_at) {
       markAsRead(notification.id);
+    }
+
+    // Handle profile incomplete notification
+    if (notification.type === 'profile_incomplete') {
+      setIsOpen(false);
+      router.visit(profileEdit().url);
+      return;
     }
 
     // Navigate to relevant page based on notification type
@@ -169,9 +181,15 @@ export function NotificationDropdown() {
       ) {
         router.visit(`/join-events?event_id=${notification.data.event_id}`);
       }
-      // For new event notifications, go to join-events with event dialog
-      else if (notification.type === 'event_new') {
-        router.visit(`/join-events?event_id=${notification.data.event_id}`);
+      // For new event and upcoming event notifications
+      else if (notification.type === 'event_new' || notification.type === 'event_upcoming') {
+        // Managers go to manage events page with modal
+        if (currentUser?.role === 'manager' || currentUser?.role === 'admin') {
+          router.visit(`/events?view_event_id=${notification.data.event_id}`);
+        } else {
+          // Members go to join-events with event dialog
+          router.visit(`/join-events?event_id=${notification.data.event_id}`);
+        }
       }
       // For other event notifications, go to join-events page
       else {
@@ -190,6 +208,22 @@ export function NotificationDropdown() {
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
     if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
     return date.toLocaleDateString();
+  };
+
+  const getEventCountdown = (startDate: string) => {
+    const now = new Date();
+    const eventDate = new Date(startDate);
+    const diffTime = eventDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return null; // Event has passed
+    if (diffDays === 0) return { text: 'Today!', color: 'bg-red-100 text-red-800' };
+    if (diffDays === 1) return { text: '1 day left', color: 'bg-orange-100 text-orange-800' };
+    if (diffDays === 2) return { text: '2 days left', color: 'bg-yellow-100 text-yellow-800' };
+    if (diffDays === 3) return { text: '3 days left', color: 'bg-yellow-100 text-yellow-800' };
+    if (diffDays <= 7) return { text: `${diffDays} days left`, color: 'bg-blue-100 text-blue-800' };
+    if (diffDays <= 14) return { text: `${diffDays} days left`, color: 'bg-slate-100 text-slate-800' };
+    return null; // Don't show countdown if more than 2 weeks away
   };
 
   return (
@@ -230,6 +264,7 @@ export function NotificationDropdown() {
             <div className="divide-y">
               {notifications.map((notification) => {
                 const badge = getNotificationBadge(notification.type);
+                const { icon: NotifIcon, color } = getNotificationIcon(notification.type);
                 return (
                   <div
                     key={notification.id}
@@ -239,8 +274,8 @@ export function NotificationDropdown() {
                     onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="flex items-start gap-3">
-                      <div className={`mt-1 ${getNotificationIcon(notification.type)}`}>
-                        <Bell className="h-5 w-5" />
+                      <div className={`mt-1 ${color}`}>
+                        <NotifIcon className="h-5 w-5" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -250,6 +285,14 @@ export function NotificationDropdown() {
                           {!notification.read_at && (
                             <div className="h-2 w-2 rounded-full bg-blue-500"></div>
                           )}
+                          {notification.type === 'event_upcoming' && notification.data.start_date && (() => {
+                            const countdown = getEventCountdown(notification.data.start_date);
+                            return countdown ? (
+                              <Badge className={`text-xs font-semibold ${countdown.color}`}>
+                                {countdown.text}
+                              </Badge>
+                            ) : null;
+                          })()}
                         </div>
                         <p className="font-medium text-sm mb-1">{notification.title}</p>
                         <p className="text-xs text-muted-foreground line-clamp-2">
