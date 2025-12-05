@@ -110,18 +110,23 @@ export default function Notifications({ notifications }: NotificationsProps) {
       else if (notification.type === 'manager_rejected_registration') {
         router.visit(`/events/${notification.data.event_id}/participants?status=rejected`);
       }
-      // For pending/new registration notifications, go to pending section
-      else if (
-        notification.type === 'registration_pending' ||
-        notification.type === 'new_registration'
-      ) {
+      // For pending registration notifications, go to pending section
+      else if (notification.type === 'registration_pending') {
         router.visit(`/events/${notification.data.event_id}/participants?status=pending`);
+      }
+      // For new registration notifications, go to all participants
+      else if (notification.type === 'new_registration') {
+        router.visit(`/events/${notification.data.event_id}/participants`);
       }
       // For member approval/rejection notifications, go to join-events with event dialog
       else if (
         notification.type === 'registration_approved' ||
         notification.type === 'registration_rejected'
       ) {
+        router.visit(`/join-events?event_id=${notification.data.event_id}`);
+      }
+      // For new event notifications, go to join-events with event dialog
+      else if (notification.type === 'event_new') {
         router.visit(`/join-events?event_id=${notification.data.event_id}`);
       }
       // For other event notifications, go to join-events

@@ -232,6 +232,16 @@ class EventsController extends Controller
                 'status' => 'approved',
                 'registration_date' => now(),
             ]);
+
+            // Notify member about successful re-registration
+            NotificationService::notifyRegistrationApproved(Auth::user(), $event);
+
+            // Notify managers about re-registration
+            $managers = User::where('role', 'manager')->orWhere('role', 'admin')->get();
+            foreach ($managers as $manager) {
+                NotificationService::notifyManagerNewRegistration($manager, Auth::user(), $event);
+            }
+
              return redirect()->route('join-events')->with('success', 'You have successfully re-registered for the event!');
         } else {
             // NEW REGISTRATION (Free)
@@ -241,6 +251,9 @@ class EventsController extends Controller
                 'status' => 'approved',
                 'registration_date' => now(),
             ]);
+
+            // Notify member about successful registration
+            NotificationService::notifyRegistrationApproved(Auth::user(), $event);
 
             // Notify managers about new registration
             $managers = User::where('role', 'manager')->orWhere('role', 'admin')->get();

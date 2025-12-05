@@ -187,7 +187,7 @@ export default function ManageParticipants({ event, participants }: ManagePartic
     const [participantToView, setParticipantToView] = useState<Participant | null>(null);
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+    const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
     // Check for status URL parameter and set active tab
     useEffect(() => {

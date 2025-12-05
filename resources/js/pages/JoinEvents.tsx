@@ -330,7 +330,7 @@ export default function JoinEvents() {
                                             Details
                                         </Button>
                                         
-                                        {/* FIXED: Changed handleUnregister to confirmUnregister */}
+                                        {/*Changed handleUnregister to confirmUnregister */}
                                         {status === 'approved' || status === 'pending_approval' ? (
                                             <Button
                                                 variant='destructive'

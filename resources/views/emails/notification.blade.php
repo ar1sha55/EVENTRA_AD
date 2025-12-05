@@ -121,9 +121,31 @@
             @endif
 
             @if(isset($notification->data['event_id']))
-            <a href="{{ config('app.url') }}:8000/join-events" class="button" style="color: white; text-decoration: none;">
-                View Events
-            </a>
+                @php
+                    // Determine the correct URL based on notification type
+                    $url = config('app.url') . ':8000';
+
+                    // Manager notifications - go to participants page
+                    if ($notification->type === 'new_registration') {
+                        $url .= '/events/' . $notification->data['event_id'] . '/participants';
+                    } elseif ($notification->type === 'registration_pending') {
+                        $url .= '/events/' . $notification->data['event_id'] . '/participants?status=pending';
+                    } elseif ($notification->type === 'manager_approved_registration') {
+                        $url .= '/events/' . $notification->data['event_id'] . '/participants?status=approved';
+                    } elseif ($notification->type === 'manager_rejected_registration') {
+                        $url .= '/events/' . $notification->data['event_id'] . '/participants?status=rejected';
+                    } else {
+                        // Member notifications - go to join-events with event dialog
+                        $url .= '/join-events?event_id=' . $notification->data['event_id'];
+                    }
+                @endphp
+                <a href="{{ $url }}" class="button" style="color: white; text-decoration: none;">
+                    @if(in_array($notification->type, ['registration_pending', 'new_registration', 'manager_approved_registration', 'manager_rejected_registration']))
+                        View Participants
+                    @else
+                        View Event Details
+                    @endif
+                </a>
             @endif
         </div>
 
