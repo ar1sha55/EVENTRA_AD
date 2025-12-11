@@ -353,4 +353,176 @@ class ManagerDashboardController extends Controller
 
         return back()->with('success', "Broadcast sent to {$participants->count()} participants!");
     }
+
+    /**
+     * Get past events with analytics data for the analytics page
+     */
+    public function getPastEventsAnalytics()
+    {
+        try {
+            $pastEvents = Event::where('end_date', '<', now())
+                ->with(['documentation' => function($query) {
+                    $query->orderBy('sort_order')->orderBy('created_at', 'desc');
+                }])
+                ->withCount([
+                    'participants',
+                    'participants as approved_participants_count' => function ($query) {
+                        $query->where('status', 'APPROVED');
+                    },
+                    'documentation as photos_count' => function ($query) {
+                        $query->where('type', 'photo');
+                    },
+                    'documentation as documents_count' => function ($query) {
+                        $query->where('type', 'document');
+                    },
+                ])
+                ->orderBy('end_date', 'desc')
+                ->get()
+                ->map(function ($event) {
+                    // Calculate attendance rate
+                    $attendanceRate = $event->capacity > 0
+                        ? round(($event->approved_participants_count / $event->capacity) * 100, 2)
+                        : 0;
+
+                    // Calculate total volunteer hours
+                    $totalHours = 0;
+                    if ($event->start_date && $event->end_date) {
+                        $eventDuration = $event->start_date->diffInHours($event->end_date);
+                        $totalHours = $eventDuration * $event->approved_participants_count;
+                    }
+
+                    // Calculate revenue
+                    $revenue = $event->fee ? ($event->fee * $event->approved_participants_count) : 0;
+
+                    return [
+                        'id' => $event->id,
+                        'name' => $event->name,
+                        'description' => $event->description,
+                        'location' => $event->location,
+                        'start_date' => $event->start_date,
+                        'end_date' => $event->end_date,
+                        'capacity' => $event->capacity,
+                        'fee' => $event->fee,
+                        'status' => $event->status,
+                        'image_path' => $event->image_path,
+                        'participants_count' => $event->participants_count,
+                        'approved_participants_count' => $event->approved_participants_count,
+                        'attendance_rate' => $attendanceRate,
+                        'total_volunteer_hours' => $totalHours,
+                        'revenue' => $revenue,
+                        'photos_count' => $event->photos_count,
+                        'documents_count' => $event->documents_count,
+                        'has_documentation' => $event->documentation->isNotEmpty(),
+                        'documentation' => $event->documentation,
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'past_events' => $pastEvents,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching past events analytics: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch past events analytics',
+            ], 500);
+        }
+    }
+
+    /**
+     * Get detailed analytics for a specific past event
+     */
+    public function getEventAnalytics(Event $event)
+    {
+        try {
+            // Check if event is past
+            if ($event->end_date >= now()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This event is not yet completed',
+                ], 400);
+            }
+
+            // Get participant demographics
+            $facultyBreakdown = DB::table('participants')
+                ->join('users', 'participants.user_id', '=', 'users.id')
+                ->where('participants.event_id', $event->id)
+                ->where('participants.status', 'APPROVED')
+                ->select('users.faculty', DB::raw('count(*) as count'))
+                ->whereNotNull('users.faculty')
+                ->where('users.faculty', '!=', '')
+                ->groupBy('users.faculty')
+                ->get()
+                ->mapWithKeys(function ($item) {
+                    return [$this->getFacultyFullName($item->faculty) => $item->count];
+                });
+
+            // Get registration timeline
+            $registrationTimeline = DB::table('participants')
+                ->where('event_id', $event->id)
+                ->where('status', 'APPROVED')
+                ->select(
+                    DB::raw('DATE(registration_date) as date'),
+                    DB::raw('count(*) as count')
+                )
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get();
+
+            // Calculate metrics
+            $attendanceRate = $event->capacity > 0
+                ? round(($event->participants()->where('status', 'APPROVED')->count() / $event->capacity) * 100, 2)
+                : 0;
+
+            $totalHours = 0;
+            if ($event->start_date && $event->end_date) {
+                $eventDuration = $event->start_date->diffInHours($event->end_date);
+                $approvedCount = $event->participants()->where('status', 'APPROVED')->count();
+                $totalHours = $eventDuration * $approvedCount;
+            }
+
+            $revenue = $event->fee ? ($event->fee * $event->participants()->where('status', 'APPROVED')->count()) : 0;
+
+            return response()->json([
+                'success' => true,
+                'analytics' => [
+                    'event' => [
+                        'id' => $event->id,
+                        'name' => $event->name,
+                        'description' => $event->description,
+                        'location' => $event->location,
+                        'start_date' => $event->start_date,
+                        'end_date' => $event->end_date,
+                        'capacity' => $event->capacity,
+                        'fee' => $event->fee,
+                        'image_path' => $event->image_path,
+                    ],
+                    'metrics' => [
+                        'total_participants' => $event->participants()->count(),
+                        'approved_participants' => $event->participants()->where('status', 'APPROVED')->count(),
+                        'pending_participants' => $event->participants()->where('status', 'PENDING')->count(),
+                        'rejected_participants' => $event->participants()->where('status', 'REJECTED')->count(),
+                        'attendance_rate' => $attendanceRate,
+                        'total_volunteer_hours' => $totalHours,
+                        'revenue' => $revenue,
+                    ],
+                    'demographics' => [
+                        'faculty_breakdown' => $facultyBreakdown,
+                    ],
+                    'timeline' => [
+                        'registration_timeline' => $registrationTimeline,
+                    ],
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching event analytics: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch event analytics',
+            ], 500);
+        }
+    }
 }

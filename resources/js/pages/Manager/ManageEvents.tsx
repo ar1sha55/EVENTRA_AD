@@ -44,11 +44,14 @@ import {
     Calendar,
     DollarSign,
     Eye,
+    EyeOff,
     CheckCircle,
     Clock,
     Archive,
     FileText,
     Plus,
+    ChartBar,
+    Image,
 } from 'lucide-react';
 
 interface Participant {
@@ -69,6 +72,7 @@ interface Event {
     user_id: number;
     image_path?: string;
     qr_code_path?: string;
+    is_gallery_visible?: boolean;
     participants?: Participant[];
     user?: {
         id: number;
@@ -177,6 +181,12 @@ export default function ManageEvents({ events }: ManageEventsProps) {
 
     const viewParticipants = (eventId: number) => {
         router.visit(`/events/${eventId}/participants`);
+    };
+
+    const handleToggleGalleryVisibility = (event: Event) => {
+        router.post(`/events/${event.id}/toggle-gallery-visibility`, {}, {
+            preserveScroll: true,
+        });
     };
 
     const handleSort = (field: SortField) => {
@@ -297,10 +307,20 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                             <h1 className="text-3xl font-bold tracking-tight">Manage Events</h1>
                             <p className="text-muted-foreground mt-1">Create and manage your volunteering events</p>
                         </div>
-                        <Button onClick={openCreateModal} size="lg">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Create Event
-                        </Button>
+                        <div className="flex gap-3">
+                            <Button
+                                onClick={() => router.visit('/manager/manage-analytics')}
+                                size="lg"
+                                variant="outline"
+                            >
+                                <ChartBar className="h-4 w-4 mr-2" />
+                                Past Events Analytics
+                            </Button>
+                            <Button onClick={openCreateModal} size="lg">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Create Event
+                            </Button>
+                        </div>
                     </div>
 
                     {/* Statistics Cards */}
@@ -560,17 +580,19 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                                     </TableCell>
                                                     <TableCell>
                                                         <p className="text-sm">
-                                                            {new Date(event.start_date).toLocaleString("en-MY", {
+                                                            {new Date(event.start_date.replace(' ', 'T')).toLocaleString("en-MY", {
                                                                 dateStyle: "medium",
                                                                 timeStyle: "short",
+                                                                timeZone: "Asia/Kuala_Lumpur",
                                                             })}
                                                         </p>
                                                     </TableCell>
                                                     <TableCell>
                                                         <p className="text-sm">
-                                                            {new Date(event.end_date).toLocaleString("en-MY", {
+                                                            {new Date(event.end_date.replace(' ', 'T')).toLocaleString("en-MY", {
                                                                 dateStyle: "medium",
                                                                 timeStyle: "short",
+                                                                timeZone: "Asia/Kuala_Lumpur",
                                                             })}
                                                         </p>
                                                     </TableCell>
@@ -666,6 +688,27 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                                                     <Archive className="h-4 w-4 mr-2" />
                                                                     Archive
                                                                 </DropdownMenuItem>
+
+                                                                {isPastEvent && (
+                                                                    <>
+                                                                        <DropdownMenuSeparator />
+                                                                        <DropdownMenuItem
+                                                                            onClick={() => handleToggleGalleryVisibility(event)}
+                                                                        >
+                                                                            {event.is_gallery_visible ? (
+                                                                                <>
+                                                                                    <EyeOff className="h-4 w-4 mr-2" />
+                                                                                    Hide from Gallery
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <Image className="h-4 w-4 mr-2" />
+                                                                                    Show in Gallery
+                                                                                </>
+                                                                            )}
+                                                                        </DropdownMenuItem>
+                                                                    </>
+                                                                )}
 
                                                                 <DropdownMenuSeparator />
 

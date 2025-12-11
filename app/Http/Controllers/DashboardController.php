@@ -179,4 +179,50 @@ class DashboardController extends Controller
 
         return $faculties[strtolower($code)] ?? ucfirst($code);
     }
+
+    /**
+     * Get user's activity chart data (events participated by month)
+     */
+    public function getActivityChartData(Request $request)
+    {
+        $user = auth()->user();
+
+        // Get data for the last 6 months
+        $monthsData = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $monthsData[] = now()->subMonths($i)->format('M');
+        }
+
+        // Get user's approved participations grouped by month
+        $participations = DB::table('participants')
+            ->join('events', 'participants.event_id', '=', 'events.id')
+            ->where('participants.user_id', $user->id)
+            ->where('participants.status', 'approved')
+            ->where('events.start_date', '>=', now()->subMonths(6))
+            ->select(
+                DB::raw('DATE_FORMAT(events.start_date, "%Y-%m") as month'),
+                DB::raw('COUNT(*) as count')
+            )
+            ->groupBy('month')
+            ->get()
+            ->keyBy('month');
+
+        // Build the chart data
+        $chartData = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $date = now()->subMonths($i);
+            $monthKey = $date->format('Y-m');
+            $monthName = $date->format('M');
+
+            $chartData[] = [
+                'name' => $monthName,
+                'events' => $participations->has($monthKey) ? (int) $participations[$monthKey]->count : 0
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $chartData
+        ]);
+    }
 }

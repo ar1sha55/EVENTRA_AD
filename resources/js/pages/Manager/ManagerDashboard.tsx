@@ -82,7 +82,9 @@ const SummaryCard = ({
     className,
     titleColor,
     valueColor,
-    iconColor
+    iconColor,
+    onClick,
+    ...props 
 }: { 
     title: string; 
     value: number | string; 
@@ -92,8 +94,9 @@ const SummaryCard = ({
     titleColor: string;
     valueColor: string;
     iconColor: string;
+    onClick?: () => void;
 }) => (
-    <Card className={className}>
+    <Card className={className} onClick={onClick} {...props}>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className={`text-sm font-medium ${titleColor}`}>
                 {title}
@@ -253,7 +256,7 @@ export default function ManagerDashboard({ dashboardData }: { dashboardData: Das
                             valueColor="text-yellow-900 dark:text-yellow-100"
                             iconColor="text-yellow-600 dark:text-yellow-400"
                         />
-                        <SummaryCard 
+                        <SummaryCard
                             title="Completed Events"
                             value={summary.completed_events}
                             icon={CheckCircle}
@@ -261,6 +264,7 @@ export default function ManagerDashboard({ dashboardData }: { dashboardData: Das
                             titleColor="text-green-900 dark:text-green-100"
                             valueColor="text-green-900 dark:text-green-100"
                             iconColor="text-green-600 dark:text-green-400"
+                            onClick={() => router.visit('/manager/manage-analytics')}
                         />
                         <SummaryCard 
                             title="Total Members"
