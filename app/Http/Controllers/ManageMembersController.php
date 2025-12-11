@@ -32,10 +32,11 @@ class ManageMembersController extends Controller
                     'gender' => $member->gender,
                     'faculty' => $member->faculty,
                     'profile_picture' => $member->profile_picture,
-                    'created_at' => $member->created_at,
-                    'email_verified_at' => $member->email_verified_at,
+                    'created_at' => $member->created_at->toISOString(),
                 ];
-            });
+            })
+            ->values()
+            ->toArray();
 
         return Inertia::render('Manager/ManageMembers', [
             'members' => $members,
@@ -70,11 +71,18 @@ class ManageMembersController extends Controller
             'gender' => ['nullable', 'in:male,female'],
             'faculty' => ['nullable', 'in:fke,fkm,fc,fab,fka,fs,fcee,fm,fssh'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'profile_picture' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
         ]);
+
+        if ($request->hasFile('profile_picture')) {
+            $path = $request->file('profile_picture')->store('profile_pictures', 'public');
+            $validated['profile_picture'] = $path;
+        }
 
         // Set default password if not provided
         $validated['password'] = Hash::make($validated['password']);
         $validated['role'] = 'member'; // Always create as member
+        $validated['email_verified_at'] = now(); // Auto-verify emails created by managers
 
         User::create($validated);
 
@@ -114,7 +122,17 @@ class ManageMembersController extends Controller
             'gender' => ['nullable', 'in:male,female'],
             'faculty' => ['nullable', 'in:fke,fkm,fc,fab,fka,fs,fcee,fm,fssh'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'profile_picture' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
         ]);
+
+        if ($request->hasFile('profile_picture')) {
+            // Delete old picture if it exists
+            if ($member->profile_picture) {
+                Storage::disk('public')->delete($member->profile_picture);
+            }
+            $path = $request->file('profile_picture')->store('profile_pictures', 'public');
+            $validated['profile_picture'] = $path;
+        }
 
         // Only update password if provided
         if (!empty($validated['password'])) {
@@ -177,7 +195,6 @@ class ManageMembersController extends Controller
             'faculty' => $member->faculty,
             'profile_picture' => $member->profile_picture,
             'created_at' => $member->created_at,
-            'email_verified_at' => $member->email_verified_at,
         ]);
     }
 }

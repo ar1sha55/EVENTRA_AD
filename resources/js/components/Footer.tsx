@@ -1,139 +1,122 @@
 import React from 'react';
 import { Link } from '@inertiajs/react';
-import {Instagram, Send, Mail, Facebook, Music2}from 'lucide-react';
-
-// Define the style object using the CSS variables
-const footerBgStyle = {
-    backgroundColor: 'var(--footer)',
-    color: 'var(--footer-text)', // Changed to use CSS variable
-    borderTop: '1px solid var(--footer-border)',
-    boxShadow: '0 -4px 6px -1px rgb(0 0 0 / 0.1), 0 -2px 4px -2px rgb(0 0 0 / 0.1)',
-};
-
-// Define the style for the divider lines
-const dividerStyle = {
-    borderBottom: '1px solid var(--footer-border)',
-};
-
-// Define the hover color style
-const hoverColorStyle = {
-    color: 'var(--sidebar-ring)',
-};
+import { Instagram, Send, Mail, Facebook, Music2, Heart } from 'lucide-react';
 
 const Footer: React.FC = () => {
     return (
-        <footer style={footerBgStyle} className="pt-6 mt-10">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* Top Section: Icons and Contact */}
-                <div 
-                    className="flex flex-col items-center pb-4 mb-4"
-                    style={dividerStyle}
-                >
-                    {/* Social Icons and Contact Links */}
-                    <div className="flex items-center space-x-6">
-                        {/* Instagram */}
-                        <a 
-                            href="https://www.instagram.com/volunteer_utm?igsh=cmV5bm90eWp3cDh2" 
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="transition duration-300" 
-                            aria-label="Instagram"
-                            onMouseOver={e => e.currentTarget.style.color = '#ec4899'}
-                            onMouseOut={e => e.currentTarget.style.color = 'var(--footer-icon)'}
-                            style={{ color: 'var(--footer-icon)' }}
-                        >
-                            <Instagram className="w-7 h-7" />
-                        </a>
-                        {/* TikTok */}
-                        <a 
-                            href="https://www.tiktok.com/@volunteerutm?_r=1&_t=ZS-91QHke1nBUQ" 
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="transition duration-300" 
-                            aria-label="TikTok"
-                            onMouseOver={e => e.currentTarget.style.color = '#00f2ea'}
-                            onMouseOut={e => e.currentTarget.style.color = 'var(--footer-icon)'}
-                            style={{ color: 'var(--footer-icon)' }}
-                        >
-                            <Music2 className="w-7 h-7" />
-                        </a>
-                        {/* Facebook */}
-                        <a 
-                            href="https://www.facebook.com/volunteerUTM" 
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="transition duration-300" 
-                            aria-label="Facebook"
-                            onMouseOver={e => e.currentTarget.style.color = '#60a5fa'}
-                            onMouseOut={e => e.currentTarget.style.color = 'var(--footer-icon)'}
-                            style={{ color: 'var(--footer-icon)' }}
-                        >
-                            <Facebook className="w-7 h-7" />
-                        </a>
-                        {/* Gmail Icon - Opens Gmail compose */}
-                        <a
-                            href="https://mail.google.com/mail/?view=cm&fs=1&to=utmvolunteerclub@gmail.com"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="transition duration-300"
-                            aria-label="Gmail"
-                            onMouseOver={e => e.currentTarget.style.color = '#dc2626'}
-                            onMouseOut={e => e.currentTarget.style.color = 'var(--footer-icon)'}
-                            style={{ color: 'var(--footer-icon)' }}
-                        >
-                            <Mail className="w-7 h-7" />
-                        </a>
+        // 1. Main Container using your specific CSS variables for background and border
+        <footer className="relative mt-20 pt-12 pb-8 border-t transition-colors duration-300
+            bg-[var(--footer)] 
+            border-[var(--footer-border)]"
+        >
+            {/* Decorative Top Gradient (Matches your White/Purple/Orange theme) */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-orange-400 to-purple-500" />
+
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                    
+                    {/* Column 1: Brand Info */}
+                    <div className="flex flex-col items-center md:items-start space-y-4">
+                        {/* Brand Text with Gradient */}
+                        <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-700 to-purple-500">
+                            Eventra
+                        </div>
+                        <p className="text-sm text-center md:text-left max-w-xs leading-relaxed transition-colors duration-300 text-[var(--footer-text)] opacity-80">
+                            Empowering volunteers and connecting communities. Join us in making a difference.
+                        </p>
+                    </div>
+
+                    {/* Column 2: Quick Links */}
+                    <div className="flex flex-col items-center space-y-4">
+                        <h3 className="font-semibold uppercase tracking-wider text-sm text-[var(--footer-text)]">
+                            Quick Links
+                        </h3>
+                        <nav className="flex flex-col space-y-3 text-center">
+                            <FooterLink href="/">Home</FooterLink>
+                            <FooterLink href="/team">Our Team</FooterLink>
+                            {/* Manual link for Contact */}
+                            <a 
+                                href="https://mail.google.com/mail/?view=cm&fs=1&to=utmvolunteerclub@gmail.com" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="font-medium transition-colors duration-300 text-[var(--footer-text)] hover:text-orange-500"
+                            >
+                                Contact Us
+                            </a>
+                        </nav>
+                    </div>
+
+                    {/* Column 3: Socials */}
+                    <div className="flex flex-col items-center md:items-end space-y-4">
+                        <h3 className="font-semibold uppercase tracking-wider text-sm text-[var(--footer-text)]">
+                            Connect With Us
+                        </h3>
+                        <div className="flex space-x-4">
+                            <SocialIcon 
+                                href="https://www.instagram.com/volunteer_utm?igsh=cmV5bm90eWp3cDh2" 
+                                icon={<Instagram className="w-5 h-5" />} 
+                                label="Instagram"
+                            />
+                            <SocialIcon 
+                                href="https://www.tiktok.com/@volunteerutm?_r=1&_t=ZS-91QHke1nBUQ" 
+                                icon={<Music2 className="w-5 h-5" />} 
+                                label="TikTok"
+                            />
+                            <SocialIcon 
+                                href="https://www.facebook.com/volunteerUTM" 
+                                icon={<Facebook className="w-5 h-5" />} 
+                                label="Facebook"
+                            />
+                            <SocialIcon 
+                                href="https://mail.google.com/mail/?view=cm&fs=1&to=utmvolunteerclub@gmail.com" 
+                                icon={<Mail className="w-5 h-5" />} 
+                                label="Email"
+                            />
+                        </div>
                     </div>
                 </div>
 
-                {/* Middle Section: Navigation Links (Home, Contact, Our Team) */}
-                <div 
-                    className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-12 py-4 my-4 text-lg font-semibold border-t border-b"
-                    style={{ borderColor: 'var(--footer-line)' }}
-                >
-                    {/* Home Link */}
-                    <Link 
-                        href="/" 
-                        className="transition duration-300 text-center"
-                        style={{ color: 'var(--footer-text)' }}
-                        onMouseOver={e => e.currentTarget.style.color = hoverColorStyle.color as string}
-                        onMouseOut={e => e.currentTarget.style.color = 'var(--footer-text)'}
-                    >
-                        Home
-                    </Link>
-                    {/* Contact Link - Opens Gmail */}
-                    <a
-                        href="https://mail.google.com/mail/?view=cm&fs=1&to=utmvolunteerclub@gmail.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="transition duration-300 text-center"
-                        style={{ color: 'var(--footer-text)' }}
-                        onMouseOver={e => e.currentTarget.style.color = hoverColorStyle.color as string}
-                        onMouseOut={e => e.currentTarget.style.color = 'var(--footer-text)'}
-                    >
-                        Contact
-                    </a>
-                    {/* Our Team Link */}
-                    <Link 
-                        href="/team" 
-                        className="transition duration-300 text-center"
-                        style={{ color: 'var(--footer-text)' }}
-                        onMouseOver={e => e.currentTarget.style.color = hoverColorStyle.color as string}
-                        onMouseOut={e => e.currentTarget.style.color = 'var(--footer-text)'}
-                    >
-                        Our Team
-                    </Link>
-                </div>
+                {/* Divider Line */}
+                <div className="border-t my-8 border-[var(--footer-line)]"></div>
 
-                {/* Bottom Section: Copyright */}
-                <div className="text-center py-3">
-                    <p style={{ color: 'var(--footer-copyright)' }} className="text-xs">
-                        Copyright &copy; 2025: Designed by Eventra
+                {/* Bottom: Copyright */}
+                <div className="flex flex-col md:flex-row justify-between items-center text-sm transition-colors duration-300 text-[var(--footer-copyright)]">
+                    <p>
+                        Copyright &copy; 2025 <span className="font-semibold text-purple-600">Eventra</span>.
+                    </p>
+                    <p className="flex items-center mt-2 md:mt-0">
+                        Made with <Heart className="w-4 h-4 mx-1 text-orange-500 fill-orange-500" /> by Eventra Team
                     </p>
                 </div>
             </div>
         </footer>
     );
 };
+
+// --- Helper Components ---
+
+const FooterLink = ({ href, children }: { href: string, children: React.ReactNode }) => (
+    <Link 
+        href={href} 
+        className="font-medium transition-colors duration-300 text-[var(--footer-text)] hover:text-orange-500"
+    >
+        {children}
+    </Link>
+);
+
+const SocialIcon = ({ href, icon, label }: { href: string, icon: React.ReactNode, label: string }) => (
+    <a 
+        href={href} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        aria-label={label}
+        // Uses var(--footer-icon) for the default color
+        className="w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 shadow-sm hover:shadow-md
+            bg-purple-50/50 hover:bg-orange-500
+            text-[var(--footer-icon)] hover:text-white"
+    >
+        {icon}
+    </a>
+);
 
 export default Footer;

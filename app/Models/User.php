@@ -75,6 +75,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get user's event participations
+     */
+    public function participants()
+    {
+        return $this->hasMany(Participant::class, 'user_id');
+    }
+
+    /**
      * Check if user's profile is complete
      */
     public function isProfileComplete(): bool

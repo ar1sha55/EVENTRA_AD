@@ -420,7 +420,7 @@ app('router')->setCompiledRoutes(
         array (
           0 => 
           array (
-            '_route' => 'generated::YkbddeOHEJj1V4Jp',
+            '_route' => 'generated::4wDX7Sv0JGW6bvXX',
           ),
           1 => NULL,
           2 => 
@@ -600,7 +600,7 @@ app('router')->setCompiledRoutes(
         array (
           0 => 
           array (
-            '_route' => 'generated::HOHyrb8ftrleBnzt',
+            '_route' => 'generated::UOZkhuKZhu8OtU9X',
           ),
           1 => NULL,
           2 => 
@@ -619,7 +619,7 @@ app('router')->setCompiledRoutes(
         array (
           0 => 
           array (
-            '_route' => 'generated::gO4dsaZBkUb2CmRr',
+            '_route' => 'generated::9ZaokOKxkBS4Kyrd',
           ),
           1 => NULL,
           2 => 
@@ -800,6 +800,25 @@ app('router')->setCompiledRoutes(
           array (
             'GET' => 0,
             'HEAD' => 1,
+          ),
+          3 => NULL,
+          4 => false,
+          5 => false,
+          6 => NULL,
+        ),
+      ),
+      '/manager/members' => 
+      array (
+        0 => 
+        array (
+          0 => 
+          array (
+            '_route' => 'members.store',
+          ),
+          1 => NULL,
+          2 => 
+          array (
+            'POST' => 0,
           ),
           3 => NULL,
           4 => false,
@@ -1007,7 +1026,7 @@ app('router')->setCompiledRoutes(
         array (
           0 => 
           array (
-            '_route' => 'generated::hDlwOSr7KOxuPp0o',
+            '_route' => 'generated::qzzI2eURdUfpQ8e3',
           ),
           1 => NULL,
           2 => 
@@ -1176,7 +1195,7 @@ app('router')->setCompiledRoutes(
     ),
     2 => 
     array (
-      0 => '{^(?|/reset\\-password/([^/]++)(*:32)|/e(?|mail/verify/([^/]++)/([^/]++)(*:73)|vents/([^/]++)(?|/(?|register(*:109)|edit(*:121)|broadcast(*:138)|participants(*:158)|documentation(?|(*:182)|/([^/]++)(?|(*:202)))|toggle\\-gallery\\-visibility(*:239))|(*:248)))|/participants/([^/]++)(?|(*:283)|/status(*:298))|/notifications/([^/]++)(?|/(?|read(*:341)|unread(*:355))|(*:364))|/manager/event\\-blast/([^/]++)/(?|cancel(*:413)|retry(*:426))|/api/manager/events/([^/]++)/analytics(*:473)|/storage/(.*)(*:494))/?$}sDu',
+      0 => '{^(?|/reset\\-password/([^/]++)(*:32)|/e(?|mail/verify/([^/]++)/([^/]++)(*:73)|vents/([^/]++)(?|/(?|register(*:109)|edit(*:121)|broadcast(*:138)|participants(*:158)|documentation(?|(*:182)|/([^/]++)(?|(*:202)))|toggle\\-gallery\\-visibility(*:239))|(*:248)))|/participants/([^/]++)(?|(*:283)|/status(*:298))|/notifications/([^/]++)(?|/(?|read(*:341)|unread(*:355))|(*:364))|/manager/(?|members/([^/]++)(?|(*:404))|event\\-blast/([^/]++)/(?|cancel(*:444)|retry(*:457)))|/api/manager/events/([^/]++)/analytics(*:505)|/storage/(.*)(*:526))/?$}sDu',
     ),
     3 => 
     array (
@@ -1596,7 +1615,68 @@ app('router')->setCompiledRoutes(
           6 => NULL,
         ),
       ),
-      413 => 
+      404 => 
+      array (
+        0 => 
+        array (
+          0 => 
+          array (
+            '_route' => 'members.show',
+          ),
+          1 => 
+          array (
+            0 => 'member',
+          ),
+          2 => 
+          array (
+            'GET' => 0,
+            'HEAD' => 1,
+          ),
+          3 => NULL,
+          4 => false,
+          5 => true,
+          6 => NULL,
+        ),
+        1 => 
+        array (
+          0 => 
+          array (
+            '_route' => 'members.update',
+          ),
+          1 => 
+          array (
+            0 => 'member',
+          ),
+          2 => 
+          array (
+            'PUT' => 0,
+          ),
+          3 => NULL,
+          4 => false,
+          5 => true,
+          6 => NULL,
+        ),
+        2 => 
+        array (
+          0 => 
+          array (
+            '_route' => 'members.destroy',
+          ),
+          1 => 
+          array (
+            0 => 'member',
+          ),
+          2 => 
+          array (
+            'DELETE' => 0,
+          ),
+          3 => NULL,
+          4 => false,
+          5 => true,
+          6 => NULL,
+        ),
+      ),
+      444 => 
       array (
         0 => 
         array (
@@ -1618,7 +1698,7 @@ app('router')->setCompiledRoutes(
           6 => NULL,
         ),
       ),
-      426 => 
+      457 => 
       array (
         0 => 
         array (
@@ -1640,7 +1720,7 @@ app('router')->setCompiledRoutes(
           6 => NULL,
         ),
       ),
-      473 => 
+      505 => 
       array (
         0 => 
         array (
@@ -1663,7 +1743,7 @@ app('router')->setCompiledRoutes(
           6 => NULL,
         ),
       ),
-      494 => 
+      526 => 
       array (
         0 => 
         array (
@@ -2637,7 +2717,7 @@ app('router')->setCompiledRoutes(
       'waitSeconds' => NULL,
       'withTrashed' => false,
     ),
-    'generated::YkbddeOHEJj1V4Jp' => 
+    'generated::4wDX7Sv0JGW6bvXX' => 
     array (
       'methods' => 
       array (
@@ -2665,8 +2745,8 @@ app('router')->setCompiledRoutes(
                     return response(\\Illuminate\\Support\\Facades\\View::file(\'C:\\\\Users\\\\muhdn\\\\OneDrive\\\\Desktop\\\\UTM Semester 5\\\\Sem 5\\\\AppDev\\\\Eventra Clone Github\\\\EVENTRA_AD\\\\vendor\\\\laravel\\\\framework\\\\src\\\\Illuminate\\\\Foundation\\\\Configuration\'.\'/../resources/health-up.blade.php\', [
                         \'exception\' => $exception,
                     ]), status: $exception ? 500 : 200);
-                }";s:5:"scope";s:54:"Illuminate\\Foundation\\Configuration\\ApplicationBuilder";s:4:"this";N;s:4:"self";s:32:"000000000000060c0000000000000000";}}',
-        'as' => 'generated::YkbddeOHEJj1V4Jp',
+                }";s:5:"scope";s:54:"Illuminate\\Foundation\\Configuration\\ApplicationBuilder";s:4:"this";N;s:4:"self";s:32:"00000000000006e40000000000000000";}}',
+        'as' => 'generated::4wDX7Sv0JGW6bvXX',
       ),
       'fallback' => false,
       'defaults' => 
@@ -2698,7 +2778,7 @@ app('router')->setCompiledRoutes(
         ),
         'uses' => 'O:55:"Laravel\\SerializableClosure\\UnsignedSerializableClosure":1:{s:12:"serializable";O:46:"Laravel\\SerializableClosure\\Serializers\\Native":5:{s:3:"use";a:0:{}s:8:"function";s:47:"function () {
     return \\redirect(\'/login\');
-}";s:5:"scope";s:37:"Illuminate\\Routing\\RouteFileRegistrar";s:4:"this";N;s:4:"self";s:32:"00000000000006100000000000000000";}}',
+}";s:5:"scope";s:37:"Illuminate\\Routing\\RouteFileRegistrar";s:4:"this";N;s:4:"self";s:32:"00000000000006de0000000000000000";}}',
         'namespace' => NULL,
         'prefix' => '',
         'where' => 
@@ -3069,7 +3149,7 @@ app('router')->setCompiledRoutes(
       'waitSeconds' => NULL,
       'withTrashed' => false,
     ),
-    'generated::HOHyrb8ftrleBnzt' => 
+    'generated::UOZkhuKZhu8OtU9X' => 
     array (
       'methods' => 
       array (
@@ -3091,7 +3171,7 @@ app('router')->setCompiledRoutes(
         'where' => 
         array (
         ),
-        'as' => 'generated::HOHyrb8ftrleBnzt',
+        'as' => 'generated::UOZkhuKZhu8OtU9X',
       ),
       'fallback' => false,
       'defaults' => 
@@ -3107,7 +3187,7 @@ app('router')->setCompiledRoutes(
       'waitSeconds' => NULL,
       'withTrashed' => false,
     ),
-    'generated::gO4dsaZBkUb2CmRr' => 
+    'generated::9ZaokOKxkBS4Kyrd' => 
     array (
       'methods' => 
       array (
@@ -3129,7 +3209,7 @@ app('router')->setCompiledRoutes(
         'where' => 
         array (
         ),
-        'as' => 'generated::gO4dsaZBkUb2CmRr',
+        'as' => 'generated::9ZaokOKxkBS4Kyrd',
       ),
       'fallback' => false,
       'defaults' => 
@@ -3867,14 +3947,171 @@ app('router')->setCompiledRoutes(
           2 => 'verified',
           3 => 'role:manager,admin',
         ),
-        'uses' => 'App\\Http\\Controllers\\TestController@manageMembers',
-        'controller' => 'App\\Http\\Controllers\\TestController@manageMembers',
+        'uses' => 'App\\Http\\Controllers\\ManageMembersController@index',
+        'controller' => 'App\\Http\\Controllers\\ManageMembersController@index',
         'namespace' => NULL,
         'prefix' => '',
         'where' => 
         array (
         ),
         'as' => 'manage-members',
+      ),
+      'fallback' => false,
+      'defaults' => 
+      array (
+      ),
+      'wheres' => 
+      array (
+      ),
+      'bindingFields' => 
+      array (
+      ),
+      'lockSeconds' => NULL,
+      'waitSeconds' => NULL,
+      'withTrashed' => false,
+    ),
+    'members.store' => 
+    array (
+      'methods' => 
+      array (
+        0 => 'POST',
+      ),
+      'uri' => 'manager/members',
+      'action' => 
+      array (
+        'middleware' => 
+        array (
+          0 => 'web',
+          1 => 'auth',
+          2 => 'verified',
+          3 => 'role:manager,admin',
+        ),
+        'uses' => 'App\\Http\\Controllers\\ManageMembersController@store',
+        'controller' => 'App\\Http\\Controllers\\ManageMembersController@store',
+        'namespace' => NULL,
+        'prefix' => '',
+        'where' => 
+        array (
+        ),
+        'as' => 'members.store',
+      ),
+      'fallback' => false,
+      'defaults' => 
+      array (
+      ),
+      'wheres' => 
+      array (
+      ),
+      'bindingFields' => 
+      array (
+      ),
+      'lockSeconds' => NULL,
+      'waitSeconds' => NULL,
+      'withTrashed' => false,
+    ),
+    'members.show' => 
+    array (
+      'methods' => 
+      array (
+        0 => 'GET',
+        1 => 'HEAD',
+      ),
+      'uri' => 'manager/members/{member}',
+      'action' => 
+      array (
+        'middleware' => 
+        array (
+          0 => 'web',
+          1 => 'auth',
+          2 => 'verified',
+          3 => 'role:manager,admin',
+        ),
+        'uses' => 'App\\Http\\Controllers\\ManageMembersController@show',
+        'controller' => 'App\\Http\\Controllers\\ManageMembersController@show',
+        'namespace' => NULL,
+        'prefix' => '',
+        'where' => 
+        array (
+        ),
+        'as' => 'members.show',
+      ),
+      'fallback' => false,
+      'defaults' => 
+      array (
+      ),
+      'wheres' => 
+      array (
+      ),
+      'bindingFields' => 
+      array (
+      ),
+      'lockSeconds' => NULL,
+      'waitSeconds' => NULL,
+      'withTrashed' => false,
+    ),
+    'members.update' => 
+    array (
+      'methods' => 
+      array (
+        0 => 'PUT',
+      ),
+      'uri' => 'manager/members/{member}',
+      'action' => 
+      array (
+        'middleware' => 
+        array (
+          0 => 'web',
+          1 => 'auth',
+          2 => 'verified',
+          3 => 'role:manager,admin',
+        ),
+        'uses' => 'App\\Http\\Controllers\\ManageMembersController@update',
+        'controller' => 'App\\Http\\Controllers\\ManageMembersController@update',
+        'namespace' => NULL,
+        'prefix' => '',
+        'where' => 
+        array (
+        ),
+        'as' => 'members.update',
+      ),
+      'fallback' => false,
+      'defaults' => 
+      array (
+      ),
+      'wheres' => 
+      array (
+      ),
+      'bindingFields' => 
+      array (
+      ),
+      'lockSeconds' => NULL,
+      'waitSeconds' => NULL,
+      'withTrashed' => false,
+    ),
+    'members.destroy' => 
+    array (
+      'methods' => 
+      array (
+        0 => 'DELETE',
+      ),
+      'uri' => 'manager/members/{member}',
+      'action' => 
+      array (
+        'middleware' => 
+        array (
+          0 => 'web',
+          1 => 'auth',
+          2 => 'verified',
+          3 => 'role:manager,admin',
+        ),
+        'uses' => 'App\\Http\\Controllers\\ManageMembersController@destroy',
+        'controller' => 'App\\Http\\Controllers\\ManageMembersController@destroy',
+        'namespace' => NULL,
+        'prefix' => '',
+        'where' => 
+        array (
+        ),
+        'as' => 'members.destroy',
       ),
       'fallback' => false,
       'defaults' => 
@@ -4601,7 +4838,7 @@ app('router')->setCompiledRoutes(
       'waitSeconds' => NULL,
       'withTrashed' => false,
     ),
-    'generated::hDlwOSr7KOxuPp0o' => 
+    'generated::qzzI2eURdUfpQ8e3' => 
     array (
       'methods' => 
       array (
@@ -4628,7 +4865,7 @@ app('router')->setCompiledRoutes(
         'where' => 
         array (
         ),
-        'as' => 'generated::hDlwOSr7KOxuPp0o',
+        'as' => 'generated::qzzI2eURdUfpQ8e3',
       ),
       'fallback' => false,
       'defaults' => 
@@ -4888,7 +5125,7 @@ app('router')->setCompiledRoutes(
         ),
         'uses' => 'O:55:"Laravel\\SerializableClosure\\UnsignedSerializableClosure":1:{s:12:"serializable";O:46:"Laravel\\SerializableClosure\\Serializers\\Native":5:{s:3:"use";a:0:{}s:8:"function";s:83:"function () {
         return \\Inertia\\Inertia::render(\'settings/appearance\');
-    }";s:5:"scope";s:37:"Illuminate\\Routing\\RouteFileRegistrar";s:4:"this";N;s:4:"self";s:32:"00000000000008f30000000000000000";}}',
+    }";s:5:"scope";s:37:"Illuminate\\Routing\\RouteFileRegistrar";s:4:"this";N;s:4:"self";s:32:"000000000000071f0000000000000000";}}',
         'namespace' => NULL,
         'prefix' => '',
         'where' => 
@@ -4964,7 +5201,7 @@ app('router')->setCompiledRoutes(
                         $config,
                         $isProduction
                     ))($request, $path);
-                }";s:5:"scope";s:47:"Illuminate\\Filesystem\\FilesystemServiceProvider";s:4:"this";N;s:4:"self";s:32:"00000000000006120000000000000000";}}',
+                }";s:5:"scope";s:47:"Illuminate\\Filesystem\\FilesystemServiceProvider";s:4:"this";N;s:4:"self";s:32:"00000000000006dc0000000000000000";}}',
         'as' => 'storage.local',
       ),
       'fallback' => false,
