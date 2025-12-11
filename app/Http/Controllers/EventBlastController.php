@@ -57,12 +57,6 @@ class EventBlastController extends Controller
 
     public function store(Request $request)
     {
-        if ($request->has('scheduled_at') && $request->scheduled_at) {
-            $request->merge([
-                'scheduled_at' => \Carbon\Carbon::parse($request->scheduled_at, 'Asia/Kuala_Lumpur')->setTimezone('UTC'),
-            ]);
-        }
-
         $validated = $request->validate([
             'event_id' => 'required|exists:events,id',
             'message' => 'required|string',

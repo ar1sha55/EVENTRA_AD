@@ -200,7 +200,8 @@ export default function EventBlastPage({ events, blasts, captionStyles }: Props)
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleString('en-US', {
-      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true,
+      timeZone: 'Asia/Kuala_Lumpur'
     });
   };
 
