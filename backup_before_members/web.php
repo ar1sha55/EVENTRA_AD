@@ -11,7 +11,6 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\MailController;
-use App\Http\Controllers\ManageMembersController;
 use App\Http\Middleware\RoleMiddleware;
 
 Route::get('/', function () {
@@ -67,14 +66,8 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->group(function ()
     Route::get('/events/{event}/participants', [EventsController::class, 'participants'])->name('events.participants');
     Route::put('/participants/{participant}/status', [ParticipantsController::class, 'updateStatus'])->name('participants.updateStatus');
     
-   // --- Member Management (CRUD) ---
-    Route::get('/manager/manage-members', [ManageMembersController::class, 'index'])->name('manage-members');
-    Route::post('/manager/members', [ManageMembersController::class, 'store'])->name('members.store');
-    Route::get('/manager/members/{member}', [ManageMembersController::class, 'show'])->name('members.show');
-    Route::put('/manager/members/{member}', [ManageMembersController::class, 'update'])->name('members.update');
-    Route::delete('/manager/members/{member}', [ManageMembersController::class, 'destroy'])->name('members.destroy');
-
     // --- Other Manager Pages ---
+    Route::get('/manager/manage-members', [TestController::class, 'manageMembers'])->name('manage-members');
     Route::get('/manager/manage-analytics', [TestController::class, 'manageAnalytics'])->name('manage-analytics');
     Route::get('/manager/send-announcement', [TestController::class, 'sendAnnouncement'])->name('send-announcement');
 
