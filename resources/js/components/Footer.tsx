@@ -22,7 +22,7 @@ const Footer: React.FC = () => {
                             Eventra
                         </div>
                         <p className="text-sm text-center md:text-left max-w-xs leading-relaxed transition-colors duration-300 text-[var(--footer-text)] opacity-80">
-                            Empowering volunteers and connecting communities. Join us in making a difference.
+                            Events Made Simpler, <p>Connections Made Stronger.</p>
                         </p>
                     </div>
 

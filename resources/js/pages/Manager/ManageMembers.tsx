@@ -325,10 +325,16 @@ export default function ManageMembersPage({ members = [] }: Props) {
             </p>
           </div>
           <Button
-            onClick={() => {
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log("Add Member button clicked!", { isAdding });
               if (isAdding) {
+                console.log("Resetting form...");
                 resetForm();
               } else {
+                console.log("Setting isAdding to true...");
                 setIsAdding(true);
               }
             }}
