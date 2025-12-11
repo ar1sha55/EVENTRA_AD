@@ -9,10 +9,8 @@ use App\Http\Controllers\TestController;
 use App\Http\Controllers\ManagerDashboardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ChatController;
-use App\Http\Controllers\EventDocumentationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\MailController;
-use App\Http\Controllers\ManageMembersController;
 use App\Http\Middleware\RoleMiddleware;
 
 Route::get('/', function () {
@@ -25,18 +23,16 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/api/dashboard/activity-chart', [DashboardController::class, 'getActivityChartData'])->name('api.dashboard.activity-chart');
 
     // Event Joining & Viewing
     Route::get('/join-events', [EventsController::class, 'joinEvents'])->name('join-events');
     Route::post('/events/{event}/register', [EventsController::class, 'register'])->name('events.register');
-
+    
     // Participant Management (User's own)
     Route::delete('/participants/{participant}', [ParticipantsController::class, 'destroy'])->name('participants.destroy');
-
+    
     // Public/General Pages
-    Route::get('/events-gallery', [EventsController::class, 'eventsGallery'])->name('events-gallery');
-    Route::get('/api/events-gallery', [EventsController::class, 'getEventsGalleryData'])->name('api.events-gallery');
+    Route::get('/events-gallery', [TestController::class, 'eventsGallery'])->name('events-gallery');
     Route::get('/announcement', [TestController::class, 'announcement'])->name('announcement');
     Route::get('/contact-support', [TestController::class, 'contactSupport'])->name('contact-support');
 
@@ -70,14 +66,8 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->group(function ()
     Route::get('/events/{event}/participants', [EventsController::class, 'participants'])->name('events.participants');
     Route::put('/participants/{participant}/status', [ParticipantsController::class, 'updateStatus'])->name('participants.updateStatus');
     
-   // --- Member Management (CRUD) ---
-    Route::get('/manager/manage-members', [ManageMembersController::class, 'index'])->name('manage-members');
-    Route::post('/manager/members', [ManageMembersController::class, 'store'])->name('members.store');
-    Route::get('/manager/members/{member}', [ManageMembersController::class, 'show'])->name('members.show');
-    Route::put('/manager/members/{member}', [ManageMembersController::class, 'update'])->name('members.update');
-    Route::delete('/manager/members/{member}', [ManageMembersController::class, 'destroy'])->name('members.destroy');
-
     // --- Other Manager Pages ---
+    Route::get('/manager/manage-members', [TestController::class, 'manageMembers'])->name('manage-members');
     Route::get('/manager/manage-analytics', [TestController::class, 'manageAnalytics'])->name('manage-analytics');
     Route::get('/manager/send-announcement', [TestController::class, 'sendAnnouncement'])->name('send-announcement');
 
@@ -91,15 +81,6 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->group(function ()
     Route::post('/manager/event-blast/{blast}/cancel', [EventBlastController::class, 'cancel'])->name('event-blast.cancel');
     Route::post('/manager/event-blast/{blast}/retry', [EventBlastController::class, 'retry'])->name('event-blast.retry');
     Route::get('/manager/blast-history', [EventBlastController::class, 'history'])->name('blast-history');
-
-    // --- Event Documentation Routes ---
-    Route::get('/events/{event}/documentation', [EventDocumentationController::class, 'index'])->name('events.documentation.index');
-    Route::post('/events/{event}/documentation', [EventDocumentationController::class, 'store'])->name('events.documentation.store');
-    Route::put('/events/{event}/documentation/{documentation}', [EventDocumentationController::class, 'update'])->name('events.documentation.update');
-    Route::delete('/events/{event}/documentation/{documentation}', [EventDocumentationController::class, 'destroy'])->name('events.documentation.destroy');
-
-    // --- Event Gallery Visibility Toggle ---
-    Route::post('/events/{event}/toggle-gallery-visibility', [EventsController::class, 'toggleGalleryVisibility'])->name('events.toggle-gallery-visibility');
 });
 
 // =========================================================================
@@ -109,12 +90,6 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->prefix('api')->gr
     // This returns the JSON data for the charts/stats
     Route::get('/manager/dashboard/summary', [ManagerDashboardController::class, 'getSummary'])
         ->name('api.manager.dashboard.summary');
-
-    // Past Events Analytics API
-    Route::get('/manager/past-events-analytics', [ManagerDashboardController::class, 'getPastEventsAnalytics'])
-        ->name('api.manager.past-events-analytics');
-    Route::get('/manager/events/{event}/analytics', [ManagerDashboardController::class, 'getEventAnalytics'])
-        ->name('api.manager.event.analytics');
 });
 
 // =========================================================================
