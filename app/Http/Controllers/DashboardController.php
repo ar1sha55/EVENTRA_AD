@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Event;
 use App\Models\User;
 use App\Models\Participant; // Added this
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log; // Added this
@@ -16,6 +17,9 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
+        // Check and notify about incomplete profile
+        NotificationService::checkAndNotifyIncompleteProfile($user);
+
         // 1. Fetch upcoming published events
         $upcomingEvents = Event::where('status', 'published')
             ->where('start_date', '>=', now())
@@ -26,15 +30,7 @@ class DashboardController extends Controller
             ->limit(10)
             ->get(['id', 'name', 'start_date', 'end_date', 'location', 'description', 'capacity', 'fee', 'status', 'image_path', 'qr_code_path']);
 
-        // 2. Fetch upcoming events for notifications
-        $notificationEvents = Event::where('status', 'published')
-            ->where('start_date', '>=', now())
-            ->where('start_date', '<=', now()->addDays(60))
-            ->orderBy('start_date', 'asc')
-            ->limit(5)
-            ->get(['id', 'name', 'start_date']);
-
-        // 3. Fetch user's registered events
+        // 2. Fetch user's registered events
         $registeredEvents = Event::whereHas('participants', function($query) use ($user) {
                 $query->where('user_id', $user->id);
             })
@@ -67,11 +63,17 @@ class DashboardController extends Controller
         // 5. Get top volunteers (Using the new Logic from Manager Dashboard)
         $topVolunteers = $this->getTopVolunteers();
 
+        // 6. Get recent notifications for dashboard
+        $recentNotifications = $user->notifications()
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
         return Inertia::render('dashboard', [
             'upcomingEvents' => $upcomingEvents,
-            'notificationEvents' => $notificationEvents,
             'registeredEvents' => $registeredEvents,
             'topVolunteers' => $topVolunteers,
+            'recentNotifications' => $recentNotifications,
             'stats' => [
                 'totalEvents' => $totalEvents,
                 'upcomingEventsCount' => $upcomingEventsCount,

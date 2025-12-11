@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 // Schedule tasks
 Schedule::command('blasts:send-scheduled')->everyFiveMinutes();
+Schedule::command('notifications:send-upcoming-events')->dailyAt('09:00');

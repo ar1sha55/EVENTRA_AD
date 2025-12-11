@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import EventFormModal from './Partials/EventFormModal';
@@ -137,6 +137,21 @@ export default function ManageEvents({ events }: ManageEventsProps) {
     // Default sort: Start Date, Descending (Newest first)
     const [sortField, setSortField] = useState<SortField>('start_date');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+    // Handle opening view modal from notification
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const viewEventId = urlParams.get('view_event_id');
+
+        if (viewEventId) {
+            const event = events.find(e => e.id === parseInt(viewEventId));
+            if (event) {
+                setViewEvent(event);
+                // Clean up URL
+                window.history.replaceState({}, '', '/events');
+            }
+        }
+    }, [events]);
 
     const openCreateModal = () => {
         setEditingEvent(null);

@@ -10,6 +10,8 @@ use App\Http\Controllers\ManagerDashboardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\EventDocumentationController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\MailController;
 use App\Http\Middleware\RoleMiddleware;
 
 Route::get('/', function () {
@@ -40,6 +42,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Chat
     Route::post('/chat', [ChatController::class, 'chat']);
     Route::post('/chat/clear', [ChatController::class, 'clear']);
+
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/recent', [NotificationController::class, 'recent'])->name('notifications.recent');
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unreadCount');
+    Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.markAsRead');
+    Route::put('/notifications/{id}/unread', [NotificationController::class, 'markAsUnread'])->name('notifications.markAsUnread');
+    Route::put('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
 });
 
 // =========================================================================
@@ -62,6 +73,9 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->group(function ()
     Route::get('/manager/manage-members', [TestController::class, 'manageMembers'])->name('manage-members');
     Route::get('/manager/manage-analytics', [TestController::class, 'manageAnalytics'])->name('manage-analytics');
     Route::get('/manager/send-announcement', [TestController::class, 'sendAnnouncement'])->name('send-announcement');
+
+    // --- Email Management ---
+    Route::post('/manager/send-email', [MailController::class, 'sendToMember'])->name('mail.send');
 
     // --- Event Blast Routes ---
     Route::get('/manager/event-blast', [EventBlastController::class, 'index'])->name('event-blast');

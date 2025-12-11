@@ -1,6 +1,6 @@
 import AppLayout from "@/layouts/app-layout";
 import { type BreadcrumbItem } from "@/types";
-import { Head } from "@inertiajs/react";
+import { Head, router } from "@inertiajs/react";
 import { useState, FormEvent } from "react";
 import {
   Card,
@@ -10,7 +10,14 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, UserPlus, Pencil, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Users, UserPlus, Pencil, Trash2, Mail } from "lucide-react";
 
 const breadcrumbs: BreadcrumbItem[] = [
   {
@@ -45,6 +52,17 @@ export default function ManageMembersPage() {
 
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  const [emailDialog, setEmailDialog] = useState({
+    open: false,
+    recipientEmail: "",
+    recipientName: "",
+  });
+
+  const [emailForm, setEmailForm] = useState({
+    subject: "",
+    message: "",
+  });
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -91,6 +109,64 @@ export default function ManageMembersPage() {
     if (confirm("Are you sure you want to remove this member?")) {
       setMembers(members.filter((m) => m.id !== id));
     }
+  };
+
+  const handleOpenEmailDialog = (member: {
+    name: string;
+    email: string;
+  }) => {
+    setEmailDialog({
+      open: true,
+      recipientEmail: member.email,
+      recipientName: member.name,
+    });
+    setEmailForm({
+      subject: "",
+      message: "",
+    });
+  };
+
+  const handleCloseEmailDialog = () => {
+    setEmailDialog({
+      open: false,
+      recipientEmail: "",
+      recipientName: "",
+    });
+    setEmailForm({
+      subject: "",
+      message: "",
+    });
+  };
+
+  const handleSendEmail = (e: FormEvent) => {
+    e.preventDefault();
+
+    if (!emailForm.subject || !emailForm.message) {
+      alert("⚠️ Please fill in both subject and message.");
+      return;
+    }
+
+    // Send email via backend API
+    router.post(
+      "/manager/send-email",
+      {
+        recipient_email: emailDialog.recipientEmail,
+        recipient_name: emailDialog.recipientName,
+        subject: emailForm.subject,
+        message: emailForm.message,
+      },
+      {
+        preserveScroll: true,
+        onSuccess: () => {
+          alert(`✅ Email sent successfully to ${emailDialog.recipientName}`);
+          handleCloseEmailDialog();
+        },
+        onError: (errors) => {
+          console.error("Failed to send email:", errors);
+          alert("❌ Failed to send email. Please try again.");
+        },
+      }
+    );
   };
 
   return (
@@ -205,6 +281,14 @@ export default function ManageMembersPage() {
                         <Button
                           variant="outline"
                           size="icon"
+                          onClick={() => handleOpenEmailDialog(m)}
+                          title="Send email"
+                        >
+                          <Mail className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
                           onClick={() => handleEdit(m.id)}
                         >
                           <Pencil className="h-4 w-4" />
@@ -230,6 +314,71 @@ export default function ManageMembersPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Email Dialog */}
+        <Dialog open={emailDialog.open} onOpenChange={handleCloseEmailDialog}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Send Email to {emailDialog.recipientName}</DialogTitle>
+              <DialogDescription>
+                Compose an email to {emailDialog.recipientEmail}
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleSendEmail} className="flex flex-col gap-4">
+              <div>
+                <label className="text-sm font-medium">To:</label>
+                <input
+                  type="email"
+                  value={emailDialog.recipientEmail}
+                  disabled
+                  className="mt-1 w-full rounded-md border px-3 py-2 text-sm bg-muted"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Subject</label>
+                <input
+                  type="text"
+                  value={emailForm.subject}
+                  onChange={(e) =>
+                    setEmailForm({ ...emailForm, subject: e.target.value })
+                  }
+                  placeholder="Enter email subject"
+                  className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Message</label>
+                <textarea
+                  value={emailForm.message}
+                  onChange={(e) =>
+                    setEmailForm({ ...emailForm, message: e.target.value })
+                  }
+                  placeholder="Enter your message here..."
+                  rows={8}
+                  className="mt-1 w-full rounded-md border px-3 py-2 text-sm resize-y"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCloseEmailDialog}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" className="gap-2">
+                  <Mail className="h-4 w-4" />
+                  Send Email
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

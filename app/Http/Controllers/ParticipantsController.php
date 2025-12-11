@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Participant;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -16,11 +17,30 @@ class ParticipantsController extends Controller
             'status' => 'required|in:pending_approval,approved,rejected',
         ]);
 
+        $oldStatus = $participant->status;
+        $newStatus = $validated['status'];
+
         $participant->update([
-            'status' => $validated['status'],
+            'status' => $newStatus,
         ]);
 
-        $statusMessage = match($validated['status']) {
+        // Send notification to participant when status changes
+        if ($oldStatus !== $newStatus) {
+            $event = $participant->event;
+            $user = $participant->user;
+
+            if ($newStatus === 'approved') {
+                NotificationService::notifyRegistrationApproved($user, $event);
+                // Notify manager that they approved the registration
+                NotificationService::notifyManagerActionConfirmation(Auth::user(), $user, $event, 'approved');
+            } elseif ($newStatus === 'rejected') {
+                NotificationService::notifyRegistrationRejected($user, $event);
+                // Notify manager that they rejected the registration
+                NotificationService::notifyManagerActionConfirmation(Auth::user(), $user, $event, 'rejected');
+            }
+        }
+
+        $statusMessage = match($newStatus) {
             'approved' => 'Participant approved successfully!',
             'rejected' => 'Participant rejected.',
             default => 'Participant status updated.',
@@ -34,7 +54,7 @@ class ParticipantsController extends Controller
     {
         // Ensure user can only delete their own participation
         if ($participant->user_id !== Auth::id()) {
-            return back()->with('error', 'Unauthorized action.');
+            return redirect()->route('join-events')->with('error', 'Unauthorized action.');
         }
 
         // Delete payment proof if exists
@@ -44,6 +64,6 @@ class ParticipantsController extends Controller
 
         $participant->delete();
 
-        return back()->with('success', 'Successfully unregistered from the event.');
+        return redirect()->route('join-events')->with('success', 'Successfully unregistered from the event.');
     }
 }
