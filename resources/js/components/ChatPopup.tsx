@@ -68,6 +68,7 @@ const ChatPopup: React.FC<ChatPopupProps> = ({ isOpen, onClose }) => {
             ];
         } else {
             return [
+                '🎯 Recommend events for me',
                 'Show upcoming events',
                 'Check my registrations',
                 'How do I register for events?',
@@ -106,11 +107,6 @@ const ChatPopup: React.FC<ChatPopupProps> = ({ isOpen, onClose }) => {
     const [messages, setMessages] = useState<Message[]>(loadMessages);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [showQuickReplies, setShowQuickReplies] = useState(() => {
-        // Show quick replies only if it's a fresh conversation
-        const stored = localStorage.getItem(STORAGE_KEY);
-        return !stored || JSON.parse(stored).length <= 1;
-    });
 
     // Format timestamp
     const formatTime = (date: Date) => {
@@ -141,7 +137,6 @@ const ChatPopup: React.FC<ChatPopupProps> = ({ isOpen, onClose }) => {
         if (!textToSend.trim() || isLoading) return;
 
         setInput('');
-        setShowQuickReplies(false); // Hide quick replies after first message
         setMessages(prev => [...prev, { sender: 'user', text: textToSend, timestamp: new Date() }]);
         setIsLoading(true);
 
@@ -164,7 +159,6 @@ const ChatPopup: React.FC<ChatPopupProps> = ({ isOpen, onClose }) => {
     const clearChat = () => {
         const welcomeMsg = [{ sender: 'bot', text: getWelcomeMessage(), timestamp: new Date() }];
         setMessages(welcomeMsg);
-        setShowQuickReplies(true);
         // Clear localStorage
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(welcomeMsg));
@@ -284,24 +278,6 @@ const ChatPopup: React.FC<ChatPopupProps> = ({ isOpen, onClose }) => {
                     </div>
                 ))}
 
-                {/* Quick Reply Suggestions */}
-                {showQuickReplies && messages.length === 1 && !isLoading && (
-                    <div className="mb-3">
-                        <p className="text-xs text-gray-500 mb-2 px-1 font-medium">✨ Quick actions:</p>
-                        <div className="flex flex-wrap gap-2">
-                            {quickReplies.map((reply, index) => (
-                                <button
-                                    key={index}
-                                    onClick={() => handleQuickReply(reply)}
-                                    className="px-3 py-1.5 text-xs bg-white border border-purple-300 text-purple-600 rounded-full hover:bg-purple-50 hover:border-purple-400 transition-all hover:shadow-md shadow-sm font-medium"
-                                >
-                                    {reply}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
                 {isLoading && (
                     <div className="flex justify-start mb-3">
                         <div className="bg-white border border-purple-200 p-3 rounded-lg rounded-bl-none flex items-center space-x-2 shadow-sm">
@@ -312,6 +288,28 @@ const ChatPopup: React.FC<ChatPopupProps> = ({ isOpen, onClose }) => {
                 )}
                 <div ref={messagesEndRef} />
             </div>
+
+            {/* Quick Actions Section - Always Visible */}
+            {quickReplies.length > 0 && (
+                <div className="bg-white border-t border-purple-100 px-3 py-2.5">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-purple-700">⚡ Quick Actions</span>
+                        <span className="text-[10px] text-gray-400">Click to send</span>
+                    </div>
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                        {quickReplies.map((reply, index) => (
+                            <button
+                                key={index}
+                                onClick={() => handleQuickReply(reply)}
+                                disabled={isLoading}
+                                className="flex-shrink-0 px-3 py-2 text-xs bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 text-purple-700 rounded-lg hover:from-purple-100 hover:to-purple-200 hover:border-purple-300 transition-all hover:shadow-md shadow-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                            >
+                                {reply}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Input Area */}
             <div className="p-3 bg-white border-t border-purple-100 rounded-b-xl">

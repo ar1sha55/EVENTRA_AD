@@ -1,237 +1,766 @@
-import { useState } from "react";
 import AppLayout from "@/layouts/app-layout";
 import { type BreadcrumbItem } from "@/types";
-import { Head, usePage } from "@inertiajs/react";
+import { Head } from "@inertiajs/react";
 import {
   Card,
-  CardHeader,
-  CardTitle,
   CardContent,
-  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Info, ImageIcon, MapPin, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
-
-interface EventItem {
-  id: number;
-  name: string;
-  start_date: string;
-  end_date: string;
-  location: string;
-  description: string;
-  image_path?: string;
-}
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { useState, useEffect } from "react";
+import {
+  ImageIcon,
+  Search,
+  Calendar,
+  MapPin,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Users,
+  TrendingUp,
+  FilterX,
+  Images,
+  FileText,
+  Download,
+  BarChart3,
+  Award,
+  Clock,
+} from "lucide-react";
+import axios from "axios";
+import { toast } from "sonner";
 
 const breadcrumbs: BreadcrumbItem[] = [
-  { title: "Events Gallery", href: "/manager/events-gallery" },
+  { title: "Events Gallery", href: "/events-gallery" },
 ];
 
+interface Documentation {
+  id: number;
+  file_path: string;
+  title: string | null;
+  description: string | null;
+  type: 'photo' | 'document' | 'summary';
+}
+
+interface GalleryEvent {
+  id: number;
+  name: string;
+  description: string;
+  location: string;
+  start_date: string;
+  end_date: string;
+  image_path: string | null;
+  approved_participants_count: number;
+  attendance_rate: number;
+  photos: Documentation[];
+  documents: Documentation[];
+  summaries: Documentation[];
+  photos_count: number;
+  documents_count: number;
+  summaries_count: number;
+  total_documentation_count: number;
+}
+
 export default function EventsGallery() {
-  const page = usePage();
-  const props = page.props as any;
-  const flash = props.flash || {};
+  const [events, setEvents] = useState<GalleryEvent[]>([]);
+  const [filteredEvents, setFilteredEvents] = useState<GalleryEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedEvent, setSelectedEvent] = useState<GalleryEvent | null>(null);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
-  const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
+  useEffect(() => {
+    fetchEvents();
+  }, []);
 
-  const events: EventItem[] = props.events ?? [];
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredEvents(events);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredEvents(
+        events.filter(
+          (event) =>
+            event.name.toLowerCase().includes(query) ||
+            event.location.toLowerCase().includes(query) ||
+            event.description.toLowerCase().includes(query)
+        )
+      );
+    }
+  }, [searchQuery, events]);
+
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get("/api/events-gallery");
+      if (response.data.success) {
+        setEvents(response.data.events);
+        setFilteredEvents(response.data.events);
+      }
+    } catch (error) {
+      console.error("Error fetching events:", error);
+      toast.error("Failed to load events gallery");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-MY', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     });
   };
 
-  const getMonthYear = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-MY', {
-      year: 'numeric',
-      month: 'long'
-    });
+  const handleEventClick = (event: GalleryEvent) => {
+    setSelectedEvent(event);
+    setCurrentPhotoIndex(0);
   };
 
-  // Group events by month
-  const groupedEvents = events.reduce((acc: Record<string, EventItem[]>, event) => {
-    const monthYear = getMonthYear(event.start_date);
-    if (!acc[monthYear]) {
-      acc[monthYear] = [];
+  const handleCloseModal = () => {
+    setSelectedEvent(null);
+    setCurrentPhotoIndex(0);
+  };
+
+  const handleNextPhoto = () => {
+    if (selectedEvent && currentPhotoIndex < selectedEvent.photos.length - 1) {
+      setCurrentPhotoIndex(currentPhotoIndex + 1);
     }
-    acc[monthYear].push(event);
-    return acc;
-  }, {});
+  };
+
+  const handlePrevPhoto = () => {
+    if (currentPhotoIndex > 0) {
+      setCurrentPhotoIndex(currentPhotoIndex - 1);
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (selectedEvent) {
+      if (e.key === "ArrowRight") handleNextPhoto();
+      if (e.key === "ArrowLeft") handlePrevPhoto();
+      if (e.key === "Escape") handleCloseModal();
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown as any);
+    return () => window.removeEventListener("keydown", handleKeyDown as any);
+  }, [selectedEvent, currentPhotoIndex]);
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
-      <Head title="Volunteering Events Gallery" />
+      <Head title="Events Gallery" />
 
-      <div className="flex flex-col gap-6 p-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ImageIcon className="h-6 w-6 text-muted-foreground" />
-            <h1 className="text-2xl font-semibold">
-              Volunteering Events Gallery
+      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          {/* Hero Section */}
+          <div className="text-center mb-12 space-y-4">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+              <Images className="h-4 w-4" />
+              <span>Relive the Moments</span>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+              Events Gallery
             </h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Explore highlights from our past events and community moments
+            </p>
           </div>
 
-          {flash.success && (
-            <div className="rounded-md bg-green-50 px-3 py-1 text-sm text-green-800 dark:bg-green-900 dark:text-green-200">
-              {flash.success}
+          {/* Search Bar */}
+          <div className="max-w-2xl mx-auto mb-12">
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <Input
+                placeholder="Search events by name or location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-12 pr-12 h-14 text-base bg-background/60 backdrop-blur-sm border-border/50 focus:border-primary shadow-sm"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Events Grid */}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+              <p className="text-muted-foreground">Loading gallery...</p>
+            </div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="bg-muted/50 p-8 rounded-full mb-6">
+                <Images className="h-16 w-16 text-muted-foreground/30" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">
+                {searchQuery ? "No events found" : "No events yet"}
+              </h3>
+              <p className="text-muted-foreground mb-6 text-center max-w-md">
+                {searchQuery
+                  ? "Try adjusting your search terms"
+                  : "Past events with photos will appear here"}
+              </p>
+              {searchQuery && (
+                <Button variant="outline" onClick={() => setSearchQuery("")}>
+                  <FilterX className="mr-2 h-4 w-4" /> Clear Search
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredEvents.map((event) => (
+                <Card
+                  key={event.id}
+                  className="group cursor-pointer overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-border/50"
+                  onClick={() => handleEventClick(event)}
+                >
+                  {/* Event Image */}
+                  <div className="relative h-56 overflow-hidden bg-muted">
+                    {event.image_path ? (
+                      <>
+                        <img
+                          src={`/storage/${event.image_path}`}
+                          alt={event.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                      </>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                        <ImageIcon className="h-16 w-16 text-primary/30" />
+                      </div>
+                    )}
+
+                    {/* Documentation Count Badge */}
+                    <div className="absolute top-3 right-3">
+                      <Badge className="bg-black/60 text-white border-white/20 backdrop-blur-sm">
+                        <FileText className="h-3 w-3 mr-1.5" />
+                        {event.total_documentation_count} {event.total_documentation_count === 1 ? "item" : "items"}
+                      </Badge>
+                    </div>
+
+                    {/* Attendance Badge */}
+                    <div className="absolute top-3 left-3">
+                      <Badge
+                        variant="secondary"
+                        className={`${
+                          event.attendance_rate >= 80
+                            ? "bg-emerald-500/90 text-white"
+                            : event.attendance_rate >= 50
+                            ? "bg-amber-500/90 text-white"
+                            : "bg-gray-500/90 text-white"
+                        } border-white/20 backdrop-blur-sm`}
+                      >
+                        <TrendingUp className="h-3 w-3 mr-1.5" />
+                        {event.attendance_rate}%
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Event Details */}
+                  <CardContent className="p-5 space-y-3">
+                    <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-primary transition-colors">
+                      {event.name}
+                    </h3>
+
+                    <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{formatDate(event.end_date)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{event.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 flex-shrink-0" />
+                        <span>{event.approved_participants_count} participants</span>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="secondary"
+                      className="w-full mt-2 hover:bg-primary hover:text-primary-foreground"
+                    >
+                      View Gallery
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
         </div>
+      </div>
 
-        {/* Timeline View */}
-        {events.length > 0 ? (
-          <div className="relative max-w-5xl mx-auto">
-            {/* Timeline Line */}
-            <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-500 via-blue-500 to-purple-500" />
+      {/* Photo Viewer Modal */}
+      <Dialog open={!!selectedEvent} onOpenChange={handleCloseModal}>
+        <DialogContent className="max-w-[95vw] md:max-w-6xl h-[90vh] p-0 gap-0 flex flex-col bg-background overflow-hidden">
+          {selectedEvent && (
+            <>
+              {/* Header */}
+              <div className="shrink-0 border-b bg-background/95 backdrop-blur-sm px-6 py-4">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-2xl font-bold truncate">{selectedEvent.name}</h2>
+                  <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="h-4 w-4" />
+                      {formatDate(selectedEvent.end_date)}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4" />
+                      {selectedEvent.location}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Users className="h-4 w-4" />
+                      {selectedEvent.approved_participants_count} participants
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-            <div className="space-y-12">
-              {Object.entries(groupedEvents).map(([monthYear, monthEvents]) => (
-                <div key={monthYear} className="relative">
-                  {/* Month Header */}
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="relative z-10 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-2 rounded-full shadow-lg">
-                      <CalendarDays className="inline h-4 w-4 mr-2" />
-                      <span className="font-semibold">{monthYear}</span>
-                    </div>
-                    <div className="flex-1 h-px bg-gradient-to-r from-purple-200 to-transparent dark:from-purple-800" />
+              {/* Documentation Viewer with Tabs */}
+              <div className="flex-1 overflow-hidden">
+                <Tabs defaultValue="analytics" className="h-full flex flex-col">
+                  <div className="shrink-0 border-b bg-background/95 backdrop-blur-sm px-6">
+                    <TabsList className="w-full justify-start h-12">
+                      <TabsTrigger value="analytics" className="gap-2">
+                        <BarChart3 className="h-4 w-4" />
+                        Analytics
+                      </TabsTrigger>
+                      <TabsTrigger value="photos" className="gap-2">
+                        <ImageIcon className="h-4 w-4" />
+                        Photos ({selectedEvent.photos_count})
+                      </TabsTrigger>
+                      <TabsTrigger value="documents" className="gap-2">
+                        <FileText className="h-4 w-4" />
+                        Documents ({selectedEvent.documents_count})
+                      </TabsTrigger>
+                      <TabsTrigger value="summaries" className="gap-2">
+                        <FileText className="h-4 w-4" />
+                        Summaries ({selectedEvent.summaries_count})
+                      </TabsTrigger>
+                    </TabsList>
                   </div>
 
-                  {/* Events for this month */}
-                  <div className="space-y-6">
-                    {monthEvents.map((event) => (
-                      <div key={event.id} className="relative flex gap-6 group pl-4">
-                        {/* Timeline dot */}
-                        <div className="absolute left-[27px] top-6">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 ring-4 ring-background shadow-lg z-10 flex items-center justify-center">
-                            <div className="w-3 h-3 rounded-full bg-white" />
+                  {/* Analytics Tab */}
+                  <TabsContent value="analytics" className="flex-1 mt-0 data-[state=active]:flex flex-col overflow-hidden">
+                    <div className="overflow-auto p-6">
+                      <div className="max-w-5xl mx-auto space-y-8">
+                        {/* Hero Stats */}
+                        <div className="text-center mb-8">
+                          <h3 className="text-3xl font-bold mb-2">Event Performance</h3>
+                          <p className="text-muted-foreground">Key metrics and highlights from this event</p>
+                        </div>
+
+                        {/* Key Metrics Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          {/* Attendance Rate */}
+                          <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20">
+                            <CardContent className="p-6">
+                              <div className="flex items-center gap-4 mb-4">
+                                <div className="p-3 rounded-xl bg-emerald-500/20">
+                                  <TrendingUp className="h-6 w-6 text-emerald-600 dark:text-emerald-500" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Attendance Rate</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <p className="text-4xl font-bold text-emerald-700 dark:text-emerald-400">
+                                  {selectedEvent.attendance_rate}%
+                                </p>
+                                <div className="w-full bg-emerald-200 dark:bg-emerald-900/50 rounded-full h-2">
+                                  <div
+                                    className="bg-emerald-600 dark:bg-emerald-500 h-2 rounded-full transition-all"
+                                    style={{ width: `${selectedEvent.attendance_rate}%` }}
+                                  />
+                                </div>
+                                <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80">
+                                  {selectedEvent.attendance_rate >= 80 ? "Excellent turnout!" :
+                                   selectedEvent.attendance_rate >= 50 ? "Good participation" :
+                                   "Room for improvement"}
+                                </p>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Total Participants */}
+                          <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20">
+                            <CardContent className="p-6">
+                              <div className="flex items-center gap-4 mb-4">
+                                <div className="p-3 rounded-xl bg-blue-500/20">
+                                  <Users className="h-6 w-6 text-blue-600 dark:text-blue-500" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-blue-700 dark:text-blue-400">Total Participants</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <p className="text-4xl font-bold text-blue-700 dark:text-blue-400">
+                                  {selectedEvent.approved_participants_count}
+                                </p>
+                                <p className="text-xs text-blue-600/80 dark:text-blue-400/80">
+                                  Approved attendees
+                                </p>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Documentation */}
+                          <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/30 dark:to-purple-900/20">
+                            <CardContent className="p-6">
+                              <div className="flex items-center gap-4 mb-4">
+                                <div className="p-3 rounded-xl bg-purple-500/20">
+                                  <Award className="h-6 w-6 text-purple-600 dark:text-purple-500" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-purple-700 dark:text-purple-400">Documentation</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <p className="text-4xl font-bold text-purple-700 dark:text-purple-400">
+                                  {selectedEvent.total_documentation_count}
+                                </p>
+                                <p className="text-xs text-purple-600/80 dark:text-purple-400/80">
+                                  {selectedEvent.photos_count} photos • {selectedEvent.documents_count} docs • {selectedEvent.summaries_count} summaries
+                                </p>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        {/* Event Details Card */}
+                        <Card className="border-0 shadow-lg">
+                          <CardContent className="p-6">
+                            <h4 className="font-semibold text-xl mb-4 flex items-center gap-2">
+                              <Calendar className="h-5 w-5 text-primary" />
+                              Event Details
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="space-y-3">
+                                <div className="flex items-start gap-3">
+                                  <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Event Date</p>
+                                    <p className="font-medium">{new Date(selectedEvent.start_date).toLocaleDateString('en-US', {
+                                      weekday: 'long',
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    })}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                  <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Location</p>
+                                    <p className="font-medium">{selectedEvent.location}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="space-y-3">
+                                <div className="flex items-start gap-3">
+                                  <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Duration</p>
+                                    <p className="font-medium">
+                                      {Math.ceil((new Date(selectedEvent.end_date).getTime() - new Date(selectedEvent.start_date).getTime()) / (1000 * 60 * 60 * 24))} days
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                  <Users className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                  <div>
+                                    <p className="text-sm font-medium text-muted-foreground">Capacity</p>
+                                    <p className="font-medium">{selectedEvent.approved_participants_count} participants</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Event Description */}
+                        {selectedEvent.description && (
+                          <Card className="border-0 shadow-lg">
+                            <CardContent className="p-6">
+                              <h4 className="font-semibold text-xl mb-4">About This Event</h4>
+                              <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                                {selectedEvent.description}
+                              </p>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Quick Stats */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="text-center p-4 rounded-lg bg-muted/50">
+                            <p className="text-2xl font-bold text-primary">{selectedEvent.photos_count}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Photos</p>
+                          </div>
+                          <div className="text-center p-4 rounded-lg bg-muted/50">
+                            <p className="text-2xl font-bold text-primary">{selectedEvent.documents_count}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Documents</p>
+                          </div>
+                          <div className="text-center p-4 rounded-lg bg-muted/50">
+                            <p className="text-2xl font-bold text-primary">{selectedEvent.summaries_count}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Summaries</p>
+                          </div>
+                          <div className="text-center p-4 rounded-lg bg-muted/50">
+                            <p className="text-2xl font-bold text-primary">{selectedEvent.attendance_rate}%</p>
+                            <p className="text-xs text-muted-foreground mt-1">Attended</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                  {/* Photos Tab */}
+                  <TabsContent value="photos" className="flex-1 mt-0 data-[state=active]:flex flex-col overflow-hidden">
+                    {selectedEvent.photos.length > 0 ? (
+                      <>
+                        {/* Image Viewer */}
+                        <div className="flex-1 relative bg-black/5 flex items-center justify-center overflow-hidden">
+                          <div className="relative w-full h-full flex items-center justify-center p-4">
+                            <img
+                              src={`/storage/${selectedEvent.photos[currentPhotoIndex].file_path}`}
+                              alt={selectedEvent.photos[currentPhotoIndex].title || "Event photo"}
+                              className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
+                            />
+
+                            {selectedEvent.photos.length > 1 && (
+                              <>
+                                <Button
+                                  size="icon"
+                                  variant="secondary"
+                                  className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full shadow-lg bg-background/80 hover:bg-background backdrop-blur-md disabled:opacity-30"
+                                  onClick={handlePrevPhoto}
+                                  disabled={currentPhotoIndex === 0}
+                                  aria-label="Previous photo"
+                                >
+                                  <ChevronLeft className="h-6 w-6" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="secondary"
+                                  className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full shadow-lg bg-background/80 hover:bg-background backdrop-blur-md disabled:opacity-30"
+                                  onClick={handleNextPhoto}
+                                  disabled={currentPhotoIndex === selectedEvent.photos.length - 1}
+                                  aria-label="Next photo"
+                                >
+                                  <ChevronRight className="h-6 w-6" />
+                                </Button>
+                              </>
+                            )}
+
+                            <div className="absolute top-4 right-4 px-4 py-2 rounded-full bg-background/90 backdrop-blur-md shadow-lg border">
+                              <span className="text-sm font-medium">
+                                {currentPhotoIndex + 1} / {selectedEvent.photos.length}
+                              </span>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Event Card */}
-                        <div className="flex-1 ml-12">
-                          <Card className="overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group-hover:scale-[1.02] border-l-4 border-l-purple-500">
-                            <div className="grid md:grid-cols-3 gap-0">
-                              {/* Event Image */}
-                              <div className="md:col-span-1">
-                                {event.image_path ? (
-                                  <img
-                                    src={`/storage/${event.image_path}`}
-                                    alt={event.name}
-                                    className="aspect-[4/3] md:aspect-auto md:h-full object-cover w-full cursor-pointer hover:opacity-90 transition-opacity"
-                                    onClick={() => setSelectedEvent(event)}
-                                  />
-                                ) : (
-                                  <div className="aspect-[4/3] md:aspect-auto md:h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
-                                    <ImageIcon className="h-12 w-12 text-gray-400" />
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Event Details */}
-                              <div className="md:col-span-2 p-6">
-                                <CardHeader className="p-0 mb-4">
-                                  <CardTitle className="text-xl font-bold group-hover:text-purple-600 transition-colors">
-                                    {event.name}
-                                  </CardTitle>
-                                </CardHeader>
-
-                                <CardContent className="p-0 space-y-3">
-                                  {/* Date & Time */}
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Clock className="h-4 w-4 text-purple-500" />
-                                    <span className="font-medium">
-                                      {new Date(event.start_date).toLocaleDateString('en-MY', {
-                                        weekday: 'long',
-                                        day: 'numeric',
-                                        month: 'long',
-                                        year: 'numeric'
-                                      })}
-                                    </span>
-                                  </div>
-
-                                  {/* Location */}
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <MapPin className="h-4 w-4 text-blue-500" />
-                                    <span>{event.location}</span>
-                                  </div>
-
-                                  {/* Description */}
-                                  <p className="text-sm text-muted-foreground line-clamp-2 mt-3">
-                                    {event.description}
-                                  </p>
-                                </CardContent>
-
-                                <CardFooter className="p-0 mt-4">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setSelectedEvent(event)}
-                                    className="hover:bg-purple-50 hover:text-purple-600 hover:border-purple-300 dark:hover:bg-purple-950"
-                                  >
-                                    <Info className="mr-2 h-4 w-4" /> View Details
-                                  </Button>
-                                </CardFooter>
-                              </div>
+                        {/* Photo Info Section - Outside Image */}
+                        {(selectedEvent.photos[currentPhotoIndex].title ||
+                          selectedEvent.photos[currentPhotoIndex].description) && (
+                          <div className="shrink-0 border-t bg-background/95 backdrop-blur-sm px-6 py-4">
+                            <div className="max-w-3xl">
+                              {selectedEvent.photos[currentPhotoIndex].title && (
+                                <h4 className="font-semibold text-lg mb-2">
+                                  {selectedEvent.photos[currentPhotoIndex].title}
+                                </h4>
+                              )}
+                              {selectedEvent.photos[currentPhotoIndex].description && (
+                                <p className="text-muted-foreground">
+                                  {selectedEvent.photos[currentPhotoIndex].description}
+                                </p>
+                              )}
                             </div>
-                          </Card>
+                          </div>
+                        )}
+
+                        {/* Thumbnail Strip */}
+                        {selectedEvent.photos.length > 1 && (
+                          <div className="shrink-0 border-t bg-background/95 backdrop-blur-sm p-4">
+                            <div className="flex gap-2 overflow-x-auto pb-2">
+                              {selectedEvent.photos.map((photo, index) => (
+                                <button
+                                  key={photo.id}
+                                  onClick={() => setCurrentPhotoIndex(index)}
+                                  className={`relative shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                                    index === currentPhotoIndex
+                                      ? "border-primary ring-2 ring-primary/20 scale-105"
+                                      : "border-transparent hover:border-border"
+                                  }`}
+                                  aria-label={`View photo ${index + 1}`}
+                                >
+                                  <img
+                                    src={`/storage/${photo.file_path}`}
+                                    alt={photo.title || `Thumbnail ${index + 1}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                        <div className="text-center">
+                          <ImageIcon className="h-16 w-16 mx-auto mb-4 opacity-20" />
+                          <p>No photos available</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <Card className="p-8">
-            <div className="text-center text-muted-foreground">
-              <ImageIcon className="mx-auto h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">No Past Events Yet</p>
-              <p className="text-sm mt-2">Past events will appear here after they have been completed.</p>
-            </div>
-          </Card>
-        )}
-      </div>
+                    )}
+                  </TabsContent>
 
-      {/* 🔹 Modal for Event Details */}
-      <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{selectedEvent?.name}</DialogTitle>
-            <DialogDescription>
-              {selectedEvent && formatDate(selectedEvent.start_date)} — {selectedEvent?.location}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            {selectedEvent?.image_path ? (
-              <img
-                src={`/storage/${selectedEvent.image_path}`}
-                alt={selectedEvent.name}
-                className="aspect-[16/9] object-cover w-full rounded-md"
-              />
-            ) : (
-              <div className="aspect-[16/9] bg-gray-200 flex items-center justify-center text-gray-500 rounded-md">
-                <ImageIcon className="h-8 w-8" />
+                  {/* Documents Tab */}
+                  <TabsContent value="documents" className="flex-1 mt-0 data-[state=active]:flex flex-col overflow-hidden">
+                    {selectedEvent.documents.length > 0 ? (
+                      <div className="overflow-auto p-6">
+                        <div className="grid gap-4 max-w-4xl mx-auto">
+                          {selectedEvent.documents.map((doc) => (
+                            <Card key={doc.id} className="hover:shadow-md transition-shadow border-l-4 border-l-primary">
+                              <CardContent className="p-5">
+                                <div className="flex items-start gap-4">
+                                  <div className="p-3 rounded-lg bg-primary/10 shrink-0">
+                                    <FileText className="h-6 w-6 text-primary" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-semibold text-lg mb-2">
+                                      {doc.title || "Untitled Document"}
+                                    </h4>
+                                    {doc.description && (
+                                      <p className="text-sm text-muted-foreground mb-4">
+                                        {doc.description}
+                                      </p>
+                                    )}
+                                    <Button
+                                      size="sm"
+                                      variant="default"
+                                      asChild
+                                    >
+                                      <a
+                                        href={`/storage/${doc.file_path}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="gap-2"
+                                      >
+                                        <Download className="h-4 w-4" />
+                                        Download Document
+                                      </a>
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                        <div className="text-center">
+                          <FileText className="h-16 w-16 mx-auto mb-4 opacity-20" />
+                          <p className="text-lg">No documents available</p>
+                          <p className="text-sm mt-2">Event documents will appear here</p>
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  {/* Summaries Tab */}
+                  <TabsContent value="summaries" className="flex-1 mt-0 data-[state=active]:flex flex-col overflow-hidden">
+                    {selectedEvent.summaries.length > 0 ? (
+                      <div className="overflow-auto p-6">
+                        <div className="max-w-4xl mx-auto space-y-6">
+                          {selectedEvent.summaries.map((summary, index) => (
+                            <Card key={summary.id} className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-background to-muted/20">
+                              <div className="h-2 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-600"></div>
+                              <CardContent className="p-8">
+                                <div className="flex items-start gap-4 mb-6">
+                                  <div className="p-4 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 shrink-0">
+                                    <FileText className="h-8 w-8 text-amber-600 dark:text-amber-500" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-500 border-amber-500/20">
+                                        Summary {index + 1}
+                                      </Badge>
+                                    </div>
+                                    <h4 className="font-bold text-2xl mb-3 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                                      {summary.title || "Event Summary"}
+                                    </h4>
+                                  </div>
+                                </div>
+
+                                {summary.description && (
+                                  <div className="prose prose-sm max-w-none mb-6">
+                                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap text-base">
+                                      {summary.description}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {summary.file_path && (
+                                  <div className="flex gap-3 pt-4 border-t">
+                                    <Button
+                                      size="default"
+                                      className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md"
+                                      asChild
+                                    >
+                                      <a
+                                        href={`/storage/${summary.file_path}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="gap-2"
+                                      >
+                                        <Download className="h-4 w-4" />
+                                        Download Full Summary
+                                      </a>
+                                    </Button>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                        <div className="text-center">
+                          <div className="inline-flex p-6 rounded-full bg-amber-500/10 mb-4">
+                            <FileText className="h-16 w-16 text-amber-500/30" />
+                          </div>
+                          <p className="text-lg font-medium">No summaries available</p>
+                          <p className="text-sm mt-2">Event summaries and recaps will appear here</p>
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </div>
-            )}
-            <p className="text-sm text-gray-700 dark:text-gray-300">{selectedEvent?.description}</p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedEvent(null)}>
-              Close
-            </Button>
-          </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </AppLayout>

@@ -296,4 +296,84 @@ class EventsController extends Controller
 
         return back()->with('success', 'Participant status updated.');
     }
+
+    /**
+     * Toggle gallery visibility for an event
+     */
+    public function toggleGalleryVisibility(Event $event)
+    {
+        $event->update([
+            'is_gallery_visible' => !$event->is_gallery_visible
+        ]);
+
+        return back()->with('success', $event->is_gallery_visible
+            ? 'Event is now visible in gallery'
+            : 'Event is now hidden from gallery');
+    }
+
+    /**
+     * Display the public events gallery page
+     */
+    public function eventsGallery()
+    {
+        return inertia('EventsGallery');
+    }
+
+    /**
+     * Get events gallery data (public API)
+     * Returns past published events that have photo documentation
+     */
+    public function getEventsGalleryData()
+    {
+        $events = Event::where('end_date', '<', now())
+            ->where('status', 'published')
+            ->where('is_gallery_visible', true)
+            ->whereHas('documentation')
+            ->with(['documentation' => function($query) {
+                $query->orderBy('sort_order')
+                    ->orderBy('created_at', 'desc');
+            }])
+            ->withCount([
+                'participants as approved_participants_count' => function($query) {
+                    $query->where('status', 'approved');
+                }
+            ])
+            ->orderBy('end_date', 'desc')
+            ->get()
+            ->map(function($event) {
+                // Calculate attendance rate
+                $attendanceRate = $event->capacity > 0
+                    ? round(($event->approved_participants_count / $event->capacity) * 100, 2)
+                    : 0;
+
+                // Separate documentation by type
+                $photos = $event->documentation->where('type', 'photo')->values();
+                $documents = $event->documentation->where('type', 'document')->values();
+                $summaries = $event->documentation->where('type', 'summary')->values();
+
+                return [
+                    'id' => $event->id,
+                    'name' => $event->name,
+                    'description' => $event->description,
+                    'location' => $event->location,
+                    'start_date' => $event->start_date,
+                    'end_date' => $event->end_date,
+                    'image_path' => $event->image_path,
+                    'approved_participants_count' => $event->approved_participants_count,
+                    'attendance_rate' => $attendanceRate,
+                    'photos' => $photos,
+                    'documents' => $documents,
+                    'summaries' => $summaries,
+                    'photos_count' => $photos->count(),
+                    'documents_count' => $documents->count(),
+                    'summaries_count' => $summaries->count(),
+                    'total_documentation_count' => $event->documentation->count(),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'events' => $events,
+        ]);
+    }
 }

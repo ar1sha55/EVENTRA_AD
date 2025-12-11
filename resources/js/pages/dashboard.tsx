@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import { edit as profileEdit } from '@/routes/profile';
@@ -298,12 +299,34 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
     setIsVolunteerModalOpen(true);
   };
 
-  // Chart Data
-  const pastEventsStats = [
-    { name: "Jan", events: 2 }, { name: "Feb", events: 4 },
-    { name: "Mar", events: 3 }, { name: "Apr", events: 5 },
-    { name: "May", events: 4 }, { name: "Jun", events: 6 },
-  ];
+  // Chart Data (Dynamic)
+  const [activityChartData, setActivityChartData] = useState<Array<{ name: string; events: number }>>([]);
+  const [loadingChartData, setLoadingChartData] = useState(true);
+
+  // Fetch activity chart data on component mount
+  useEffect(() => {
+    const fetchActivityData = async () => {
+      try {
+        setLoadingChartData(true);
+        const response = await axios.get('/api/dashboard/activity-chart');
+        if (response.data.success) {
+          setActivityChartData(response.data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching activity chart data:', error);
+        // Fallback to empty data if fetch fails
+        setActivityChartData([
+          { name: "Jan", events: 0 }, { name: "Feb", events: 0 },
+          { name: "Mar", events: 0 }, { name: "Apr", events: 0 },
+          { name: "May", events: 0 }, { name: "Jun", events: 0 },
+        ]);
+      } finally {
+        setLoadingChartData(false);
+      }
+    };
+
+    fetchActivityData();
+  }, []);
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
@@ -564,18 +587,24 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                             <CardDescription>Events participated over the last 6 months</CardDescription>
                         </CardHeader>
                         <CardContent className="h-[300px] pt-4">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={pastEventsStats} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} />
-                                    <Tooltip
-                                        cursor={{ fill: '#f3f4f6' }}
-                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    />
-                                    <Bar dataKey="events" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={32} />
-                                </BarChart>
-                            </ResponsiveContainer>
+                            {loadingChartData ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                                </div>
+                            ) : (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={activityChartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} />
+                                        <Tooltip
+                                            cursor={{ fill: '#f3f4f6' }}
+                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        />
+                                        <Bar dataKey="events" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={32} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            )}
                         </CardContent>
                     </Card>
                 </div>

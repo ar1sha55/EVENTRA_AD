@@ -447,11 +447,11 @@ export default function EventBlastPage({ events, blasts, captionStyles }: Props)
                   {/* Telegram Header */}
                   <div className="bg-[#517da2] dark:bg-[#263242] p-3 pt-8 flex items-center gap-3 text-white shadow-md z-10">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-400 to-cyan-300 flex items-center justify-center text-xs font-bold">
-                      Ev
+                      V
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-sm">Event Channel</div>
-                      <div className="text-[10px] opacity-80">subscribers</div>
+                      <div className="font-semibold text-sm">VOLUNTEER@UTM</div>
+                      <div className="text-[10px] opacity-80">100 subscribers</div>
                     </div>
                   </div>
 

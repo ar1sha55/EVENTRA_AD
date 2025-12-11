@@ -24,6 +24,7 @@ class Event extends Model
         'image_path',
         'qr_code_path',
         'telegram_message_id',
+        'is_gallery_visible',
     ];
 
     /**
@@ -50,5 +51,13 @@ class Event extends Model
     public function participants()
     {
         return $this->hasMany(Participant::class);
+    }
+
+    /**
+     * The documentation that belongs to the event.
+     */
+    public function documentation()
+    {
+        return $this->hasMany(EventDocumentation::class);
     }
 }

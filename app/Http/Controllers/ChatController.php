@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Session;
 use App\Models\Event;
 use App\Models\User;
 use App\Models\Participant;
+use App\Models\UserPreference;
+use App\Services\RecommendationService;
 use Illuminate\Support\Facades\DB;
 
 class ChatController extends Controller
@@ -51,6 +53,9 @@ class ChatController extends Controller
 
     private function getGeminiChatResponse(string $userMessage): string
     {
+        // Detect and store user interests if mentioned
+        $this->detectAndStoreInterests($userMessage);
+
         $apiKey = env('GEMINI_API_KEY');
 
         if (empty($apiKey)) {
@@ -119,9 +124,9 @@ class ChatController extends Controller
         // Add Bot Message
         $history[] = ['role' => 'model', 'parts' => [['text' => $botMsg]]];
 
-        // Keep only the last 6 messages (3 turns) to prevent "Context Window" overflow
-        if (count($history) > 6) {
-            $history = array_slice($history, -6);
+        // Keep only the last 20 messages (10 turns) for better context
+        if (count($history) > 20) {
+            $history = array_slice($history, -20);
         }
 
         Session::put('chat_history', $history);
@@ -140,6 +145,7 @@ class ChatController extends Controller
         $faqData = $this->getExpandedFaq();
         $quickActions = $this->getQuickActions();
         $roleCapabilities = $this->getRoleCapabilities();
+        $recommendationGuidance = $this->getRecommendationGuidance();
 
         return <<<EOT
 You are **EventraBot**, the intelligent AI assistant for Eventra - the premier event management platform.
@@ -174,6 +180,8 @@ Be helpful, proactive, and context-aware. Provide accurate information, suggest 
 
 ### FREQUENTLY ASKED QUESTIONS:
 {$faqData}
+
+{$recommendationGuidance}
 
 ### RESPONSE GUIDELINES:
 - Start with a direct answer
@@ -243,18 +251,30 @@ EOT;
                     ->count();
 
                 $capacityDisplay = $capacity ? $capacity : 'Unlimited';
-                $spotsLeft = $capacity ? ($capacity - $registered) : 'Many';
-                $status = ($capacity && $spotsLeft <= 0) ? '🔴 *FULL*' : (is_numeric($spotsLeft) && $spotsLeft < 10 ? "⚠️ _{$spotsLeft} spots left_" : '');
+                $spotsLeft = $capacity ? ($capacity - $registered) : null;
 
-                $output .= "- **{$event->name}** {$status}\n";
-                $output .= "  📅 {$date} at {$time} | 📍 {$location}\n";
-                $output .= "  👥 {$registered}/{$capacityDisplay} registered";
-
-                if ($event->fee && $event->fee > 0) {
-                    $output .= " | 💵 RM " . number_format($event->fee, 2);
+                // Availability status
+                $availabilityBadge = '';
+                if ($capacity && $spotsLeft <= 0) {
+                    $availabilityBadge = ' • ⚠️ **FULL**';
+                } elseif ($spotsLeft && $spotsLeft <= 5) {
+                    $availabilityBadge = " • 🔥 **Only {$spotsLeft} spots left!**";
+                } elseif ($spotsLeft && $spotsLeft <= 10) {
+                    $availabilityBadge = " • ⚡ **{$spotsLeft} spots remaining**";
                 }
 
-                $output .= "\n  🔗 [View & Register](/join-events)\n\n";
+                $output .= "**{$event->name}**{$availabilityBadge}\n";
+                $output .= "📅 {$date} at {$time}\n";
+                $output .= "📍 {$location}\n";
+
+                // Capacity and fee on same line
+                $details = "👥 {$registered}/" . ($capacity ?? 'Unlimited');
+                if ($event->fee && $event->fee > 0) {
+                    $details .= " • 💵 RM " . number_format($event->fee, 2);
+                } else {
+                    $details .= " • 🎉 **FREE**";
+                }
+                $output .= "{$details}\n\n";
             }
             return $output;
         } catch (\Exception $e) {
@@ -326,52 +346,153 @@ EOT;
 
                 // Show upcoming registered events with reminders
                 if ($upcomingEvents->isNotEmpty()) {
-                    $hasUrgent = false;
-                    $data[] = "\n**🎫 Your Registered Events:**";
+                    $data[] = "";
+                    $data[] = "---";
+                    $data[] = "## 🎫 Your Upcoming Events";
+                    $data[] = "";
+
                     foreach ($upcomingEvents->take(3) as $participant) {
                         $event = $participant->event;
                         if ($event) {
                             $date = $event->start_date->format('M d, Y');
+                            $time = $event->start_date->format('g:i A');
                             $daysUntil = now()->diffInDays($event->start_date, false);
 
-                            $statusIcon = $participant->status === 'APPROVED' ? '✅' : ($participant->status === 'PENDING' ? '⏳' : '❌');
-                            $urgencyBadge = '';
-
-                            if ($daysUntil <= 1 && $participant->status === 'APPROVED') {
-                                $urgencyBadge = ' 🔥 **TOMORROW!**';
-                                $hasUrgent = true;
-                            } elseif ($daysUntil <= 3 && $participant->status === 'APPROVED') {
-                                $urgencyBadge = ' ⚡ Starting soon';
+                            // Status badge
+                            $statusBadge = '';
+                            if ($participant->status === 'APPROVED') {
+                                $statusBadge = '✅ **Approved**';
+                            } elseif ($participant->status === 'PENDING') {
+                                $statusBadge = '⏳ **Pending Approval**';
+                            } else {
+                                $statusBadge = '❌ **Rejected**';
                             }
 
-                            $data[] = "- {$statusIcon} **{$event->name}**{$urgencyBadge}";
-                            $data[] = "  📅 {$date} | 📍 {$event->location}";
+                            // Urgency badge
+                            $urgencyBadge = '';
+                            if ($daysUntil <= 1 && $participant->status === 'APPROVED') {
+                                $urgencyBadge = ' • 🔥 **TOMORROW!**';
+                            } elseif ($daysUntil <= 3 && $participant->status === 'APPROVED') {
+                                $urgencyBadge = ' • ⚡ **Very Soon**';
+                            } elseif ($daysUntil <= 7) {
+                                $urgencyBadge = ' • 📌 **This Week**';
+                            }
+
+                            $data[] = "**{$event->name}**";
+                            $data[] = "{$statusBadge}{$urgencyBadge}";
+                            $data[] = "📅 {$date} at {$time}";
+                            $data[] = "📍 {$event->location}";
+                            $data[] = "";
                         }
                     }
+
                     if ($upcomingEvents->count() > 3) {
-                        $data[] = "\n_+ " . ($upcomingEvents->count() - 3) . " more events_";
+                        $data[] = "_+ " . ($upcomingEvents->count() - 3) . " more events on your [Dashboard](/dashboard)_";
+                        $data[] = "";
                     }
                 }
 
-                // Event recommendations (events they haven't registered for)
-                $registeredEventIds = $registrations->pluck('event_id')->toArray();
-                $recommendedEvents = Event::where('status', 'published')
-                    ->where('start_date', '>=', now())
-                    ->whereNotIn('id', $registeredEventIds)
-                    ->orderBy('start_date', 'asc')
-                    ->limit(2)
-                    ->get();
+                // Smart Event Recommendations using AI
+                $recommendationService = new RecommendationService();
+                $recommendedEvents = $recommendationService->getPersonalizedRecommendations($user, 3);
 
                 if ($recommendedEvents->isNotEmpty()) {
-                    $data[] = "\n**💡 Recommended for You:**";
+                    $data[] = "\n---";
+                    $data[] = "## 🎯 Personalized for You";
+                    $data[] = "";
+
+                    $rank = 1;
                     foreach ($recommendedEvents as $event) {
-                        $date = $event->start_date->format('M d');
+                        $date = $event->start_date->format('M d, Y');
+                        $time = $event->start_date->format('g:i A');
                         $daysUntil = now()->diffInDays($event->start_date, false);
-                        $timing = $daysUntil <= 7 ? " (Soon!)" : "";
-                        $data[] = "- **{$event->name}**{$timing}";
-                        $data[] = "  📅 {$date} | 📍 {$event->location}";
+
+                        // Match score badge
+                        $matchScore = isset($event->recommendation_score) ? round($event->recommendation_score) : null;
+                        $scoreBadge = "";
+                        if ($matchScore) {
+                            if ($matchScore >= 90) {
+                                $scoreBadge = "🔥 **{$matchScore}% Perfect Match**";
+                            } elseif ($matchScore >= 80) {
+                                $scoreBadge = "⭐ **{$matchScore}% Great Match**";
+                            } elseif ($matchScore >= 70) {
+                                $scoreBadge = "✨ **{$matchScore}% Good Match**";
+                            } else {
+                                $scoreBadge = "💫 **{$matchScore}% Match**";
+                            }
+                        }
+
+                        // Event card
+                        $data[] = "### {$rank}. {$event->name}";
+                        if ($scoreBadge) {
+                            $data[] = "{$scoreBadge}";
+                        }
+                        $data[] = "";
+
+                        // Event details
+                        $data[] = "📅 **{$date}** at {$time}";
+                        $data[] = "📍 **{$event->location}**";
+
+                        // Fee info
+                        if ($event->fee && $event->fee > 0) {
+                            $data[] = "💵 RM " . number_format($event->fee, 2);
+                        } else {
+                            $data[] = "🎉 **FREE Event**";
+                        }
+
+                        // Capacity info
+                        if ($event->capacity) {
+                            $registered = Participant::where('event_id', $event->id)
+                                ->whereIn('status', ['APPROVED', 'PENDING'])
+                                ->count();
+                            $spotsLeft = $event->capacity - $registered;
+
+                            if ($spotsLeft <= 0) {
+                                $data[] = "⚠️ **FULL** ({$registered}/{$event->capacity})";
+                            } elseif ($spotsLeft <= 5) {
+                                $data[] = "🔥 **Only {$spotsLeft} spots left!** ({$registered}/{$event->capacity})";
+                            } else {
+                                $data[] = "👥 {$registered}/{$event->capacity} registered";
+                            }
+                        }
+
+                        $data[] = "";
+
+                        // Why recommended section
+                        if (isset($event->recommendation_reasons) && !empty($event->recommendation_reasons)) {
+                            $data[] = "**Why we recommend this:**";
+                            foreach (array_slice($event->recommendation_reasons, 0, 2) as $reason) {
+                                $data[] = "• {$reason}";
+                            }
+                            $data[] = "";
+                        }
+
+                        // Urgency indicator
+                        if ($daysUntil <= 2 && $daysUntil >= 0) {
+                            $data[] = "⏰ **Starting very soon!**";
+                            $data[] = "";
+                        } elseif ($daysUntil <= 7 && $daysUntil > 2) {
+                            $data[] = "📌 Starting this week";
+                            $data[] = "";
+                        }
+
+                        if ($rank < $recommendedEvents->count()) {
+                            $data[] = "---";
+                        }
+
+                        $rank++;
                     }
-                    $data[] = "\n[Browse All Events →](/join-events)";
+
+                    $data[] = "";
+                    $data[] = "**[📋 View All Events](/join-events)** • **[✅ My Registrations](/dashboard)**";
+
+                    // Encourage users to set preferences if they haven't
+                    $userPreference = UserPreference::where('user_id', $user->id)->first();
+                    if (!$userPreference || empty($userPreference->interest_keywords)) {
+                        $data[] = "";
+                        $data[] = "---";
+                        $data[] = "💡 **Pro Tip:** Tell me your volunteering interests (e.g., 'I like community service and tech') to get even better recommendations!";
+                    }
                 } elseif ($upcomingEvents->isEmpty()) {
                     $data[] = "\n**💡 Get Started:**";
                     $data[] = "No events yet! [Browse events](/join-events) to find volunteering opportunities.";
@@ -503,5 +624,173 @@ EOT;
         }
 
         return implode("\n", $actions);
+    }
+
+    /**
+     * Get recommendation guidance for the chatbot
+     */
+    private function getRecommendationGuidance(): string
+    {
+        $user = Auth::user();
+
+        // Only provide recommendation guidance for members
+        if ($user->role !== 'member') {
+            return "";
+        }
+
+        // Check if user has preferences
+        $userPreference = UserPreference::where('user_id', $user->id)->first();
+        $hasPreferences = $userPreference && !empty($userPreference->interest_keywords);
+
+        $guidance = <<<EOT
+
+### 🎯 SMART EVENT RECOMMENDATIONS (Important Feature):
+
+**This is a VOLUNTEERING club platform.** All events are volunteering opportunities.
+
+**When user asks for recommendations** (e.g., "🎯 Recommend events for me", "suggest events", "what events should I join"):
+
+EOT;
+
+        if (!$hasPreferences) {
+            $guidance .= <<<EOT
+
+**STEP 1: Ask about their volunteering interests first** (they haven't told you yet):
+"Great! I'd love to find the perfect volunteering opportunities for you! 🎯
+
+What type of volunteering interests you most? You can mention multiple interests:
+
+🤝 **Community Service** - Outreach, charity, helping communities
+👨‍🏫 **Education & Teaching** - Tutoring, mentoring, training
+🌳 **Environment** - Cleanup, sustainability, tree planting
+🏥 **Healthcare & Wellness** - Health camps, blood donation, fitness
+💻 **Technology** - Tech workshops, digital literacy, innovation
+⚽ **Sports & Recreation** - Sports events, fitness activities
+🎨 **Arts & Culture** - Cultural programs, performances, creative projects
+📚 **Academic Development** - Workshops, seminars, skill training
+
+Just type your interests (e.g., 'community service, teaching' or 'tech, environment')!"
+
+**STEP 2: After they respond with interests:**
+- Thank them
+- Confirm their interests
+- Show them personalized recommendations from the "Smart Recommendations" already in PERSONALIZED DATA section
+- Explain why each event matches their interests
+
+**IMPORTANT:** The personalized recommendations are ALREADY in the PERSONALIZED DATA section above. Just present them nicely with explanations based on the user's stated interests.
+
+EOT;
+        } else {
+            $keywords = implode(', ', $userPreference->interest_keywords);
+            $guidance .= <<<EOT
+
+**USER'S SAVED INTERESTS:** {$keywords}
+
+When they ask for recommendations:
+- Present the "Smart Recommendations" already shown in PERSONALIZED DATA section
+- Explain why each event matches their interests ({$keywords})
+- Show match scores and reasons provided
+- Encourage them to explore and register
+
+If they mention NEW interests different from their saved ones:
+- Acknowledge the new interests
+- Let them know you can provide recommendations based on these new interests too
+- Ask if they want to update their preferences
+
+EOT;
+        }
+
+        $guidance .= <<<EOT
+
+**DETECTING RECOMMENDATION REQUESTS:**
+Users might ask in various ways:
+- "Recommend events for me" / "Suggest events"
+- "What events should I join?"
+- "Show me tech events" / "Find community service events"
+- "Events for me" / "What's good for me?"
+
+**NATURAL LANGUAGE SEARCH:**
+If they ask for specific types (e.g., "show me tech events", "free events", "events this weekend"):
+- Look at the UPCOMING EVENTS section above
+- Filter/highlight events matching their criteria
+- Explain why these match what they're looking for
+
+**REMEMBER:**
+- Recommendations are ALREADY calculated and shown in PERSONALIZED DATA
+- Your job is to present them conversationally and explain the matches
+- Be encouraging and enthusiastic about volunteering!
+- Always end with a call-to-action: [View All Events](/join-events) or [Register Now](/join-events)
+
+EOT;
+
+        return $guidance;
+    }
+
+    /**
+     * Detect and store user interests from their message
+     */
+    private function detectAndStoreInterests(string $message): void
+    {
+        $user = Auth::user();
+
+        // Only process for members
+        if ($user->role !== 'member') {
+            return;
+        }
+
+        // Keywords that indicate user is stating their interests
+        $interestIndicators = [
+            'interested in', 'interest in', 'like', 'love', 'enjoy', 'prefer',
+            'passionate about', 'want to', 'looking for', 'into'
+        ];
+
+        $messageLower = strtolower($message);
+        $isStatingInterests = false;
+
+        foreach ($interestIndicators as $indicator) {
+            if (str_contains($messageLower, $indicator)) {
+                $isStatingInterests = true;
+                break;
+            }
+        }
+
+        // Also detect if message contains volunteering category keywords
+        $hasVolunteeringKeywords = str_contains($messageLower, 'community') ||
+                                   str_contains($messageLower, 'education') ||
+                                   str_contains($messageLower, 'teaching') ||
+                                   str_contains($messageLower, 'environment') ||
+                                   str_contains($messageLower, 'tech') ||
+                                   str_contains($messageLower, 'health') ||
+                                   str_contains($messageLower, 'sports') ||
+                                   str_contains($messageLower, 'arts') ||
+                                   str_contains($messageLower, 'culture');
+
+        if ($isStatingInterests || $hasVolunteeringKeywords) {
+            try {
+                $recommendationService = new RecommendationService();
+                $keywords = $recommendationService->extractInterestKeywords($message);
+
+                if (!empty($keywords)) {
+                    // Get or create user preference
+                    $userPreference = UserPreference::firstOrNew(['user_id' => $user->id]);
+
+                    // Merge with existing keywords
+                    $existingKeywords = $userPreference->interest_keywords ?? [];
+                    $mergedKeywords = array_unique(array_merge($existingKeywords, $keywords));
+
+                    $userPreference->interest_keywords = $mergedKeywords;
+                    $userPreference->asked_about_interests = true;
+                    $userPreference->last_updated = now();
+                    $userPreference->save();
+
+                    Log::info("User interests updated", [
+                        'user_id' => $user->id,
+                        'keywords' => $mergedKeywords
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error("Error storing user interests: " . $e->getMessage());
+            }
+        }
     }
 }
