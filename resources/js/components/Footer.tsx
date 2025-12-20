@@ -5,7 +5,7 @@ import { Instagram, Send, Mail, Facebook, Music2, Heart } from 'lucide-react';
 const Footer: React.FC = () => {
     return (
         // 1. Main Container using your specific CSS variables for background and border
-        <footer className="relative mt-20 pt-12 pb-8 border-t transition-colors duration-300
+        <footer className="relative mt-8 pt-12 pb-8 border-t transition-colors duration-300
             bg-[var(--footer)] 
             border-[var(--footer-border)]"
         >
@@ -22,7 +22,7 @@ const Footer: React.FC = () => {
                             Eventra
                         </div>
                         <p className="text-sm text-center md:text-left max-w-xs leading-relaxed transition-colors duration-300 text-[var(--footer-text)] opacity-80">
-                            Events Made Simpler, <p>Connections Made Stronger.</p>
+                            Events Made Simpler, <span>Connections Made Stronger.</span>
                         </p>
                     </div>
 

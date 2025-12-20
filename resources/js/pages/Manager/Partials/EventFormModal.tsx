@@ -251,10 +251,12 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
         const url = event ? `/events/${event.id}` : '/events';
 
         router.post(url, data, {
-            preserveScroll: true,
             forceFormData: true,
-            onSuccess: () => {
+            onFinish: () => {
                 setProcessing(false);
+            },
+            onSuccess: () => {
+                // Close modal after success
                 onClose();
             },
             onError: (errors) => {

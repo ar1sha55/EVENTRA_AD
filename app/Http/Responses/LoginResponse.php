@@ -4,6 +4,7 @@ namespace App\Http\Responses;
 
 use Illuminate\Support\Facades\Auth;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
+use App\Models\ActivityLog;
 
 class LoginResponse implements LoginResponseContract
 {
@@ -17,6 +18,16 @@ class LoginResponse implements LoginResponseContract
     {
         // Get the currently authenticated user
         $user = Auth::user();
+
+        // Log successful login
+        ActivityLog::logActivity(
+            action: 'auth.login',
+            description: "User '{$user->name}' logged in successfully",
+            properties: [
+                'user_id' => $user->id,
+                'user_role' => $user->role,
+            ]
+        );
 
         // Check role and redirect accordingly
         if ($user->role === 'manager') {

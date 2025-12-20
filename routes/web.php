@@ -4,15 +4,20 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\EventBlastController;
+use App\Http\Controllers\EventDocumentationController;
+use App\Http\Controllers\EventFeedbackController;
 use App\Http\Controllers\ParticipantsController;
 use App\Http\Controllers\TestController;
 use App\Http\Controllers\ManagerDashboardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ChatController;
-use App\Http\Controllers\EventDocumentationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\ManageMembersController;
+use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\ContactSupportController;
+use App\Http\Controllers\AdminSupportController;
 use App\Http\Middleware\RoleMiddleware;
 
 Route::get('/', function () {
@@ -37,8 +42,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Public/General Pages
     Route::get('/events-gallery', [EventsController::class, 'eventsGallery'])->name('events-gallery');
     Route::get('/api/events-gallery', [EventsController::class, 'getEventsGalleryData'])->name('api.events-gallery');
-    Route::get('/announcement', [TestController::class, 'announcement'])->name('announcement');
-    Route::get('/contact-support', [TestController::class, 'contactSupport'])->name('contact-support');
+
+    // Event Feedback Routes
+    Route::get('/api/events/{event}/feedback', [EventFeedbackController::class, 'show'])->name('api.events.feedback.show');
+    Route::post('/api/events/{event}/feedback', [EventFeedbackController::class, 'store'])->name('api.events.feedback.store');
+
+    // Announcements (for all users to view)
+    Route::get('/announcement', [AnnouncementController::class, 'showForMembers'])->name('announcement');
+
+    // Contact Support
+    Route::get('/contact-support', [ContactSupportController::class, 'index'])->name('contact-support');
+    Route::post('/contact-support', [ContactSupportController::class, 'store'])->name('contact-support.store');
+    Route::get('/support-history', [ContactSupportController::class, 'history'])->name('support-history');
 
     // Chat
     Route::post('/chat', [ChatController::class, 'chat']);
@@ -63,7 +78,8 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->group(function ()
     Route::get('/manager/dashboard', [ManagerDashboardController::class, 'index'])->name('manager.dashboard');
 
     // --- Event Management (CRUD) ---
-    Route::resource('events', EventsController::class);
+    Route::resource('events', EventsController::class)->except(['show', 'create', 'edit']);
+    Route::put('/events/{event}/status', [EventsController::class, 'updateStatus'])->name('events.updateStatus');
     Route::post('/events/{event}/broadcast', [ManagerDashboardController::class, 'broadcast'])->name('events.broadcast');
     
     // --- Participant Management (Manager View) ---
@@ -79,7 +95,6 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->group(function ()
 
     // --- Other Manager Pages ---
     Route::get('/manager/manage-analytics', [TestController::class, 'manageAnalytics'])->name('manage-analytics');
-    Route::get('/manager/send-announcement', [TestController::class, 'sendAnnouncement'])->name('send-announcement');
 
     // --- Email Management ---
     Route::post('/manager/send-email', [MailController::class, 'sendToMember'])->name('mail.send');
@@ -100,6 +115,11 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->group(function ()
 
     // --- Event Gallery Visibility Toggle ---
     Route::post('/events/{event}/toggle-gallery-visibility', [EventsController::class, 'toggleGalleryVisibility'])->name('events.toggle-gallery-visibility');
+
+    // --- Announcement Management ---
+    Route::get('/manager/send-announcement', [AnnouncementController::class, 'index'])->name('send-announcement');
+    Route::post('/manager/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+    Route::get('/manager/announcements/history', [AnnouncementController::class, 'history'])->name('announcements.history');
 });
 
 // =========================================================================
@@ -115,13 +135,31 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->prefix('api')->gr
         ->name('api.manager.past-events-analytics');
     Route::get('/manager/events/{event}/analytics', [ManagerDashboardController::class, 'getEventAnalytics'])
         ->name('api.manager.event.analytics');
+
+    // Event Participants with Feedback API
+    Route::get('/manager/events/{event}/participants', [ManagerDashboardController::class, 'getEventParticipants'])
+        ->name('api.manager.event.participants');
 });
 
 // =========================================================================
 // Admins Only
 // =========================================================================
 Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
+    // Admin Dashboard (placeholder - to be implemented)
+    Route::get('admin/dashboard', [TestController::class, 'adminDashboard'])->name('admin.dashboard');
+
     Route::get('admin/system-control', [TestController::class, 'systemControl'])->name('system-control');
+
+    // Activity Logs Routes
+    Route::get('admin/activity-logs', [ActivityLogController::class, 'index'])->name('admin.activity-logs');
+    Route::get('admin/activity-logs/export', [ActivityLogController::class, 'export'])->name('admin.activity-logs.export');
+    Route::get('admin/activity-logs/{activityLog}', [ActivityLogController::class, 'show'])->name('admin.activity-logs.show');
+
+    // Support Ticket Management
+    Route::get('admin/support-tickets', [AdminSupportController::class, 'index'])->name('admin.support-tickets');
+    Route::get('admin/support-tickets/{ticket}', [AdminSupportController::class, 'show'])->name('admin.support-tickets.show');
+    Route::put('admin/support-tickets/{ticket}', [AdminSupportController::class, 'update'])->name('admin.support-tickets.update');
+    Route::delete('admin/support-tickets/{ticket}', [AdminSupportController::class, 'destroy'])->name('admin.support-tickets.destroy');
 });
 
 require __DIR__.'/settings.php';

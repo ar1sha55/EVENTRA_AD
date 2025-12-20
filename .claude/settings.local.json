@@ -6,7 +6,9 @@
       "Bash(php test_telegram.php:*)",
       "Bash(php diagnose_telegram.php:*)",
       "Bash(php verify_system.php:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(cd:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

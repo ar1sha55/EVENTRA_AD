@@ -126,6 +126,19 @@ export default function EventBlastPage({ events, blasts, captionStyles }: Props)
     }
   }, [flash]);
 
+  // Handle event pre-selection from query parameter
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const eventId = params.get('event');
+
+    if (eventId && events.length > 0) {
+      const event = events.find(e => e.id === parseInt(eventId));
+      if (event) {
+        setSelectedEvent(eventId);
+      }
+    }
+  }, [events]);
+
   // Handle AI caption generation
   const handleGenerateCaption = async () => {
     if (!selectedEvent) {

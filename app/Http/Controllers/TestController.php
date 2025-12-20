@@ -62,5 +62,8 @@ class TestController extends Controller
         return Inertia::render('Admin/SystemControl');
     }
 
-
+    public function adminDashboard(): Response
+    {
+        return Inertia::render('Admin/AdminDashboard');
+    }
 }

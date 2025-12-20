@@ -217,8 +217,8 @@ export default function Notifications({ notifications }: NotificationsProps) {
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Notifications" />
 
-      <div className="py-8 px-4 sm:px-6 lg:px-8 bg-gray-50/50 min-h-screen">
-        <div className="max-w-4xl mx-auto">
+      <div className="flex flex-col py-8 px-4 sm:px-6 lg:px-8 bg-gray-50/50 min-h-[calc(100vh-4rem)]">
+        <div className="max-w-4xl mx-auto w-full">
           <Card>
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">

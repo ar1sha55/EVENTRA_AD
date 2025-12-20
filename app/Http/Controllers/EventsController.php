@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\EventFeedback;
 use App\Models\Participant;
 use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 
 class EventsController extends Controller
 {
@@ -58,14 +60,36 @@ class EventsController extends Controller
         if ($event->status === 'published') {
             $members = User::where('role', 'member')->get();
             foreach ($members as $member) {
-                NotificationService::notifyNewEvent($member, $event);
+                NotificationService::notifyNewEvent($member, $event, sendEmail: true);
             }
 
             // Notify the manager who created the event
-            NotificationService::notifyManagerEventCreated(Auth::user(), $event);
+            NotificationService::notifyManagerEventCreated(Auth::user(), $event, sendEmail: true);
         }
 
-        return back()->with('success', 'Event created successfully!');
+        // Reload events list
+        $events = Event::with(['user', 'participants'])
+            ->latest()
+            ->get();
+
+        // Context-aware success messages
+        if ($event->status === 'published') {
+            $flashMessage = "Event published successfully! All members have been notified.";
+            $shouldPromptBlast = true;
+        } else {
+            $flashMessage = "Event saved as draft! You can publish it anytime from the events list.";
+            $shouldPromptBlast = false;
+        }
+
+        // Return Inertia response with flash data as props
+        return Inertia::render('Manager/ManageEvents', [
+            'events' => $events,
+            'flash' => [
+                'success' => $flashMessage,
+                'event_id' => $event->id,
+                'prompt_blast' => $shouldPromptBlast,
+            ],
+        ]);
     }
 
     public function update(Request $request, Event $event)
@@ -112,14 +136,74 @@ class EventsController extends Controller
         if ($oldStatus !== 'published' && $validated['status'] === 'published') {
             $members = User::where('role', 'member')->get();
             foreach ($members as $member) {
-                NotificationService::notifyNewEvent($member, $event);
+                NotificationService::notifyNewEvent($member, $event, sendEmail: true);
             }
 
             // Notify the manager who published the event
-            NotificationService::notifyManagerEventCreated(Auth::user(), $event);
+            NotificationService::notifyManagerEventCreated(Auth::user(), $event, sendEmail: true);
         }
 
-        return back()->with('success', 'Event updated successfully!');
+        // Reload events list
+        $events = Event::with(['user', 'participants'])
+            ->latest()
+            ->get();
+
+        // Context-aware messages based on status change
+        $message = $this->getUpdateMessage($oldStatus, $event->status);
+        $shouldPromptBlast = ($oldStatus !== 'published' && $event->status === 'published');
+
+        // Return Inertia response with flash data as props
+        return Inertia::render('Manager/ManageEvents', [
+            'events' => $events,
+            'flash' => [
+                'success' => $message,
+                'event_id' => $event->id,
+                'prompt_blast' => $shouldPromptBlast,
+            ],
+        ]);
+    }
+
+    /**
+     * Update only the event status (for quick status changes)
+     */
+    public function updateStatus(Request $request, Event $event)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:draft,published,archived',
+        ]);
+
+        $oldStatus = $event->status;
+        $newStatus = $validated['status'];
+
+        $event->update(['status' => $newStatus]);
+
+        // Send notification to all members when event changes to published
+        if ($oldStatus !== 'published' && $newStatus === 'published') {
+            $members = User::where('role', 'member')->get();
+            foreach ($members as $member) {
+                NotificationService::notifyNewEvent($member, $event, sendEmail: true);
+            }
+            NotificationService::notifyManagerEventCreated(Auth::user(), $event, sendEmail: true);
+        }
+
+        // Reload events list (consistent with store/update methods)
+        $events = Event::with(['user', 'participants'])
+            ->latest()
+            ->get();
+
+        // Context-aware messages
+        $message = $this->getUpdateMessage($oldStatus, $newStatus);
+        $shouldPromptBlast = ($oldStatus !== 'published' && $newStatus === 'published');
+
+        // Return Inertia response with flash data as props
+        return Inertia::render('Manager/ManageEvents', [
+            'events' => $events,
+            'flash' => [
+                'success' => $message,
+                'event_id' => $event->id,
+                'prompt_blast' => $shouldPromptBlast,
+            ],
+        ]);
     }
 
     public function destroy(Event $event)
@@ -135,7 +219,40 @@ class EventsController extends Controller
 
         return back()->with('success', 'Event deleted successfully!');
     }
-    
+
+    /**
+     * Get context-aware update message based on status change
+     */
+    private function getUpdateMessage($oldStatus, $newStatus)
+    {
+        // Draft → Published
+        if ($oldStatus !== 'published' && $newStatus === 'published') {
+            return "Event published! All members have been notified.";
+        }
+
+        // Published → Draft
+        if ($oldStatus === 'published' && $newStatus === 'draft') {
+            return "Event unpublished. It's now hidden from members.";
+        }
+
+        // Any → Archived
+        if ($newStatus === 'archived') {
+            return "Event archived successfully.";
+        }
+
+        // Editing draft
+        if ($newStatus === 'draft') {
+            return "Draft updated successfully!";
+        }
+
+        // Editing published event
+        if ($newStatus === 'published') {
+            return "Event updated! Changes have been saved.";
+        }
+
+        return "Event updated successfully!";
+    }
+
     public function joinEvents()
     {
         $user = Auth::user();
@@ -351,6 +468,21 @@ class EventsController extends Controller
                 $documents = $event->documentation->where('type', 'document')->values();
                 $summaries = $event->documentation->where('type', 'summary')->values();
 
+                // Get user's feedback if authenticated
+                $userFeedback = Auth::check()
+                    ? EventFeedback::where('event_id', $event->id)
+                        ->where('user_id', Auth::id())
+                        ->first()
+                    : null;
+
+                // Check if user can submit feedback
+                $canSubmitFeedback = Auth::check()
+                    && $event->end_date < now()
+                    && Participant::where('event_id', $event->id)
+                        ->where('user_id', Auth::id())
+                        ->where('status', 'APPROVED')
+                        ->exists();
+
                 return [
                     'id' => $event->id,
                     'name' => $event->name,
@@ -368,6 +500,8 @@ class EventsController extends Controller
                     'documents_count' => $documents->count(),
                     'summaries_count' => $summaries->count(),
                     'total_documentation_count' => $event->documentation->count(),
+                    'user_feedback' => $userFeedback,
+                    'can_submit_feedback' => $canSubmitFeedback,
                 ];
             });
 

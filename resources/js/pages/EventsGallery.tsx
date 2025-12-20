@@ -36,6 +36,10 @@ import {
   BarChart3,
   Award,
   Clock,
+  Star,
+  MessageSquare,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
@@ -50,6 +54,13 @@ interface Documentation {
   title: string | null;
   description: string | null;
   type: 'photo' | 'document' | 'summary';
+}
+
+interface UserFeedback {
+  id: number;
+  rating: number;
+  comment: string | null;
+  created_at: string;
 }
 
 interface GalleryEvent {
@@ -69,6 +80,8 @@ interface GalleryEvent {
   documents_count: number;
   summaries_count: number;
   total_documentation_count: number;
+  user_feedback: UserFeedback | null;
+  can_submit_feedback: boolean;
 }
 
 export default function EventsGallery() {
@@ -78,6 +91,12 @@ export default function EventsGallery() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<GalleryEvent | null>(null);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+
+  // Feedback state
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [hoveredStar, setHoveredStar] = useState(0);
 
   useEffect(() => {
     fetchEvents();
@@ -150,6 +169,51 @@ export default function EventsGallery() {
       if (e.key === "ArrowRight") handleNextPhoto();
       if (e.key === "ArrowLeft") handlePrevPhoto();
       if (e.key === "Escape") handleCloseModal();
+    }
+  };
+
+  // Feedback handlers
+  const handleSubmitFeedback = async () => {
+    if (!selectedEvent || feedbackRating === 0) {
+      toast.error("Please select a rating");
+      return;
+    }
+
+    try {
+      setSubmittingFeedback(true);
+      const response = await axios.post(`/api/events/${selectedEvent.id}/feedback`, {
+        rating: feedbackRating,
+        comment: feedbackComment.trim() || null,
+      });
+
+      if (response.data.success) {
+        toast.success(response.data.message);
+
+        // Refresh events to show updated feedback
+        await fetchEvents();
+
+        // Update selected event if modal is still open
+        if (selectedEvent) {
+          const updatedEvent = events.find(e => e.id === selectedEvent.id);
+          if (updatedEvent) setSelectedEvent(updatedEvent);
+        }
+      }
+    } catch (error: any) {
+      console.error("Error submitting feedback:", error);
+      toast.error(error.response?.data?.message || "Failed to submit feedback");
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
+
+  const openFeedbackEditor = (event: GalleryEvent) => {
+    // Pre-populate if feedback exists
+    if (event.user_feedback) {
+      setFeedbackRating(event.user_feedback.rating);
+      setFeedbackComment(event.user_feedback.comment || "");
+    } else {
+      setFeedbackRating(0);
+      setFeedbackComment("");
     }
   };
 
@@ -357,6 +421,15 @@ export default function EventsGallery() {
                       <TabsTrigger value="summaries" className="gap-2">
                         <FileText className="h-4 w-4" />
                         Summaries ({selectedEvent.summaries_count})
+                      </TabsTrigger>
+                      <TabsTrigger value="feedback" className="gap-2">
+                        <MessageSquare className="h-4 w-4" />
+                        Feedback
+                        {selectedEvent.user_feedback && (
+                          <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                            Submitted
+                          </Badge>
+                        )}
                       </TabsTrigger>
                     </TabsList>
                   </div>
@@ -756,6 +829,171 @@ export default function EventsGallery() {
                         </div>
                       </div>
                     )}
+                  </TabsContent>
+
+                  {/* Feedback Tab */}
+                  <TabsContent value="feedback" className="flex-1 mt-0 data-[state=active]:flex flex-col overflow-hidden">
+                    <div className="overflow-auto p-6">
+                      <div className="max-w-2xl mx-auto space-y-6">
+                        {selectedEvent.can_submit_feedback ? (
+                          <Card className="border-0 shadow-lg">
+                            <CardContent className="p-6">
+                              <h3 className="text-xl font-bold mb-4">Share Your Experience</h3>
+
+                              {/* Star Rating */}
+                              <div className="space-y-3 mb-6">
+                                <label className="text-sm font-medium">
+                                  How would you rate this event?
+                                </label>
+                                <div className="flex gap-2">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                      key={star}
+                                      type="button"
+                                      onClick={() => setFeedbackRating(star)}
+                                      onMouseEnter={() => setHoveredStar(star)}
+                                      onMouseLeave={() => setHoveredStar(0)}
+                                      className="transition-transform hover:scale-110"
+                                    >
+                                      <Star
+                                        className={`h-10 w-10 ${
+                                          star <= (hoveredStar || feedbackRating)
+                                            ? "fill-amber-400 text-amber-400"
+                                            : "text-gray-300"
+                                        }`}
+                                      />
+                                    </button>
+                                  ))}
+                                </div>
+                                {feedbackRating > 0 && (
+                                  <p className="text-sm text-muted-foreground">
+                                    {feedbackRating === 5
+                                      ? "Excellent!"
+                                      : feedbackRating === 4
+                                      ? "Great!"
+                                      : feedbackRating === 3
+                                      ? "Good"
+                                      : feedbackRating === 2
+                                      ? "Fair"
+                                      : "Poor"}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Comment */}
+                              <div className="space-y-3">
+                                <label className="text-sm font-medium">
+                                  Comments (Optional)
+                                </label>
+                                <textarea
+                                  value={feedbackComment}
+                                  onChange={(e) => setFeedbackComment(e.target.value)}
+                                  placeholder="Share your thoughts about the event..."
+                                  className="w-full min-h-[120px] px-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                                  maxLength={1000}
+                                />
+                                <p className="text-xs text-muted-foreground text-right">
+                                  {feedbackComment.length}/1000 characters
+                                </p>
+                              </div>
+
+                              {/* Submit Button */}
+                              <div className="flex justify-end gap-3 mt-6">
+                                <Button
+                                  onClick={handleSubmitFeedback}
+                                  disabled={submittingFeedback || feedbackRating === 0}
+                                  className="gap-2"
+                                >
+                                  {submittingFeedback ? (
+                                    <>
+                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                                      Submitting...
+                                    </>
+                                  ) : selectedEvent.user_feedback ? (
+                                    "Update Feedback"
+                                  ) : (
+                                    "Submit Feedback"
+                                  )}
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ) : selectedEvent.user_feedback ? (
+                          // Display submitted feedback (read-only)
+                          <Card className="border-0 shadow-lg bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/30 dark:to-amber-900/20">
+                            <CardContent className="p-6">
+                              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <CheckCircle className="h-5 w-5 text-amber-600" />
+                                Your Feedback
+                              </h3>
+
+                              <div className="space-y-4">
+                                <div>
+                                  <p className="text-sm font-medium text-muted-foreground mb-2">
+                                    Rating
+                                  </p>
+                                  <div className="flex gap-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <Star
+                                        key={star}
+                                        className={`h-6 w-6 ${
+                                          star <= selectedEvent.user_feedback!.rating
+                                            ? "fill-amber-400 text-amber-400"
+                                            : "text-gray-300"
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {selectedEvent.user_feedback.comment && (
+                                  <div>
+                                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                                      Comment
+                                    </p>
+                                    <p className="text-sm bg-white/50 dark:bg-black/20 p-3 rounded-lg">
+                                      {selectedEvent.user_feedback.comment}
+                                    </p>
+                                  </div>
+                                )}
+
+                                <p className="text-xs text-muted-foreground">
+                                  Submitted on{" "}
+                                  {new Date(
+                                    selectedEvent.user_feedback.created_at
+                                  ).toLocaleDateString()}
+                                </p>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openFeedbackEditor(selectedEvent)}
+                                  className="w-full"
+                                >
+                                  Edit Feedback
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ) : (
+                          // Cannot submit feedback
+                          <Card className="border-0 shadow-lg">
+                            <CardContent className="p-6 text-center">
+                              <div className="bg-muted/50 p-6 rounded-full mb-4 inline-block">
+                                <AlertCircle className="h-12 w-12 text-muted-foreground/50" />
+                              </div>
+                              <h3 className="text-lg font-semibold mb-2">
+                                Feedback Not Available
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                You can only submit feedback for events you attended as an approved
+                                participant.
+                              </p>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+                    </div>
                   </TabsContent>
                 </Tabs>
               </div>

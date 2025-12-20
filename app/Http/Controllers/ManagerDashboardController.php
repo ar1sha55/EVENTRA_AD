@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\EventFeedback;
 use App\Models\Participant;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -413,6 +414,7 @@ class ManagerDashboardController extends Controller
                         'photos_count' => $event->photos_count,
                         'documents_count' => $event->documents_count,
                         'has_documentation' => $event->documentation->isNotEmpty(),
+                        'is_gallery_visible' => $event->is_gallery_visible ?? false,
                         'documentation' => $event->documentation,
                     ];
                 });
@@ -522,6 +524,77 @@ class ManagerDashboardController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to fetch event analytics',
+            ], 500);
+        }
+    }
+
+    /**
+     * Get all participants with their feedback for a specific event
+     */
+    public function getEventParticipants(Event $event)
+    {
+        try {
+            // Fetch all approved participants with user and feedback data
+            $participants = Participant::where('event_id', $event->id)
+                ->where('status', 'APPROVED')
+                ->with(['user', 'feedback'])
+                ->get()
+                ->map(function($participant) {
+                    $facultyName = $participant->user && $participant->user->faculty
+                        ? $this->getFacultyFullName($participant->user->faculty)
+                        : 'Not Specified';
+
+                    return [
+                        'id' => $participant->id,
+                        'user_id' => $participant->user_id,
+                        'name' => $participant->user->name ?? 'Unknown',
+                        'email' => $participant->user->email ?? '',
+                        'matric_id' => $participant->user->matric_id ?? '',
+                        'faculty' => $facultyName,
+                        'faculty_code' => $participant->user->faculty ?? '',
+                        'hours_logged' => $participant->hours_logged ?? 0,
+                        'registration_date' => $participant->registration_date,
+                        'feedback' => $participant->feedback ? [
+                            'rating' => $participant->feedback->rating,
+                            'comment' => $participant->feedback->comment,
+                            'submitted_at' => $participant->feedback->created_at,
+                        ] : null,
+                    ];
+                });
+
+            // Calculate feedback statistics
+            $feedbackResponses = $participants->whereNotNull('feedback');
+            $totalResponses = $feedbackResponses->count();
+
+            $averageRating = $totalResponses > 0
+                ? round($feedbackResponses->avg('feedback.rating'), 2)
+                : 0;
+
+            $ratingDistribution = [
+                '5' => $feedbackResponses->where('feedback.rating', 5)->count(),
+                '4' => $feedbackResponses->where('feedback.rating', 4)->count(),
+                '3' => $feedbackResponses->where('feedback.rating', 3)->count(),
+                '2' => $feedbackResponses->where('feedback.rating', 2)->count(),
+                '1' => $feedbackResponses->where('feedback.rating', 1)->count(),
+            ];
+
+            $feedbackStats = [
+                'total_responses' => $totalResponses,
+                'average_rating' => $averageRating,
+                'rating_distribution' => $ratingDistribution,
+            ];
+
+            return response()->json([
+                'success' => true,
+                'participants' => $participants,
+                'feedback_stats' => $feedbackStats,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching event participants: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch participants',
             ], 500);
         }
     }

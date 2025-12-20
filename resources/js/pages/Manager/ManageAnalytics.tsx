@@ -1,6 +1,6 @@
 import AppLayout from "@/layouts/app-layout";
 import { type BreadcrumbItem } from "@/types";
-import { Head } from "@inertiajs/react";
+import { Head, router } from "@inertiajs/react";
 import {
   Card,
   CardHeader,
@@ -64,7 +64,10 @@ import {
   FilterX,
   AlertTriangle,
   Maximize2,
-  Download
+  Download,
+  Star,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
@@ -94,6 +97,7 @@ interface PastEvent {
   photos_count: number;
   documents_count: number;
   has_documentation: boolean;
+  is_gallery_visible: boolean;
   documentation: Documentation[];
 }
 
@@ -135,6 +139,37 @@ interface EventAnalytics {
   };
   timeline: {
     registration_timeline: Array<{ date: string; count: number }>;
+  };
+}
+
+interface ParticipantFeedback {
+  rating: number;
+  comment: string | null;
+  submitted_at: string;
+}
+
+interface EventParticipant {
+  id: number;
+  user_id: number;
+  name: string;
+  email: string;
+  matric_id: string;
+  faculty: string;
+  faculty_code: string;
+  hours_logged: number;
+  registration_date: string;
+  feedback: ParticipantFeedback | null;
+}
+
+interface FeedbackStats {
+  total_responses: number;
+  average_rating: number;
+  rating_distribution: {
+    '1': number;
+    '2': number;
+    '3': number;
+    '4': number;
+    '5': number;
   };
 }
 
@@ -199,18 +234,22 @@ const ChartEmptyState = ({ message }: { message: string }) => (
 );
 
 // --- Sub-Component: Analytics Content ---
-const AnalyticsModalContent = memo(({ 
-    eventAnalytics, 
-    selectedEvent, 
-    handleCloseModal, 
-    setUploadModalOpen, 
+const AnalyticsModalContent = memo(({
+    eventAnalytics,
+    selectedEvent,
+    handleCloseModal,
+    handleToggleGalleryVisibility,
+    setUploadModalOpen,
     handleDeleteDocumentation,
     facultyData,
     participationData,
     timelineData,
-    activeTab,      
-    onTabChange,    
-    onViewImage     
+    activeTab,
+    onTabChange,
+    onViewImage,
+    participants,
+    feedbackStats,
+    loadingParticipants
 }: any) => {
 
     if (!eventAnalytics || !selectedEvent) return null;
@@ -261,6 +300,20 @@ const AnalyticsModalContent = memo(({
                             </div>
                         </div>
                         <div className="flex gap-2">
+                            <Button
+                                size="icon"
+                                variant="secondary"
+                                className="rounded-full h-8 w-8 bg-background/50 hover:bg-background"
+                                onClick={() => handleToggleGalleryVisibility(selectedEvent)}
+                                aria-label={selectedEvent?.is_gallery_visible ? "Hide from gallery" : "Show in gallery"}
+                                title={selectedEvent?.is_gallery_visible ? "Hide from gallery" : "Show in gallery"}
+                            >
+                                {selectedEvent?.is_gallery_visible ? (
+                                    <EyeOff className="h-4 w-4" />
+                                ) : (
+                                    <Eye className="h-4 w-4" />
+                                )}
+                            </Button>
                             <Button
                                 size="icon"
                                 variant="secondary"
@@ -580,77 +633,183 @@ const AnalyticsModalContent = memo(({
                         </TabsContent>
 
                         <TabsContent value="participants" className="mt-0 space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <Card>
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-sm font-medium text-muted-foreground">Event Demand</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-2xl font-bold">{totalRegistrations}</span>
-                                            <span className="text-sm text-muted-foreground">registrations</span>
-                                        </div>
-                                        <div className="mt-3 h-2 w-full bg-secondary rounded-full overflow-hidden">
-                                            <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(demandPercentage, 100)}%` }} />
-                                        </div>
-                                        <p className="text-xs text-muted-foreground mt-2">
-                                            {demandPercentage}% of {capacity} capacity filled
-                                        </p>
-                                    </CardContent>
-                                </Card>
+                            {/* Feedback Statistics */}
+                            {feedbackStats && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <Card>
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-base flex items-center gap-2">
+                                                <Star className="h-4 w-4 text-amber-500" />
+                                                Feedback Overview
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-muted-foreground">Response Rate</span>
+                                                <span className="text-2xl font-bold">
+                                                    {approvedCount > 0
+                                                        ? Math.round((feedbackStats.total_responses / approvedCount) * 100)
+                                                        : 0}%
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-muted-foreground">Average Rating</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-2xl font-bold">
+                                                        {feedbackStats.average_rating
+                                                            ? feedbackStats.average_rating.toFixed(1)
+                                                            : 'N/A'}
+                                                    </span>
+                                                    {feedbackStats.average_rating > 0 && (
+                                                        <div className="flex">
+                                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                                <Star
+                                                                    key={star}
+                                                                    className={`h-4 w-4 ${
+                                                                        star <= Math.round(feedbackStats.average_rating)
+                                                                            ? "fill-amber-400 text-amber-400"
+                                                                            : "text-gray-300"
+                                                                    }`}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {feedbackStats.total_responses} of {approvedCount} participants submitted feedback
+                                            </div>
+                                        </CardContent>
+                                    </Card>
 
-                                <Card>
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-sm font-medium text-muted-foreground">Real Turnout (Est.)</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-2xl font-bold">{estimatedAttendees}</span>
-                                            <span className="text-sm text-muted-foreground">attendees</span>
-                                        </div>
-                                        <div className="mt-3 h-2 w-full bg-secondary rounded-full overflow-hidden">
-                                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${eventAnalytics.metrics.attendance_rate}%` }} />
-                                        </div>
-                                        <p className="text-xs text-muted-foreground mt-2">
-                                            {eventAnalytics.metrics.attendance_rate}% attendance rate
-                                        </p>
-                                    </CardContent>
-                                </Card>
+                                    <Card>
+                                        <CardHeader className="pb-3">
+                                            <CardTitle className="text-base">Rating Distribution</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="space-y-2">
+                                                {[5, 4, 3, 2, 1].map((rating) => {
+                                                    const count = feedbackStats.rating_distribution[rating.toString() as keyof typeof feedbackStats.rating_distribution];
+                                                    const percentage = feedbackStats.total_responses > 0
+                                                        ? Math.round((count / feedbackStats.total_responses) * 100)
+                                                        : 0;
 
-                                <Card>
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-sm font-medium text-muted-foreground">Avg. Contribution</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-2xl font-bold">{avgHours}</span>
-                                            <span className="text-sm text-muted-foreground">hours / person</span>
-                                        </div>
-                                        <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
-                                            <Clock className="h-3 w-3" />
-                                            Total: {eventAnalytics.metrics.total_volunteer_hours} hours logged
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                                
-                            <Card className="h-full">
+                                                    return (
+                                                        <div key={rating} className="flex items-center gap-3">
+                                                            <div className="flex items-center gap-1 w-12">
+                                                                <span className="text-sm font-medium">{rating}</span>
+                                                                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                                            </div>
+                                                            <div className="flex-1 h-6 bg-secondary rounded-full overflow-hidden">
+                                                                <div
+                                                                    className="h-full bg-amber-400 transition-all"
+                                                                    style={{ width: `${percentage}%` }}
+                                                                />
+                                                            </div>
+                                                            <span className="text-sm text-muted-foreground w-16 text-right">
+                                                                {count} ({percentage}%)
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            )}
+
+                            {/* Participants Table */}
+                            <Card>
                                 <CardHeader>
-                                    <CardTitle className="text-base">Demographics by Faculty</CardTitle>
+                                    <CardTitle className="text-base">Participant List with Feedback</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    {facultyData.length > 0 ? (
-                                        <div className="h-[250px] overflow-y-auto pr-4">
-                                            <div className="space-y-1">
-                                                {facultyData.map((f:any, i:number) => (
-                                                    <div key={i} className="flex justify-between items-center py-2 px-3 hover:bg-muted rounded-md transition-colors text-sm">
-                                                        <span className="text-muted-foreground">{f.name}</span>
-                                                        <Badge variant="secondary" className="font-mono">{f.count}</Badge>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                    {loadingParticipants ? (
+                                        <div className="flex items-center justify-center py-12">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                                         </div>
-                                    ) : <ChartEmptyState message="No demographic data available" />}
+                                    ) : participants.length === 0 ? (
+                                        <div className="text-center py-12 text-muted-foreground">
+                                            <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                                            <p>No participants found</p>
+                                        </div>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Participant</TableHead>
+                                                        <TableHead>Faculty</TableHead>
+                                                        <TableHead className="text-center">Rating</TableHead>
+                                                        <TableHead>Feedback</TableHead>
+                                                        <TableHead className="text-right">Submitted</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {participants.map((participant) => (
+                                                        <TableRow key={participant.id}>
+                                                            <TableCell>
+                                                                <div>
+                                                                    <div className="font-medium">{participant.name}</div>
+                                                                    <div className="text-xs text-muted-foreground">
+                                                                        {participant.matric_id || participant.email}
+                                                                    </div>
+                                                                </div>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Badge variant="outline" className="text-xs">
+                                                                    {participant.faculty}
+                                                                </Badge>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {participant.feedback ? (
+                                                                    <div className="flex items-center justify-center gap-1">
+                                                                        <div className="flex">
+                                                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                                                <Star
+                                                                                    key={star}
+                                                                                    className={`h-4 w-4 ${
+                                                                                        star <= participant.feedback!.rating
+                                                                                            ? "fill-amber-400 text-amber-400"
+                                                                                            : "text-gray-300"
+                                                                                    }`}
+                                                                                />
+                                                                            ))}
+                                                                        </div>
+                                                                        <span className="text-sm font-medium ml-1">
+                                                                            {participant.feedback.rating}
+                                                                        </span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="text-center">
+                                                                        <Badge variant="secondary" className="text-xs">
+                                                                            No feedback
+                                                                        </Badge>
+                                                                    </div>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="max-w-md">
+                                                                {participant.feedback?.comment ? (
+                                                                    <p className="text-sm text-muted-foreground line-clamp-2">
+                                                                        {participant.feedback.comment}
+                                                                    </p>
+                                                                ) : (
+                                                                    <span className="text-xs text-muted-foreground italic">
+                                                                        No comment provided
+                                                                    </span>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="text-right text-xs text-muted-foreground">
+                                                                {participant.feedback
+                                                                    ? new Date(participant.feedback.submitted_at).toLocaleDateString()
+                                                                    : '—'}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         </TabsContent>
@@ -690,6 +849,11 @@ export default function ManageAnalytics() {
   // Delete states
   const [docToDelete, setDocToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Participant feedback states
+  const [participants, setParticipants] = useState<EventParticipant[]>([]);
+  const [feedbackStats, setFeedbackStats] = useState<FeedbackStats | null>(null);
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
 
   useEffect(() => {
     fetchPastEvents();
@@ -742,10 +906,27 @@ export default function ManageAnalytics() {
     }
   };
 
+  const fetchEventParticipants = async (eventId: number) => {
+    try {
+      setLoadingParticipants(true);
+      const response = await axios.get(`/api/manager/events/${eventId}/participants`);
+      if (response.data.success) {
+        setParticipants(response.data.participants);
+        setFeedbackStats(response.data.feedback_stats);
+      }
+    } catch (error) {
+      console.error("Error fetching participants:", error);
+      toast.error("Failed to load participant data");
+    } finally {
+      setLoadingParticipants(false);
+    }
+  };
+
   const handleViewAnalytics = (event: PastEvent) => {
     setSelectedEvent(event);
     setActiveTab("overview"); // Reset tab when opening new event
     fetchEventAnalytics(event.id);
+    fetchEventParticipants(event.id);
   };
 
   const handleCloseModal = () => {
@@ -805,12 +986,12 @@ export default function ManageAnalytics() {
   // Actual Delete Logic
   const confirmDeleteDocumentation = async () => {
     if (!selectedEvent || !docToDelete) return;
-    
+
     try {
       setIsDeleting(true);
       await axios.delete(`/events/${selectedEvent.id}/documentation/${docToDelete}`);
       toast.success("Deleted successfully");
-      
+
       const eventsResponse = await axios.get("/api/manager/past-events-analytics");
       if (eventsResponse.data.success) {
         setPastEvents(eventsResponse.data.past_events);
@@ -818,13 +999,36 @@ export default function ManageAnalytics() {
         if (updatedEvent) setSelectedEvent(updatedEvent);
       }
       await fetchEventAnalytics(selectedEvent.id);
-    } catch (e) { 
-        console.error(e); 
-        toast.error("Failed to delete item"); 
+    } catch (e) {
+        console.error(e);
+        toast.error("Failed to delete item");
     } finally {
         setIsDeleting(false);
         setDocToDelete(null);
     }
+  };
+
+  const handleToggleGalleryVisibility = (event: PastEvent) => {
+    router.post(`/events/${event.id}/toggle-gallery-visibility`, {}, {
+      preserveScroll: true,
+      onSuccess: () => {
+        // Update local state immediately
+        const updatedEvents = pastEvents.map(e =>
+          e.id === event.id ? { ...e, is_gallery_visible: !e.is_gallery_visible } : e
+        );
+        setPastEvents(updatedEvents);
+
+        if (selectedEvent?.id === event.id) {
+          setSelectedEvent({ ...selectedEvent, is_gallery_visible: !selectedEvent.is_gallery_visible });
+        }
+
+        toast.success(
+          !event.is_gallery_visible
+            ? "Event is now visible in gallery"
+            : "Event is now hidden from gallery"
+        );
+      },
+    });
   };
 
   // Optimization: Memoize chart data
@@ -1028,10 +1232,11 @@ export default function ManageAnalytics() {
                     </div>
                 </div>
             ) : (
-                <AnalyticsModalContent 
+                <AnalyticsModalContent
                     eventAnalytics={eventAnalytics}
                     selectedEvent={selectedEvent}
                     handleCloseModal={handleCloseModal}
+                    handleToggleGalleryVisibility={handleToggleGalleryVisibility}
                     setUploadModalOpen={setUploadModalOpen}
                     handleDeleteDocumentation={handleDeleteDocumentation}
                     facultyData={facultyData}
@@ -1040,6 +1245,9 @@ export default function ManageAnalytics() {
                     activeTab={activeTab}      // Passed from parent
                     onTabChange={setActiveTab} // Passed from parent
                     onViewImage={setViewingImage} // New Prop for Lightbox
+                    participants={participants}
+                    feedbackStats={feedbackStats}
+                    loadingParticipants={loadingParticipants}
                 />
             )}
           </DialogContent>

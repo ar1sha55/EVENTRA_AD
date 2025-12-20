@@ -13,7 +13,7 @@ import { Megaphone, CalendarDays } from "lucide-react";
 const breadcrumbs: BreadcrumbItem[] = [
   {
     title: "Announcements",
-    href: "/announcements",
+    href: "/announcement",
   },
 ];
 
@@ -21,49 +21,40 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface Announcement {
   id: number;
   title: string;
-  date: string;
-  author: string;
   message: string;
+  recipients_count: number;
+  sent_at: string;
+  user: {
+    id: number;
+    name: string;
+  };
 }
 
-export default function AnnouncementsPage() {
+interface Props {
+  announcements: Announcement[];
+}
+
+export default function AnnouncementsPage({ announcements = [] }: Props) {
   const page = usePage();
   const props = page.props as any;
   const flash = props.flash || {};
 
-  // Mock data — replace with backend announcements later
-  const announcements: Announcement[] = props.announcements ?? [
-    {
-      id: 1,
-      title: "Community Clean-Up Drive :D",
-      date: "November 10, 2024",
-      author: "Event Manager",
-      message:
-        "Join us for a community clean-up at the city park. Volunteers are encouraged to bring reusable gloves and bags. Let's make our environment cleaner!",
-    },
-    {
-      id: 2,
-      title: "Volunteer Appreciation Day",
-      date: "December 1, 2024",
-      author: "Admin",
-      message:
-        "A big thank you to all our volunteers this year! Join us at the main hall for a small ceremony and appreciation lunch.",
-    },
-    {
-      id: 3,
-      title: "Food Donation Week Launch",
-      date: "January 15, 2025",
-      author: "Event Manager",
-      message:
-        "We’re launching our annual Food Donation Week! Check the events section for details on how to participate and contribute.",
-    },
-  ];
+  // Format date helper
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  // Use real announcements from backend
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Announcements" />
 
-      <div className="flex flex-col gap-6 p-4">
+      <div className="flex flex-col gap-6 p-4 h-full">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -92,7 +83,7 @@ export default function AnnouncementsPage() {
                   </CardTitle>
                   <CardDescription className="flex items-center gap-1 text-sm text-muted-foreground">
                     <CalendarDays className="h-4 w-4" />
-                    {a.date}
+                    {formatDate(a.sent_at)}
                   </CardDescription>
                 </div>
               </CardHeader>
@@ -101,16 +92,19 @@ export default function AnnouncementsPage() {
                   {a.message}
                 </p>
                 <p className="text-xs text-muted-foreground italic">
-                  Posted by: {a.author}
+                  Posted by: {a.user.name}
                 </p>
               </CardContent>
             </Card>
           ))}
 
           {announcements.length === 0 && (
-            <p className="text-center text-muted-foreground">
-              No announcements available.
-            </p>
+            <div className="text-center py-12">
+              <Megaphone className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-20" />
+              <p className="text-lg text-muted-foreground">
+                No announcements available.
+              </p>
+            </div>
           )}
         </div>
       </div>

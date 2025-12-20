@@ -3,7 +3,7 @@ import { type BreadcrumbItem } from '@/types';
 import { type ReactNode } from 'react';
 import Footer from '@/components/Footer';
 import ChatButton from '@/components/ChatButton';
-import { Toaster } from 'sonner';
+import { Toaster } from '@/components/ui/sonner';
 
 interface AppLayoutProps {
     children: ReactNode;

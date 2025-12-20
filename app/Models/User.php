@@ -83,6 +83,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get user's event feedback
+     */
+    public function eventFeedbacks()
+    {
+        return $this->hasMany(EventFeedback::class);
+    }
+
+    /**
      * Check if user's profile is complete
      */
     public function isProfileComplete(): bool

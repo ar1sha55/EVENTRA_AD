@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import EventFormModal from './Partials/EventFormModal';
 import EventViewModal from './Partials/EventViewModal';
 import { type BreadcrumbItem } from "@/types";
+import { toast } from 'sonner';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -14,6 +15,14 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/AlertDialog';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import {
     Table,
     TableBody,
@@ -44,14 +53,14 @@ import {
     Calendar,
     DollarSign,
     Eye,
-    EyeOff,
     CheckCircle,
     Clock,
     Archive,
     FileText,
     Plus,
     ChartBar,
-    Image,
+    Send,
+    Edit3,
 } from 'lucide-react';
 
 interface Participant {
@@ -127,16 +136,21 @@ const SortButton = ({ field, children, sortField, sortDirection, onSort }: SortB
 };
 
 export default function ManageEvents({ events }: ManageEventsProps) {
+    const page = usePage();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<Event | null>(null);
     const [viewEvent, setViewEvent] = useState<Event | null>(null);
     const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
     const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published' | 'archived'>('all');
     const [searchQuery, setSearchQuery] = useState('');
-    
+
     // Default sort: Start Date, Descending (Newest first)
     const [sortField, setSortField] = useState<SortField>('start_date');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+    // Telegram blast dialog state
+    const [showBlastDialog, setShowBlastDialog] = useState(false);
+    const [publishedEventId, setPublishedEventId] = useState<number | null>(null);
 
     // Handle opening view modal from notification
     useEffect(() => {
@@ -152,6 +166,27 @@ export default function ManageEvents({ events }: ManageEventsProps) {
             }
         }
     }, [events]);
+
+    // Handle flash messages and prompt for Telegram blast
+    useEffect(() => {
+        const flash = page.props.flash as any;
+
+        // Show success toast
+        if (flash?.success) {
+            toast.success(flash.success, {
+                duration: 5000,
+            });
+        }
+
+        // Show blast dialog if event was published
+        if (flash?.prompt_blast && flash?.event_id) {
+            setPublishedEventId(flash.event_id);
+            setShowBlastDialog(true);
+
+            // Trigger notification refresh
+            window.dispatchEvent(new CustomEvent('notification-created'));
+        }
+    }, [page.props.flash]);
 
     const openCreateModal = () => {
         setEditingEvent(null);
@@ -186,22 +221,16 @@ export default function ManageEvents({ events }: ManageEventsProps) {
     };
 
     const handleQuickStatusChange = (event: Event, newStatus: 'draft' | 'published' | 'archived') => {
-        router.put(`/events/${event.id}`, {
-            ...event,
+        router.put(`/events/${event.id}/status`, {
             status: newStatus,
-        } as any, { 
+        }, {
             preserveScroll: true,
+            preserveUrl: true,
         });
     };
 
     const viewParticipants = (eventId: number) => {
         router.visit(`/events/${eventId}/participants`);
-    };
-
-    const handleToggleGalleryVisibility = (event: Event) => {
-        router.post(`/events/${event.id}/toggle-gallery-visibility`, {}, {
-            preserveScroll: true,
-        });
     };
 
     const handleSort = (field: SortField) => {
@@ -704,27 +733,6 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                                                     Archive
                                                                 </DropdownMenuItem>
 
-                                                                {isPastEvent && (
-                                                                    <>
-                                                                        <DropdownMenuSeparator />
-                                                                        <DropdownMenuItem
-                                                                            onClick={() => handleToggleGalleryVisibility(event)}
-                                                                        >
-                                                                            {event.is_gallery_visible ? (
-                                                                                <>
-                                                                                    <EyeOff className="h-4 w-4 mr-2" />
-                                                                                    Hide from Gallery
-                                                                                </>
-                                                                            ) : (
-                                                                                <>
-                                                                                    <Image className="h-4 w-4 mr-2" />
-                                                                                    Show in Gallery
-                                                                                </>
-                                                                            )}
-                                                                        </DropdownMenuItem>
-                                                                    </>
-                                                                )}
-
                                                                 <DropdownMenuSeparator />
 
                                                                 <DropdownMenuItem
@@ -787,6 +795,52 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Telegram Blast Prompt Dialog */}
+            <Dialog open={showBlastDialog} onOpenChange={setShowBlastDialog}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="flex items-center gap-2">
+                            <div className="p-2 rounded-full bg-green-100 dark:bg-green-900">
+                                <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+                            </div>
+                            <DialogTitle>Event Published Successfully!</DialogTitle>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        <p className="text-sm text-muted-foreground">
+                            Your event is now live and all members have been notified via in-app notifications.
+                        </p>
+
+                        <div className="bg-muted/50 p-4 rounded-lg">
+                            <p className="text-sm font-medium mb-1">Want more visibility?</p>
+                            <p className="text-xs text-muted-foreground">
+                                Promote this event on Telegram to reach even more participants!
+                            </p>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="flex gap-2 sm:gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowBlastDialog(false)}
+                        >
+                            Maybe Later
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                setShowBlastDialog(false);
+                                router.visit(`/manager/event-blast?event=${publishedEventId}`);
+                            }}
+                            className="gap-2"
+                        >
+                            <Send className="h-4 w-4" />
+                            Blast on Telegram
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

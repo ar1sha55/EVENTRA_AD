@@ -34,6 +34,9 @@ class Notification extends Model
     const TYPE_PROFILE_INCOMPLETE = 'profile_incomplete';
     const TYPE_MANAGER_APPROVED_REGISTRATION = 'manager_approved_registration';
     const TYPE_MANAGER_REJECTED_REGISTRATION = 'manager_rejected_registration';
+    const TYPE_ANNOUNCEMENT = 'announcement';
+    const TYPE_SUPPORT_TICKET = 'support_ticket';
+    const TYPE_SUPPORT_RESPONSE = 'support_response';
 
     /**
      * Relationship with User

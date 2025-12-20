@@ -92,7 +92,7 @@ class NotificationService
     /**
      * Notify user about new event
      */
-    public static function notifyNewEvent(User $user, $event): void
+    public static function notifyNewEvent(User $user, $event, bool $sendEmail = true): void
     {
         self::create(
             $user,
@@ -103,14 +103,15 @@ class NotificationService
                 'event_id' => $event->id,
                 'event_name' => $event->name,
                 'start_date' => $event->start_date,
-            ]
+            ],
+            $sendEmail
         );
     }
 
     /**
      * Notify manager about successful event creation
      */
-    public static function notifyManagerEventCreated(User $manager, $event): void
+    public static function notifyManagerEventCreated(User $manager, $event, bool $sendEmail = true): void
     {
         self::create(
             $manager,
@@ -121,7 +122,8 @@ class NotificationService
                 'event_id' => $event->id,
                 'event_name' => $event->name,
                 'start_date' => $event->start_date,
-            ]
+            ],
+            $sendEmail
         );
     }
 
@@ -297,6 +299,171 @@ class NotificationService
                 'action' => $action,
             ]
         );
+    }
+
+    /**
+     * Send announcement to all members
+     */
+    public static function sendAnnouncement(User $sender, string $title, string $message): array
+    {
+        $members = User::where('role', 'member')->get();
+
+        if ($members->isEmpty()) {
+            return [
+                'success' => false,
+                'count' => 0,
+                'announcement_id' => null,
+                'message' => 'No members found to send announcement to.'
+            ];
+        }
+
+        $announcement = \App\Models\Announcement::create([
+            'user_id' => $sender->id,
+            'title' => $title,
+            'message' => $message,
+            'recipients_count' => $members->count(),
+            'sent_at' => now(),
+        ]);
+
+        foreach ($members as $member) {
+            self::create(
+                $member,
+                \App\Models\Notification::TYPE_ANNOUNCEMENT,
+                $title,
+                $message,
+                [
+                    'announcement_id' => $announcement->id,
+                    'sender_id' => $sender->id,
+                    'sender_name' => $sender->name,
+                ],
+                true // Send email
+            );
+        }
+
+        // Log activity
+        \App\Models\ActivityLog::logActivity(
+            'announcement.sent',
+            "Sent announcement '{$title}' to {$members->count()} member(s)",
+            'Announcement',
+            $announcement->id,
+            null,
+            [
+                'title' => $title,
+                'recipients_count' => $members->count(),
+            ],
+            [
+                'announcement_id' => $announcement->id,
+                'message_preview' => substr($message, 0, 100),
+            ]
+        );
+
+        return [
+            'success' => true,
+            'count' => $members->count(),
+            'announcement_id' => $announcement->id,
+            'message' => "Announcement sent to {$members->count()} member(s)."
+        ];
+    }
+
+    /**
+     * Notify admins about new support ticket
+     */
+    public static function notifyAdminsOfSupportTicket(\App\Models\SupportTicket $ticket): void
+    {
+        $admins = User::where('role', 'admin')->get();
+
+        foreach ($admins as $admin) {
+            self::create(
+                $admin,
+                \App\Models\Notification::TYPE_SUPPORT_TICKET,
+                'New Support Ticket',
+                "New support ticket from {$ticket->name}: {$ticket->subject}",
+                [
+                    'ticket_id' => $ticket->id,
+                    'user_id' => $ticket->user_id,
+                    'user_name' => $ticket->name,
+                    'subject' => $ticket->subject,
+                ],
+                true // Send email
+            );
+        }
+
+        // Also send email to support address
+        try {
+            Mail::to('utmvolunteerclub@gmail.com')->queue(new \App\Mail\SupportTicketMail($ticket));
+        } catch (\Exception $e) {
+            \Log::error('Failed to queue support ticket email: ' . $e->getMessage());
+        }
+
+        // Log activity
+        \App\Models\ActivityLog::logActivity(
+            'support.ticket.created',
+            "Support ticket created: {$ticket->subject}",
+            'SupportTicket',
+            $ticket->id,
+            null,
+            [
+                'subject' => $ticket->subject,
+                'status' => $ticket->status,
+            ],
+            [
+                'ticket_id' => $ticket->id,
+                'message_preview' => substr($ticket->message, 0, 100),
+            ]
+        );
+    }
+
+    /**
+     * Notify user of support ticket response
+     */
+    public static function notifyUserOfResponse(\App\Models\SupportTicket $ticket): void
+    {
+        try {
+            \Log::info('NotificationService: Creating support response notification', [
+                'ticket_id' => $ticket->id,
+                'user_id' => $ticket->user_id,
+            ]);
+
+            self::create(
+                $ticket->user,
+                \App\Models\Notification::TYPE_SUPPORT_RESPONSE,
+                'Support Ticket Update',
+                "Your support ticket '{$ticket->subject}' has been updated",
+                [
+                    'ticket_id' => $ticket->id,
+                    'status' => $ticket->status,
+                    'has_response' => !empty($ticket->admin_response),
+                ],
+                true // Send email
+            );
+
+            \Log::info('NotificationService: Notification created successfully');
+
+            // Log activity
+            \App\Models\ActivityLog::logActivity(
+                'support.ticket.responded',
+                "Support ticket responded: {$ticket->subject}",
+                'SupportTicket',
+                $ticket->id,
+                null,
+                [
+                    'subject' => $ticket->subject,
+                    'status' => $ticket->status,
+                    'responded_by' => $ticket->respondedBy->name ?? 'Unknown',
+                ],
+                [
+                    'ticket_id' => $ticket->id,
+                    'response_preview' => substr($ticket->admin_response ?? '', 0, 100),
+                ]
+            );
+        } catch (\Exception $e) {
+            \Log::error('NotificationService: Failed to create support response notification', [
+                'ticket_id' => $ticket->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e; // Re-throw so controller can catch it
+        }
     }
 
     /**

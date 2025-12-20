@@ -52,6 +52,9 @@
         .type-registration_pending { background-color: #fed7aa; color: #92400e; }
         .type-new_registration { background-color: #e0e7ff; color: #3730a3; }
         .type-profile_incomplete { background-color: #fef9c3; color: #854d0e; }
+        .type-announcement { background-color: #fed7aa; color: #92400e; }
+        .type-support_ticket { background-color: #fed7aa; color: #9a3412; }
+        .type-support_response { background-color: #bfdbfe; color: #1e3a8a; }
         .message {
             font-size: 16px;
             margin: 20px 0;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Check, CheckCheck, Trash2, MailX, AlertCircle, Calendar, CalendarDays, CheckCircle, Clock, Award, User } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, MailX, AlertCircle, Calendar, CalendarDays, CheckCircle, Clock, Award, User, Megaphone, LifeBuoy, MessageSquareReply } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -38,7 +38,18 @@ export function NotificationDropdown() {
     fetchUnreadCount();
     // Poll for new notifications every 30 seconds
     const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
+
+    // Listen for notification-created event
+    const handleNotificationCreated = () => {
+      fetchUnreadCount();
+    };
+
+    window.addEventListener('notification-created', handleNotificationCreated);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notification-created', handleNotificationCreated);
+    };
   }, []);
 
   useEffect(() => {
@@ -123,6 +134,9 @@ export function NotificationDropdown() {
       case 'manager_approved_registration': return { icon: CheckCircle, color: 'text-green-600' };
       case 'manager_rejected_registration': return { icon: Bell, color: 'text-red-600' };
       case 'profile_incomplete': return { icon: AlertCircle, color: 'text-amber-600' };
+      case 'announcement': return { icon: Megaphone, color: 'text-orange-600' };
+      case 'support_ticket': return { icon: LifeBuoy, color: 'text-orange-600' };
+      case 'support_response': return { icon: MessageSquareReply, color: 'text-blue-600' };
       default: return { icon: Bell, color: 'text-gray-600' };
     }
   };
@@ -139,6 +153,9 @@ export function NotificationDropdown() {
       manager_approved_registration: { label: 'Action Confirmed', color: 'bg-green-100 text-green-800' },
       manager_rejected_registration: { label: 'Action Confirmed', color: 'bg-red-100 text-red-800' },
       profile_incomplete: { label: 'Profile', color: 'bg-amber-100 text-amber-800' },
+      announcement: { label: 'Announcement', color: 'bg-orange-100 text-orange-800' },
+      support_ticket: { label: 'Support', color: 'bg-orange-100 text-orange-800' },
+      support_response: { label: 'Response', color: 'bg-blue-100 text-blue-800' },
     };
     return badges[type as keyof typeof badges] || { label: 'Info', color: 'bg-gray-100 text-gray-800' };
   };
@@ -152,6 +169,26 @@ export function NotificationDropdown() {
     if (notification.type === 'profile_incomplete') {
       setIsOpen(false);
       router.visit(profileEdit().url);
+      return;
+    }
+
+    // Handle announcement notification - just mark as read, no navigation
+    if (notification.type === 'announcement') {
+      // Already marked as read above, just close dropdown
+      setIsOpen(false);
+      return;
+    }
+
+    // Handle support ticket notifications
+    if (notification.type === 'support_ticket' && notification.data.ticket_id) {
+      setIsOpen(false);
+      router.visit(`/admin/support-tickets/${notification.data.ticket_id}`);
+      return;
+    }
+
+    if (notification.type === 'support_response' && notification.data.ticket_id) {
+      setIsOpen(false);
+      router.visit('/support-history');
       return;
     }
 

@@ -48,4 +48,12 @@ class Participant extends Model
     {
         return $this->belongsTo(Event::class);
     }
+
+    /**
+     * Get the feedback submitted by the participant.
+     */
+    public function feedback()
+    {
+        return $this->hasOne(EventFeedback::class);
+    }
 }

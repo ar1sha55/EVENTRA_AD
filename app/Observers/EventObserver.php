@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Event;
+use App\Models\ActivityLog;
 use App\Services\TelegramService;
 use Illuminate\Support\Facades\Log;
 
@@ -18,6 +19,20 @@ class EventObserver
    
     public function created(Event $event): void
     {
+        // Log activity
+        ActivityLog::logActivity(
+            action: 'event.created',
+            description: "Event '{$event->name}' was created with status '{$event->status}'",
+            resourceType: 'Event',
+            resourceId: $event->id,
+            newValues: [
+                'name' => $event->name,
+                'status' => $event->status,
+                'start_date' => $event->start_date,
+                'location' => $event->location,
+            ]
+        );
+
         // Only publish to Telegram if the event is published
         if ($event->status === 'published') {
             $this->publishToTelegram($event);
@@ -27,6 +42,42 @@ class EventObserver
    
     public function updated(Event $event): void
     {
+        $changes = $event->getChanges();
+
+        // Don't log if only timestamps changed
+        if (!(count($changes) === 1 && isset($changes['updated_at']))) {
+            // Special handling for status changes
+            if (isset($changes['status'])) {
+                $oldStatus = $event->getOriginal('status');
+                $newStatus = $changes['status'];
+
+                ActivityLog::logActivity(
+                    action: 'event.status_changed',
+                    description: "Event '{$event->name}' status changed from '{$oldStatus}' to '{$newStatus}'",
+                    resourceType: 'Event',
+                    resourceId: $event->id,
+                    oldValues: ['status' => $oldStatus],
+                    newValues: ['status' => $newStatus],
+                    properties: [
+                        'event_name' => $event->name,
+                        'event_date' => $event->start_date,
+                    ]
+                );
+            } else {
+                // Regular update
+                $changedFields = implode(', ', array_keys($changes));
+
+                ActivityLog::logActivity(
+                    action: 'event.updated',
+                    description: "Event '{$event->name}' was updated (fields: {$changedFields})",
+                    resourceType: 'Event',
+                    resourceId: $event->id,
+                    oldValues: array_intersect_key($event->getOriginal(), $changes),
+                    newValues: $changes
+                );
+            }
+        }
+
         // Check if status changed to 'published'
         if ($event->status === 'published' && $event->wasChanged('status')) {
             // If changing from draft/archived to published, publish for the first time
@@ -53,6 +104,21 @@ class EventObserver
    
     public function deleted(Event $event): void
     {
+        // Log activity
+        ActivityLog::logActivity(
+            action: 'event.deleted',
+            description: "Event '{$event->name}' was deleted (status was: {$event->status})",
+            resourceType: 'Event',
+            resourceId: $event->id,
+            oldValues: [
+                'name' => $event->name,
+                'status' => $event->status,
+                'start_date' => $event->start_date,
+                'end_date' => $event->end_date,
+                'location' => $event->location,
+            ]
+        );
+
         if ($event->telegram_message_id) {
             $this->deleteTelegramMessage($event);
         }

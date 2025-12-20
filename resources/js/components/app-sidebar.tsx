@@ -23,17 +23,24 @@ import {
     ClipboardList,
     BarChart3,
     Shield,
+    History,
+    LifeBuoy,
 } from 'lucide-react';
 import { usePage } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
 import AppLogo from './app-logo';
+import { useRoleSwitcher } from '@/hooks/use-role-switcher';
 
 export function AppSidebar() {
     const { auth } = usePage().props;
-    const userRole = auth?.user?.role || 'user';
+    const actualRole = auth?.user?.role || 'user';
+    const { selectedView } = useRoleSwitcher();
 
-    // Base navigation for all users
-    const mainNavItems = [
+    // Use selectedView for admins, actualRole for others
+    const effectiveRole = actualRole === 'admin' ? selectedView : actualRole;
+
+    // Member-only navigation (regular members)
+    const memberOnlyNavItems = [
         {
             title: 'Dashboard',
             href: '/dashboard',
@@ -57,13 +64,34 @@ export function AppSidebar() {
         },
     ];
 
+    // Personal events navigation (for managers/admins)
+    const myEventsNavItem = {
+        title: 'My Events',
+        icon: CalendarDays,
+        subItems: [
+            { title: 'My Dashboard', href: '/dashboard', icon: LayoutGrid },
+            { title: 'Join Events', href: '/join-events', icon: Calendar },
+            { title: 'Events Gallery', href: '/events-gallery', icon: Images },
+            { title: 'Announcement', href: '/announcement', icon: Bell },
+        ],
+    };
+
+    const supportNavItem = {
+        title: 'Support',
+        icon: Headphones,
+        subItems: [
+            { title: 'Contact Support', href: '/contact-support', icon: Headphones },
+        ],
+    };
+
     // Manager-specific navigation
     const managerNavItems = [
         {
-            title: 'Manager Dashboard',
+            title: 'Dashboard',
             href: '/manager/dashboard',
             icon: LayoutDashboard,
         },
+        myEventsNavItem,
         {
             title: 'Member Management',
             icon: Users,
@@ -81,29 +109,69 @@ export function AppSidebar() {
                 { title: 'Send Announcement', href: '/manager/send-announcement', icon: Bell },
             ],
         },
+        supportNavItem,
     ];
 
-    // Admin-specific navigation
+    // Admin-only navigation (complete navigation for admins)
     const adminNavItems = [
+        {
+            title: 'Dashboard',
+            href: '/admin/dashboard',
+            icon: Shield,
+        },
+        myEventsNavItem,
+        {
+            title: 'Management',
+            icon: LayoutDashboard,
+            subItems: [
+                { title: 'Manager Dashboard', href: '/manager/dashboard', icon: LayoutDashboard },
+                { title: 'Manage Members', href: '/manager/manage-members', icon: Users },
+                { title: 'Event Blast', href: '/manager/event-blast', icon: MessageSquare },
+                { title: 'Manage Events', href: '/events', icon: ClipboardList },
+                { title: 'Analytics & Reports', href: '/manager/manage-analytics', icon: BarChart3 },
+                { title: 'Send Announcement', href: '/manager/send-announcement', icon: Bell },
+            ],
+        },
         {
             title: 'System Control',
             href: '/admin/system-control',
             icon: Shield,
         },
+        {
+            title: 'Activity Logs',
+            href: '/admin/activity-logs',
+            icon: History,
+        },
+        {
+            title: 'Support Tickets',
+            href: '/admin/support-tickets',
+            icon: LifeBuoy,
+        },
+        supportNavItem,
     ];
 
-    // Compute navigation items based on role
-    let roleBasedNavItems = [...mainNavItems];
+    // Compute navigation items based on effective role
+    let roleBasedNavItems: any[] = [];
 
-    if (userRole === 'manager') {
+    if (effectiveRole === 'member') {
+        // Regular members see simple navigation
+        roleBasedNavItems = [...memberOnlyNavItems];
+    } else if (effectiveRole === 'manager') {
+        // Managers see dashboard + My Events + management features
         roleBasedNavItems = [...managerNavItems];
-    }
-
-    if (userRole === 'admin') {
-        roleBasedNavItems = [...managerNavItems, ...adminNavItems];
+    } else if (effectiveRole === 'admin') {
+        // Admins see complete admin navigation
+        roleBasedNavItems = [...adminNavItems];
     }
 
     const footerNavItems: any[] = []; // You can add footer links here if needed
+
+    // Determine home dashboard based on effective role
+    const homeDashboard = effectiveRole === 'admin'
+        ? '/admin/dashboard'
+        : effectiveRole === 'manager'
+        ? '/manager/dashboard'
+        : '/dashboard';
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -111,7 +179,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href="/dashboard">
+                            <Link href={homeDashboard}>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>

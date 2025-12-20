@@ -60,4 +60,12 @@ class Event extends Model
     {
         return $this->hasMany(EventDocumentation::class);
     }
+
+    /**
+     * The feedback that belongs to the event.
+     */
+    public function feedbacks()
+    {
+        return $this->hasMany(EventFeedback::class);
+    }
 }

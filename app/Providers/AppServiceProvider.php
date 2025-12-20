@@ -3,7 +3,14 @@
 namespace App\Providers;
 
 use App\Models\Event;
+use App\Models\User;
+use App\Models\Participant;
 use App\Observers\EventObserver;
+use App\Observers\UserObserver;
+use App\Observers\ParticipantObserver;
+use Illuminate\Support\Facades\Event as EventFacade;
+use Illuminate\Auth\Events\Login;
+use App\Listeners\LogSuccessfulLogin;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -21,8 +28,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Automatic Telegram publishing is DISABLED
-        // Use the Event Blast page to manually send events to Telegram
-        // Event::observe(EventObserver::class);
+        // Register observers for activity logging
+        User::observe(UserObserver::class);
+        Event::observe(EventObserver::class);
+        Participant::observe(ParticipantObserver::class);
+
+        // Note: Login tracking is handled in LoginResponse::toResponse()
+        // No need for separate event listener
     }
 }
