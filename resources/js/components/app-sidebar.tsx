@@ -133,9 +133,9 @@ export function AppSidebar() {
             ],
         },
         {
-            title: 'System Control',
-            href: '/admin/system-control',
-            icon: Shield,
+            title: 'Manage Users',
+            href: '/admin/manage-users',
+            icon: Users,
         },
         {
             title: 'Activity Logs',

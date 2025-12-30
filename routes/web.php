@@ -9,6 +9,7 @@ use App\Http\Controllers\EventFeedbackController;
 use App\Http\Controllers\ParticipantsController;
 use App\Http\Controllers\TestController;
 use App\Http\Controllers\ManagerDashboardController;
+use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\ManageMembersController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\ContactSupportController;
+use App\Http\Controllers\AdminManageUsersController;
 use App\Http\Controllers\AdminSupportController;
 use App\Http\Middleware\RoleMiddleware;
 
@@ -145,10 +147,19 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->prefix('api')->gr
 // Admins Only
 // =========================================================================
 Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
-    // Admin Dashboard (placeholder - to be implemented)
-    Route::get('admin/dashboard', [TestController::class, 'adminDashboard'])->name('admin.dashboard');
+    // Admin Dashboard
+    Route::get('admin/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
 
-    Route::get('admin/system-control', [TestController::class, 'systemControl'])->name('system-control');
+    // Admin Dashboard API
+    Route::get('api/admin/dashboard/stats', [AdminDashboardController::class, 'getStats'])->name('api.admin.dashboard.stats');
+
+    // Manage Users Routes
+    Route::get('admin/manage-users', [AdminManageUsersController::class, 'index'])->name('admin.manage-users');
+    Route::post('admin/users', [AdminManageUsersController::class, 'store'])->name('admin.users.store');
+    Route::get('admin/users/{user}', [AdminManageUsersController::class, 'show'])->name('admin.users.show');
+    Route::put('admin/users/{user}', [AdminManageUsersController::class, 'update'])->name('admin.users.update');
+    Route::delete('admin/users/{user}', [AdminManageUsersController::class, 'destroy'])->name('admin.users.destroy');
+    Route::get('api/admin/users/statistics', [AdminManageUsersController::class, 'statistics'])->name('api.admin.users.statistics');
 
     // Activity Logs Routes
     Route::get('admin/activity-logs', [ActivityLogController::class, 'index'])->name('admin.activity-logs');

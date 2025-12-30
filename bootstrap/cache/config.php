@@ -109,9 +109,9 @@
   array (
     'paths' => 
     array (
-      0 => 'C:\\Users\\muhdn\\OneDrive\\Desktop\\UTM Semester 5\\Sem 5\\AppDev\\Eventra Clone Github\\EVENTRA_AD\\resources\\views',
+      0 => 'C:\\Users\\Acer\\eventra\\resources\\views',
     ),
-    'compiled' => 'C:\\Users\\muhdn\\OneDrive\\Desktop\\UTM Semester 5\\Sem 5\\AppDev\\Eventra Clone Github\\EVENTRA_AD\\storage\\framework\\views',
+    'compiled' => 'C:\\Users\\Acer\\eventra\\storage\\framework\\views',
   ),
   'app' => 
   array (
@@ -274,8 +274,8 @@
       'file' => 
       array (
         'driver' => 'file',
-        'path' => 'C:\\Users\\muhdn\\OneDrive\\Desktop\\UTM Semester 5\\Sem 5\\AppDev\\Eventra Clone Github\\EVENTRA_AD\\storage\\framework/cache/data',
-        'lock_path' => 'C:\\Users\\muhdn\\OneDrive\\Desktop\\UTM Semester 5\\Sem 5\\AppDev\\Eventra Clone Github\\EVENTRA_AD\\storage\\framework/cache/data',
+        'path' => 'C:\\Users\\Acer\\eventra\\storage\\framework/cache/data',
+        'lock_path' => 'C:\\Users\\Acer\\eventra\\storage\\framework/cache/data',
       ),
       'memcached' => 
       array (
@@ -466,7 +466,7 @@
       'local' => 
       array (
         'driver' => 'local',
-        'root' => 'C:\\Users\\muhdn\\OneDrive\\Desktop\\UTM Semester 5\\Sem 5\\AppDev\\Eventra Clone Github\\EVENTRA_AD\\storage\\app/private',
+        'root' => 'C:\\Users\\Acer\\eventra\\storage\\app/private',
         'serve' => true,
         'throw' => false,
         'report' => false,
@@ -474,7 +474,7 @@
       'public' => 
       array (
         'driver' => 'local',
-        'root' => 'C:\\Users\\muhdn\\OneDrive\\Desktop\\UTM Semester 5\\Sem 5\\AppDev\\Eventra Clone Github\\EVENTRA_AD\\storage\\app/public',
+        'root' => 'C:\\Users\\Acer\\eventra\\storage\\app/public',
         'url' => 'http://localhost:8000/storage',
         'visibility' => 'public',
         'throw' => false,
@@ -496,7 +496,7 @@
     ),
     'links' => 
     array (
-      'C:\\Users\\muhdn\\OneDrive\\Desktop\\UTM Semester 5\\Sem 5\\AppDev\\Eventra Clone Github\\EVENTRA_AD\\public\\storage' => 'C:\\Users\\muhdn\\OneDrive\\Desktop\\UTM Semester 5\\Sem 5\\AppDev\\Eventra Clone Github\\EVENTRA_AD\\storage\\app/public',
+      'C:\\Users\\Acer\\eventra\\public\\storage' => 'C:\\Users\\Acer\\eventra\\storage\\app/public',
     ),
   ),
   'fortify-options' => 
@@ -594,7 +594,7 @@
     'ensure_pages_exist' => false,
     'page_paths' => 
     array (
-      0 => 'C:\\Users\\muhdn\\OneDrive\\Desktop\\UTM Semester 5\\Sem 5\\AppDev\\Eventra Clone Github\\EVENTRA_AD\\resources\\js/Pages',
+      0 => 'C:\\Users\\Acer\\eventra\\resources\\js/Pages',
     ),
     'page_extensions' => 
     array (
@@ -610,7 +610,7 @@
       'ensure_pages_exist' => true,
       'page_paths' => 
       array (
-        0 => 'C:\\Users\\muhdn\\OneDrive\\Desktop\\UTM Semester 5\\Sem 5\\AppDev\\Eventra Clone Github\\EVENTRA_AD\\resources\\js/pages',
+        0 => 'C:\\Users\\Acer\\eventra\\resources\\js/pages',
       ),
       'page_extensions' => 
       array (
@@ -649,14 +649,14 @@
       'single' => 
       array (
         'driver' => 'single',
-        'path' => 'C:\\Users\\muhdn\\OneDrive\\Desktop\\UTM Semester 5\\Sem 5\\AppDev\\Eventra Clone Github\\EVENTRA_AD\\storage\\logs/laravel.log',
+        'path' => 'C:\\Users\\Acer\\eventra\\storage\\logs/laravel.log',
         'level' => 'debug',
         'replace_placeholders' => true,
       ),
       'daily' => 
       array (
         'driver' => 'daily',
-        'path' => 'C:\\Users\\muhdn\\OneDrive\\Desktop\\UTM Semester 5\\Sem 5\\AppDev\\Eventra Clone Github\\EVENTRA_AD\\storage\\logs/laravel.log',
+        'path' => 'C:\\Users\\Acer\\eventra\\storage\\logs/laravel.log',
         'level' => 'debug',
         'days' => 14,
         'replace_placeholders' => true,
@@ -721,7 +721,7 @@
       ),
       'emergency' => 
       array (
-        'path' => 'C:\\Users\\muhdn\\OneDrive\\Desktop\\UTM Semester 5\\Sem 5\\AppDev\\Eventra Clone Github\\EVENTRA_AD\\storage\\logs/laravel.log',
+        'path' => 'C:\\Users\\Acer\\eventra\\storage\\logs/laravel.log',
       ),
     ),
   ),
@@ -799,7 +799,7 @@
       'theme' => 'default',
       'paths' => 
       array (
-        0 => 'C:\\Users\\muhdn\\OneDrive\\Desktop\\UTM Semester 5\\Sem 5\\AppDev\\Eventra Clone Github\\EVENTRA_AD\\resources\\views/vendor/mail',
+        0 => 'C:\\Users\\Acer\\eventra\\resources\\views/vendor/mail',
       ),
     ),
   ),
@@ -912,7 +912,7 @@
     'lifetime' => 120,
     'expire_on_close' => false,
     'encrypt' => false,
-    'files' => 'C:\\Users\\muhdn\\OneDrive\\Desktop\\UTM Semester 5\\Sem 5\\AppDev\\Eventra Clone Github\\EVENTRA_AD\\storage\\framework/sessions',
+    'files' => 'C:\\Users\\Acer\\eventra\\storage\\framework/sessions',
     'connection' => NULL,
     'table' => 'sessions',
     'store' => NULL,

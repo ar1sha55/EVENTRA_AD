@@ -1,5 +1,4 @@
 import AppLayout from "@/layouts/app-layout";
-import { type BreadcrumbItem } from "@/types";
 import { Head, router, usePage } from "@inertiajs/react";
 import { useState, FormEvent, useEffect, ChangeEvent, useMemo } from "react";
 import {
@@ -32,12 +31,13 @@ import {
   UserPlus,
   Pencil,
   Trash2,
-  Mail,
   Search,
   Eye,
   CheckCircle2,
   XCircle,
   User as UserIcon,
+  Shield,
+  UserCog,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,14 +50,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 
-const breadcrumbs: BreadcrumbItem[] = [
-  {
-    title: "Manage Members",
-    href: "/manager/manage-members",
-  },
-];
-
-interface Member {
+interface User {
   id: number;
   name: string;
   email: string;
@@ -67,34 +60,36 @@ interface Member {
   nationality?: string;
   gender?: string;
   faculty?: string;
+  role: 'admin' | 'manager' | 'member';
   profile_picture?: string;
+  email_verified_at?: string;
   created_at: string;
 }
 
 interface Props {
-  members?: Member[];
+  users: User[];
 }
 
 interface FormState {
-    name: string;
-    email: string;
-    secondary_email: string;
-    matric_id: string;
-    phone_number: string;
-    nationality: string;
-    gender: string;
-    faculty: string;
-    password?: string;
-    password_confirmation?: string;
-    profile_picture?: File | null;
+  name: string;
+  email: string;
+  secondary_email: string;
+  matric_id: string;
+  phone_number: string;
+  nationality: string;
+  gender: string;
+  faculty: string;
+  role: string;
+  password?: string;
+  password_confirmation?: string;
+  profile_picture?: File | null;
 }
 
-
-export default function ManageMembersPage({ members = [] }: Props) {
+export default function ManageUsersPage({ users }: Props) {
   const { flash } = usePage<{ flash: { success?: string; error?: string } }>().props;
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("name-asc");
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'manager' | 'member'>('all');
 
   const [form, setForm] = useState<FormState>({
     name: "",
@@ -105,64 +100,56 @@ export default function ManageMembersPage({ members = [] }: Props) {
     nationality: "",
     gender: "",
     faculty: "",
+    role: "member",
     password: "",
     password_confirmation: "",
     profile_picture: null,
   });
 
   const [isAdding, setIsAdding] = useState(false);
-  const [editingMember, setEditingMember] = useState<Member | null>(null);
-  const [viewingMember, setViewingMember] = useState<Member | null>(null);
-  const [deletingMember, setDeletingMember] = useState<Member | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [viewingUser, setViewingUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-
-  const [emailDialog, setEmailDialog] = useState({
-    open: false,
-    recipientEmail: "",
-    recipientName: "",
-  });
-
-  const [emailForm, setEmailForm] = useState({
-    subject: "",
-    message: "",
-  });
 
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [dialogMessage, setDialogMessage] = useState("");
 
-  // Filter and sort members using useMemo (client-side - instant and responsive)
-  const filteredMembers = useMemo(() => {
-    let filtered = [...members];
+  // Calculate statistics using useMemo (client-side)
+  const statistics = useMemo(() => {
+    return {
+      total: users.length,
+      admins: users.filter(u => u.role === 'admin').length,
+      managers: users.filter(u => u.role === 'manager').length,
+      members: users.filter(u => u.role === 'member').length,
+    };
+  }, [users]);
+
+  // Filter and sort users using useMemo (client-side - instant and responsive)
+  const filteredUsers = useMemo(() => {
+    let filtered = [...users];
+
+    // Apply role filter
+    if (roleFilter !== 'all') {
+      filtered = filtered.filter(user => user.role === roleFilter);
+    }
 
     // Apply search filter (case-insensitive)
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(member =>
-        member.name.toLowerCase().includes(query) ||
-        member.email.toLowerCase().includes(query) ||
-        member.matric_id.toLowerCase().includes(query)
+      filtered = filtered.filter(user =>
+        user.name.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query) ||
+        user.matric_id.toLowerCase().includes(query)
       );
     }
 
-    // Apply sorting
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "name-asc":
-          return a.name.localeCompare(b.name);
-        case "name-desc":
-          return b.name.localeCompare(a.name);
-        case "date-newest":
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case "date-oldest":
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        default:
-          return 0;
-      }
-    });
+    // Sort by created_at descending (newest first)
+    filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     return filtered;
-  }, [members, searchQuery, sortBy]);
+  }, [users, roleFilter, searchQuery]);
 
   // Handle flash messages
   useEffect(() => {
@@ -185,24 +172,30 @@ export default function ManageMembersPage({ members = [] }: Props) {
       nationality: "",
       gender: "",
       faculty: "",
+      role: "member",
       password: "",
       password_confirmation: "",
       profile_picture: null,
     });
-    setEditingMember(null);
+    setEditingUser(null);
     setIsAdding(false);
     setPreview(null);
+  };
+
+  const handleResetFilter = () => {
+    setSearchQuery('');
+    setRoleFilter('all');
   };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
     const postData = {
-        ...form,
+      ...form,
     };
 
-    if (editingMember) {
-      router.post(`/manager/members/${editingMember.id}`, {
+    if (editingUser) {
+      router.post(`/admin/users/${editingUser.id}`, {
         _method: 'PUT',
         ...postData,
       }, {
@@ -210,30 +203,31 @@ export default function ManageMembersPage({ members = [] }: Props) {
         onSuccess: () => resetForm(),
       });
     } else {
-      router.post('/manager/members', postData, {
+      router.post('/admin/users', postData, {
         preserveScroll: true,
         onSuccess: () => resetForm(),
       });
     }
   };
 
-  const handleEdit = (member: Member) => {
+  const handleEdit = (user: User) => {
     setForm({
-      name: member.name,
-      email: member.email,
-      secondary_email: member.secondary_email || "",
-      matric_id: member.matric_id,
-      phone_number: member.phone_number || "",
-      nationality: member.nationality || "",
-      gender: member.gender || "",
-      faculty: member.faculty || "",
+      name: user.name,
+      email: user.email,
+      secondary_email: user.secondary_email || "",
+      matric_id: user.matric_id,
+      phone_number: user.phone_number || "",
+      nationality: user.nationality || "",
+      gender: user.gender || "",
+      faculty: user.faculty || "",
+      role: user.role,
       password: "",
       password_confirmation: "",
       profile_picture: null,
     });
-    setEditingMember(member);
+    setEditingUser(user);
     setIsAdding(true);
-    setPreview(member.profile_picture ? `/storage/${member.profile_picture}` : null);
+    setPreview(user.profile_picture ? `/storage/${user.profile_picture}` : null);
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -246,63 +240,17 @@ export default function ManageMembersPage({ members = [] }: Props) {
     }
   };
 
-  const handleDelete = (member: Member) => {
-    setDeletingMember(member);
+  const handleDelete = (user: User) => {
+    setDeletingUser(user);
   };
 
   const confirmDelete = () => {
-    if (deletingMember) {
-      router.delete(`/manager/members/${deletingMember.id}`, {
+    if (deletingUser) {
+      router.delete(`/admin/users/${deletingUser.id}`, {
         preserveScroll: true,
-        onSuccess: () => setDeletingMember(null),
+        onSuccess: () => setDeletingUser(null),
       });
     }
-  };
-
-  const handleOpenEmailDialog = (member: Member) => {
-    setEmailDialog({
-      open: true,
-      recipientEmail: member.email,
-      recipientName: member.name,
-    });
-    setEmailForm({
-      subject: "",
-      message: "",
-    });
-  };
-
-  const handleCloseEmailDialog = () => {
-    setEmailDialog({
-      open: false,
-      recipientEmail: "",
-      recipientName: "",
-    });
-    setEmailForm({
-      subject: "",
-      message: "",
-    });
-  };
-
-  const handleSendEmail = (e: FormEvent) => {
-    e.preventDefault();
-
-    if (!emailForm.subject || !emailForm.message) {
-      return;
-    }
-
-    router.post(
-      "/manager/send-email",
-      {
-        recipient_email: emailDialog.recipientEmail,
-        recipient_name: emailDialog.recipientName,
-        subject: emailForm.subject,
-        message: emailForm.message,
-      },
-      {
-        preserveScroll: true,
-        onSuccess: () => handleCloseEmailDialog(),
-      }
-    );
   };
 
   const formatDate = (dateString: string) => {
@@ -313,9 +261,22 @@ export default function ManageMembersPage({ members = [] }: Props) {
     });
   };
 
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return <Badge className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 border-red-200"><Shield className="h-3 w-3 mr-1" />Admin</Badge>;
+      case 'manager':
+        return <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border-blue-200"><UserCog className="h-3 w-3 mr-1" />Manager</Badge>;
+      case 'member':
+        return <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-green-200"><UserIcon className="h-3 w-3 mr-1" />Member</Badge>;
+      default:
+        return <Badge>{role}</Badge>;
+    }
+  };
+
   return (
-    <AppLayout breadcrumbs={breadcrumbs}>
-      <Head title="Manage Members" />
+    <AppLayout>
+      <Head title="Manage Users" />
 
       <div className="flex flex-col gap-6 p-4 md:p-8 max-w-7xl mx-auto">
         {/* Header */}
@@ -323,71 +284,126 @@ export default function ManageMembersPage({ members = [] }: Props) {
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
               <Users className="h-8 w-8 text-primary" />
-              Manage Members
+              Manage Users
             </h1>
             <p className="text-muted-foreground mt-1">
-              View and manage all registered members
+              Manage all users including admins, managers, and members
             </p>
           </div>
           <Button
             type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log("Add Member button clicked!", { isAdding });
+            onClick={() => {
               if (isAdding) {
-                console.log("Resetting form...");
                 resetForm();
               } else {
-                console.log("Setting isAdding to true...");
                 setIsAdding(true);
               }
             }}
-            className="gap-2"
+            className="gap-2 bg-orange-600 hover:bg-orange-700"
             size="lg"
           >
             <UserPlus className="h-5 w-5" />
-            {isAdding ? "Cancel" : "Add Member"}
+            {isAdding ? "Cancel" : "Add User"}
           </Button>
         </div>
 
-        {/* Add/Edit Member Form */}
+        {/* Statistics */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Users</p>
+                  <p className="text-2xl font-bold">{statistics.total}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    All system users
+                  </p>
+                </div>
+                <Users className="h-8 w-8 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-red-500 hover:shadow-md transition-shadow">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Admins</p>
+                  <p className="text-2xl font-bold">{statistics.admins}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Full system access
+                  </p>
+                </div>
+                <Shield className="h-8 w-8 text-red-500" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-purple-500 hover:shadow-md transition-shadow">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Managers</p>
+                  <p className="text-2xl font-bold">{statistics.managers}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Event organizers
+                  </p>
+                </div>
+                <UserCog className="h-8 w-8 text-purple-500" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-l-4 border-l-green-500 hover:shadow-md transition-shadow">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Members</p>
+                  <p className="text-2xl font-bold">{statistics.members}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Regular users
+                  </p>
+                </div>
+                <UserIcon className="h-8 w-8 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Add/Edit User Form */}
         {isAdding && (
           <Card className="border-2 border-dashed border-primary/50">
             <CardHeader>
               <CardTitle className="text-2xl">
-                {editingMember ? "Edit Member" : "Add New Member"}
+                {editingUser ? "Edit User" : "Add New User"}
               </CardTitle>
               <CardDescription>
-                {editingMember
-                  ? "Update the member information below."
-                  : "Fill in the details to add a new member."}
+                {editingUser
+                  ? "Update the user information below."
+                  : "Fill in the details to add a new user."}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                 {/* Profile Picture */}
-                 <div className="space-y-4">
+                {/* Profile Picture */}
+                <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Profile Picture</h3>
                   <div className="flex items-center gap-6">
-                      <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                          {preview ? (
-                              <img src={preview} alt="Profile preview" className="w-full h-full object-cover" />
-                          ) : (
-                              <UserIcon className="w-12 h-12 text-muted-foreground" />
-                          )}
-                      </div>
-                      <div className="space-y-2">
-                          <Label htmlFor="profile_picture">Upload Image</Label>
-                          <Input
-                              id="profile_picture"
-                              type="file"
-                              onChange={handleFileChange}
-                              accept="image/*"
-                              className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                          />
-                          <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 2MB.</p>
-                      </div>
+                    <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                      {preview ? (
+                        <img src={preview} alt="Profile preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <UserIcon className="w-12 h-12 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="profile_picture">Upload Image</Label>
+                      <Input
+                        id="profile_picture"
+                        type="file"
+                        onChange={handleFileChange}
+                        accept="image/*"
+                        className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                      />
+                      <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 2MB.</p>
+                    </div>
                   </div>
                 </div>
 
@@ -516,33 +532,54 @@ export default function ManageMembersPage({ members = [] }: Props) {
                   </div>
                 </div>
 
+                {/* Role Selection */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">User Role *</h3>
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Select value={form.role} onValueChange={(value) => setForm({ ...form, role: value })} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="member">Member</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Admins have full system access, Managers can manage events and members, Members can participate in events.
+                    </p>
+                  </div>
+                </div>
+
                 {/* Password */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">
-                    {editingMember ? "Change Password (Optional)" : "Password *"}
+                    {editingUser ? "Change Password (Optional)" : "Password *"}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="password">Password {!editingMember && "*"}</Label>
+                      <Label htmlFor="password">Password {!editingUser && "*"}</Label>
                       <Input
                         id="password"
                         type="password"
                         value={form.password}
                         onChange={(e) => setForm({ ...form, password: e.target.value })}
                         placeholder="Enter password"
-                        required={!editingMember}
+                        required={!editingUser}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="password_confirmation">Confirm Password {!editingMember && "*"}</Label>
+                      <Label htmlFor="password_confirmation">Confirm Password {!editingUser && "*"}</Label>
                       <Input
                         id="password_confirmation"
                         type="password"
                         value={form.password_confirmation}
                         onChange={(e) => setForm({ ...form, password_confirmation: e.target.value })}
                         placeholder="Confirm password"
-                        required={!editingMember}
+                        required={!editingUser}
                       />
                     </div>
                   </div>
@@ -552,8 +589,8 @@ export default function ManageMembersPage({ members = [] }: Props) {
                   <Button type="button" variant="outline" onClick={resetForm}>
                     Cancel
                   </Button>
-                  <Button type="submit">
-                    {editingMember ? "Update Member" : "Add Member"}
+                  <Button type="submit" className="bg-orange-600 hover:bg-orange-700">
+                    {editingUser ? "Update User" : "Add User"}
                   </Button>
                 </div>
               </form>
@@ -561,17 +598,17 @@ export default function ManageMembersPage({ members = [] }: Props) {
           </Card>
         )}
 
-        {/* Members List */}
+        {/* Users List */}
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                  <CardTitle>Member List ({filteredMembers.length})</CardTitle>
+                  <CardTitle>User List ({filteredUsers.length})</CardTitle>
                   <CardDescription>
-                    {filteredMembers.length === members.length
-                      ? 'Manage registered members for your events'
-                      : `Showing ${filteredMembers.length} of ${members.length} members`}
+                    {filteredUsers.length === statistics.total
+                      ? 'View and manage all system users'
+                      : `Showing ${filteredUsers.length} of ${statistics.total} users`}
                   </CardDescription>
                 </div>
               </div>
@@ -585,7 +622,7 @@ export default function ManageMembersPage({ members = [] }: Props) {
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          placeholder="Search members by name, email, or matric ID..."
+                          placeholder="Search users by name, email, or matric ID..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
                           className="pl-10"
@@ -593,39 +630,72 @@ export default function ManageMembersPage({ members = [] }: Props) {
                       </div>
                     </div>
 
-                    {/* Sort Select */}
-                    <div className="w-full sm:w-48">
-                      <Select value={sortBy} onValueChange={setSortBy}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sort by" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-                          <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-                          <SelectItem value="date-newest">Newest First</SelectItem>
-                          <SelectItem value="date-oldest">Oldest First</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    {/* Role Filter Buttons */}
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant={roleFilter === 'all' ? 'default' : 'outline'}
+                        onClick={() => setRoleFilter('all')}
+                        size="sm"
+                      >
+                        All ({statistics.total})
+                      </Button>
+                      <Button
+                        variant={roleFilter === 'admin' ? 'default' : 'outline'}
+                        onClick={() => setRoleFilter('admin')}
+                        size="sm"
+                      >
+                        <Shield className="h-3 w-3 mr-1" />
+                        Admins ({statistics.admins})
+                      </Button>
+                      <Button
+                        variant={roleFilter === 'manager' ? 'default' : 'outline'}
+                        onClick={() => setRoleFilter('manager')}
+                        size="sm"
+                      >
+                        <UserCog className="h-3 w-3 mr-1" />
+                        Managers ({statistics.managers})
+                      </Button>
+                      <Button
+                        variant={roleFilter === 'member' ? 'default' : 'outline'}
+                        onClick={() => setRoleFilter('member')}
+                        size="sm"
+                      >
+                        <UserIcon className="h-3 w-3 mr-1" />
+                        Members ({statistics.members})
+                      </Button>
                     </div>
                   </div>
 
                   {/* Active Filters Display */}
-                  {searchQuery && (
+                  {(searchQuery || roleFilter !== 'all') && (
                     <div className="flex items-center gap-2 mt-4 pt-4 border-t">
                       <span className="text-sm text-muted-foreground">Active filters:</span>
-                      <Badge variant="secondary" className="gap-1">
-                        Search: "{searchQuery}"
-                        <button
-                          onClick={() => setSearchQuery('')}
-                          className="ml-1 hover:text-foreground"
-                        >
-                          ×
-                        </button>
-                      </Badge>
+                      {searchQuery && (
+                        <Badge variant="secondary" className="gap-1">
+                          Search: "{searchQuery}"
+                          <button
+                            onClick={() => setSearchQuery('')}
+                            className="ml-1 hover:text-foreground"
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      )}
+                      {roleFilter !== 'all' && (
+                        <Badge variant="secondary" className="gap-1">
+                          Role: {roleFilter}
+                          <button
+                            onClick={() => setRoleFilter('all')}
+                            className="ml-1 hover:text-foreground"
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setSearchQuery('')}
+                        onClick={handleResetFilter}
                         className="h-6 text-xs"
                       >
                         Clear all
@@ -637,14 +707,14 @@ export default function ManageMembersPage({ members = [] }: Props) {
             </div>
           </CardHeader>
           <CardContent>
-            {filteredMembers.length === 0 ? (
+            {filteredUsers.length === 0 ? (
               <div className="text-center py-12">
                 <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                  {searchQuery ? "No members found" : "No members yet"}
+                  {searchQuery || roleFilter !== 'all' ? 'No users match your filters' : 'No users yet'}
                 </h3>
                 <p className="text-muted-foreground mt-1">
-                  {searchQuery ? "Try a different search query." : "Add your first member above."}
+                  {searchQuery || roleFilter !== 'all' ? 'Try adjusting your search or filters.' : 'Add your first user to get started.'}
                 </p>
               </div>
             ) : (
@@ -656,36 +726,36 @@ export default function ManageMembersPage({ members = [] }: Props) {
                       <th className="px-4 py-3 text-left font-semibold">Name</th>
                       <th className="px-4 py-3 text-left font-semibold">Email</th>
                       <th className="px-4 py-3 text-left font-semibold">Matric ID</th>
-                      <th className="px-4 py-3 text-left font-semibold">Faculty</th>
-                      <th className="px-4 py-3 text-center font-semibold">Date Joined</th>
+                      <th className="px-4 py-3 text-left font-semibold">Role</th>
+                      <th className="px-4 py-3 text-center font-semibold">Joined</th>
                       <th className="px-4 py-3 text-center font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredMembers.map((member) => (
-                      <tr key={member.id} className="border-b hover:bg-muted/50 transition-colors">
+                    {filteredUsers.map((user) => (
+                      <tr key={user.id} className="border-b hover:bg-muted/50 transition-colors">
                         <td className="px-4 py-2">
-                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                                {member.profile_picture ? (
-                                    <img src={`/storage/${member.profile_picture}`} alt={member.name} className="w-full h-full object-cover" />
-                                ) : (
-                                    <UserIcon className="w-6 h-6 text-muted-foreground" />
-                                )}
-                            </div>
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                            {user.profile_picture ? (
+                              <img src={`/storage/${user.profile_picture}`} alt={user.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <UserIcon className="w-6 h-6 text-muted-foreground" />
+                            )}
+                          </div>
                         </td>
-                        <td className="px-4 py-3 font-medium">{member.name}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{member.email}</td>
-                        <td className="px-4 py-3">{member.matric_id}</td>
-                        <td className="px-4 py-3 uppercase">{member.faculty || '-'}</td>
-                        <td className="px-4 py-3 text-center text-muted-foreground">
-                          {formatDate(member.created_at)}
+                        <td className="px-4 py-3 font-medium">{user.name}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
+                        <td className="px-4 py-3">{user.matric_id}</td>
+                        <td className="px-4 py-3">{getRoleBadge(user.role)}</td>
+                        <td className="px-4 py-3 text-center text-muted-foreground text-xs">
+                          {formatDate(user.created_at)}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-2">
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => setViewingMember(member)}
+                              onClick={() => setViewingUser(user)}
                               title="View details"
                             >
                               <Eye className="h-4 w-4" />
@@ -693,15 +763,7 @@ export default function ManageMembersPage({ members = [] }: Props) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleOpenEmailDialog(member)}
-                              title="Send email"
-                            >
-                              <Mail className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEdit(member)}
+                              onClick={() => handleEdit(user)}
                               title="Edit"
                             >
                               <Pencil className="h-4 w-4" />
@@ -709,7 +771,7 @@ export default function ManageMembersPage({ members = [] }: Props) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleDelete(member)}
+                              onClick={() => handleDelete(user)}
                               className="text-destructive hover:text-destructive"
                               title="Delete"
                             >
@@ -726,62 +788,65 @@ export default function ManageMembersPage({ members = [] }: Props) {
           </CardContent>
         </Card>
 
-        {/* View Member Dialog */}
-        <Dialog open={!!viewingMember} onOpenChange={() => setViewingMember(null)}>
+        {/* View User Dialog */}
+        <Dialog open={!!viewingUser} onOpenChange={() => setViewingUser(null)}>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>Member Details</DialogTitle>
+              <DialogTitle>User Details</DialogTitle>
               <DialogDescription>
-                Full information about {viewingMember?.name}
+                Full information about {viewingUser?.name}
               </DialogDescription>
             </DialogHeader>
-            {viewingMember && (
+            {viewingUser && (
               <div className="space-y-4 pt-4">
                 <div className="flex justify-center mb-4">
-                    <div className="w-28 h-28 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                        {viewingMember.profile_picture ? (
-                            <img src={`/storage/${viewingMember.profile_picture}`} alt={viewingMember.name} className="w-full h-full object-cover" />
-                        ) : (
-                            <UserIcon className="w-16 h-16 text-muted-foreground" />
-                        )}
-                    </div>
+                  <div className="w-28 h-28 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                    {viewingUser.profile_picture ? (
+                      <img src={`/storage/${viewingUser.profile_picture}`} alt={viewingUser.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <UserIcon className="w-16 h-16 text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+                <div className="flex justify-center mb-4">
+                  {getRoleBadge(viewingUser.role)}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-muted-foreground">Name</Label>
-                    <p className="font-medium">{viewingMember.name}</p>
+                    <p className="font-medium">{viewingUser.name}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Matric ID</Label>
-                    <p className="font-medium">{viewingMember.matric_id}</p>
+                    <p className="font-medium">{viewingUser.matric_id}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Primary Email</Label>
-                    <p className="font-medium">{viewingMember.email}</p>
+                    <p className="font-medium">{viewingUser.email}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Secondary Email</Label>
-                    <p className="font-medium">{viewingMember.secondary_email || '-'}</p>
+                    <p className="font-medium">{viewingUser.secondary_email || '-'}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Phone</Label>
-                    <p className="font-medium">{viewingMember.phone_number || '-'}</p>
+                    <p className="font-medium">{viewingUser.phone_number || '-'}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Gender</Label>
-                    <p className="font-medium capitalize">{viewingMember.gender || '-'}</p>
+                    <p className="font-medium capitalize">{viewingUser.gender || '-'}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Faculty</Label>
-                    <p className="font-medium uppercase">{viewingMember.faculty || '-'}</p>
+                    <p className="font-medium uppercase">{viewingUser.faculty || '-'}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Nationality</Label>
-                    <p className="font-medium capitalize">{viewingMember.nationality || '-'}</p>
+                    <p className="font-medium capitalize">{viewingUser.nationality || '-'}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Joined Date</Label>
-                    <p className="font-medium">{formatDate(viewingMember.created_at)}</p>
+                    <p className="font-medium">{formatDate(viewingUser.created_at)}</p>
                   </div>
                 </div>
               </div>
@@ -789,88 +854,19 @@ export default function ManageMembersPage({ members = [] }: Props) {
           </DialogContent>
         </Dialog>
 
-        {/* Email Dialog */}
-        <Dialog open={emailDialog.open} onOpenChange={handleCloseEmailDialog}>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Send Email to {emailDialog.recipientName}</DialogTitle>
-              <DialogDescription>
-                Compose an email to {emailDialog.recipientEmail}
-              </DialogDescription>
-            </DialogHeader>
-
-            <form onSubmit={handleSendEmail} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email-to">To</Label>
-                <Input
-                  id="email-to"
-                  type="email"
-                  value={emailDialog.recipientEmail}
-                  disabled
-                  className="bg-muted"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email-subject">Subject</Label>
-                <Input
-                  id="email-subject"
-                  type="text"
-                  value={emailForm.subject}
-                  onChange={(e) =>
-                    setEmailForm({ ...emailForm, subject: e.target.value })
-                  }
-                  placeholder="Enter email subject"
-                  autoFocus
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email-message">Message</Label>
-                <textarea
-                  id="email-message"
-                  value={emailForm.message}
-                  onChange={(e) =>
-                    setEmailForm({ ...emailForm, message: e.target.value })
-                  }
-                  placeholder="Enter your message here..."
-                  rows={8}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
-                  required
-                />
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCloseEmailDialog}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" className="gap-2">
-                  <Mail className="h-4 w-4" />
-                  Send Email
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={!!deletingMember} onOpenChange={() => setDeletingMember(null)}>
+        <AlertDialog open={!!deletingUser} onOpenChange={() => setDeletingUser(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete <strong>{deletingMember?.name}</strong> and all their associated data. This action cannot be undone.
+                This will permanently delete <strong>{deletingUser?.name}</strong> ({deletingUser?.role}) and all their associated data. This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
-                Delete
+                Delete User
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

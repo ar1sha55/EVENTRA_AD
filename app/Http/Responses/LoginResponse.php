@@ -35,8 +35,7 @@ class LoginResponse implements LoginResponseContract
         }
 
         if ($user->role === 'admin') {
-            // Assuming you have an admin dashboard route, otherwise send them to manager or default
-            return redirect()->route('system-control'); 
+            return redirect()->route('admin.dashboard');
         }
 
         // Default for 'user' role or any others
