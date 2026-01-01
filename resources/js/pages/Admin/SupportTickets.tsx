@@ -11,7 +11,9 @@ import {
   CheckCircle2,
   User,
   MessageSquare,
-  Calendar
+  Calendar,
+  Tag,
+  AlertTriangle
 } from "lucide-react";
 import type { BreadcrumbItem } from "@/types";
 
@@ -33,6 +35,8 @@ interface SupportTicket {
   id: number;
   subject: string;
   message: string;
+  category: 'general' | 'technical' | 'account' | 'event' | 'payment' | 'other';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'pending' | 'in_progress' | 'resolved';
   user: { id: number; name: string; email: string };
   admin_response: string | null;
@@ -70,6 +74,37 @@ export default function SupportTickets({ tickets, stats, currentStatus }: Props)
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'low':
+        return 'bg-gray-100 text-gray-700 border-gray-200';
+      case 'medium':
+        return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'high':
+        return 'bg-orange-100 text-orange-700 border-orange-200';
+      case 'urgent':
+        return 'bg-red-100 text-red-700 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
+  const getPriorityLabel = (priority: string) => {
+    return priority.charAt(0).toUpperCase() + priority.slice(1);
+  };
+
+  const getCategoryLabel = (category: string) => {
+    const labels: Record<string, string> = {
+      general: 'General',
+      technical: 'Technical',
+      account: 'Account',
+      event: 'Event',
+      payment: 'Payment',
+      other: 'Other',
+    };
+    return labels[category] || category;
   };
 
   const formatDate = (dateString: string) => {
@@ -197,9 +232,17 @@ export default function SupportTickets({ tickets, stats, currentStatus }: Props)
                         onClick={() => handleViewTicket(ticket.id)}
                       >
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <Badge variant="outline" className={getStatusColor(ticket.status)}>
                               {getStatusLabel(ticket.status)}
+                            </Badge>
+                            <Badge variant="outline" className={getPriorityColor(ticket.priority)}>
+                              {ticket.priority === 'urgent' && <AlertTriangle className="h-3 w-3 mr-1" />}
+                              {getPriorityLabel(ticket.priority)}
+                            </Badge>
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                              <Tag className="h-3 w-3 mr-1" />
+                              {getCategoryLabel(ticket.category)}
                             </Badge>
                             <span className="text-xs text-muted-foreground">
                               #{ticket.id}

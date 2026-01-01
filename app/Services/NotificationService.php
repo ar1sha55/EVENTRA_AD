@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Notification;
 use App\Models\User;
 use App\Mail\NotificationMail;
+use App\Mail\SupportResponseMail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 
@@ -424,18 +425,40 @@ class NotificationService
                 'user_id' => $ticket->user_id,
             ]);
 
-            self::create(
-                $ticket->user,
-                \App\Models\Notification::TYPE_SUPPORT_RESPONSE,
-                'Support Ticket Update',
-                "Your support ticket '{$ticket->subject}' has been updated",
-                [
+            // Create in-app notification (without sending generic email)
+            Notification::create([
+                'user_id' => $ticket->user->id,
+                'type' => Notification::TYPE_SUPPORT_RESPONSE,
+                'title' => 'Support Ticket Update',
+                'message' => "Your support ticket '{$ticket->subject}' has been updated. Status: " . ucfirst(str_replace('_', ' ', $ticket->status)),
+                'data' => [
                     'ticket_id' => $ticket->id,
                     'status' => $ticket->status,
                     'has_response' => !empty($ticket->admin_response),
                 ],
-                true // Send email
-            );
+                'sent_via_email' => false,
+            ]);
+
+            // Send the dedicated support response email
+            try {
+                Mail::to($ticket->user->email)->queue(new SupportResponseMail($ticket));
+
+                // Update notification to mark email as sent
+                Notification::where('user_id', $ticket->user->id)
+                    ->where('type', Notification::TYPE_SUPPORT_RESPONSE)
+                    ->where('data->ticket_id', $ticket->id)
+                    ->latest()
+                    ->first()
+                    ?->update(['sent_via_email' => true]);
+
+                \Log::info('NotificationService: Support response email queued successfully');
+            } catch (\Exception $emailException) {
+                \Log::error('NotificationService: Failed to send support response email', [
+                    'ticket_id' => $ticket->id,
+                    'error' => $emailException->getMessage(),
+                ]);
+                // Don't throw - in-app notification was still created
+            }
 
             \Log::info('NotificationService: Notification created successfully');
 

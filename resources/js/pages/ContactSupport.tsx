@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Mail, Send, History, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
@@ -18,8 +19,18 @@ export default function ContactSupport() {
   const [email, setEmail] = useState(user?.email || "");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [category, setCategory] = useState("general");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const categories = [
+    { value: "general", label: "General Inquiry" },
+    { value: "technical", label: "Technical Issue" },
+    { value: "account", label: "Account Problem" },
+    { value: "event", label: "Event Related" },
+    { value: "payment", label: "Payment Issue" },
+    { value: "other", label: "Other" },
+  ];
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -37,6 +48,7 @@ export default function ContactSupport() {
         email,
         subject,
         message,
+        category,
       });
 
       if (response.data.success) {
@@ -45,6 +57,7 @@ export default function ContactSupport() {
         // Reset form
         setSubject("");
         setMessage("");
+        setCategory("general");
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to submit support ticket");
@@ -172,6 +185,24 @@ export default function ContactSupport() {
                   maxLength={255}
                   className="transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category">
+                  Category <span className="text-red-500">*</span>
+                </Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">

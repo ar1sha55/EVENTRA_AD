@@ -60,6 +60,7 @@ export function AppSidebar() {
             icon: Headphones,
             subItems: [
                 { title: 'Contact Support', href: '/contact-support', icon: Headphones },
+                { title: 'My Tickets', href: '/support-history', icon: History },
             ],
         },
     ];
@@ -81,6 +82,7 @@ export function AppSidebar() {
         icon: Headphones,
         subItems: [
             { title: 'Contact Support', href: '/contact-support', icon: Headphones },
+            { title: 'My Tickets', href: '/support-history', icon: History },
         ],
     };
 

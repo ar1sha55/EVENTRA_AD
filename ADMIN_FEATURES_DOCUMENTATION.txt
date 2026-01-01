@@ -1,0 +1,679 @@
+================================================================================
+                    EVENTRA - ADMIN FEATURES DOCUMENTATION
+================================================================================
+                         Version 1.0 | January 2026
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+1. OVERVIEW
+2. ADMIN DASHBOARD
+3. MANAGE USERS
+4. ACTIVITY LOGS
+5. CONTACT SUPPORT SYSTEM
+6. TESTING GUIDE
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+The Eventra Admin module provides administrative tools for system management.
+Admin-only features are accessible to users with the 'admin' role.
+
+Access Requirements:
+- User must be authenticated
+- User must have email verified
+- User must have role = 'admin'
+
+Base URL: http://localhost:8000 (development)
+
+================================================================================
+2. ADMIN DASHBOARD
+================================================================================
+
+URL: /admin/dashboard
+Controller: AdminDashboardController.php
+Frontend: resources/js/pages/Admin/AdminDashboard.tsx
+
+DESCRIPTION:
+------------
+The Admin Dashboard provides a comprehensive overview of the entire system,
+including user statistics, event metrics, support tickets, and recent activities.
+
+FEATURES:
+---------
+a) Statistics Overview Cards:
+   - Total Users: Shows total count with breakdown (admins, managers, members)
+   - Total Events: Shows active, past, and draft event counts
+   - Support Tickets: Displays pending and resolved ticket counts
+   - System Health: Shows current system status
+
+b) Charts & Visualizations:
+   - User Growth Chart: Area chart showing user registration over last 6 months
+   - Event Status Distribution: Pie chart showing active/past/draft events
+   - Ticket Status Distribution: Shows pending/in-progress/resolved tickets
+
+c) Quick Actions Panel:
+   - Manage Users: Navigate to user management
+   - Activity Logs: View system activity history
+   - Support Tickets: Manage user support requests
+   - Analytics & Reports: Access detailed analytics
+
+d) Recent Activity Feed:
+   - Shows last 10 system activities
+   - Displays activity type, description, user, and timestamp
+   - Color-coded icons for user/event/ticket activities
+
+API ENDPOINT:
+-------------
+GET /api/admin/dashboard/stats
+Returns JSON with all dashboard statistics
+
+================================================================================
+3. MANAGE USERS
+================================================================================
+
+URL: /admin/manage-users
+Controller: AdminManageUsersController.php
+Frontend: resources/js/pages/Admin/ManageUsers.tsx
+
+DESCRIPTION:
+------------
+Full user management system allowing admins to create, view, edit, and delete
+any user in the system regardless of their role.
+
+FEATURES:
+---------
+
+a) User Statistics Cards:
+   - Total Users count
+   - Admins count (red badge)
+   - Managers count (purple badge)
+   - Members count (green badge)
+
+b) Add New User:
+   - Click "Add User" button to open form
+   - Required fields: Name, Email (UTM format), Matric ID, Role, Password
+   - Optional fields: Secondary email, Phone, Gender, Faculty, Nationality
+   - Profile picture upload (PNG, JPG, GIF up to 2MB)
+   - Passwords are auto-hashed with bcrypt
+   - Admin-created users are auto-verified
+
+c) User List Table:
+   - Displays: Profile picture, Name, Email, Matric ID, Role, Joined Date
+   - Instant client-side search (name, email, matric ID)
+   - Role filter buttons (All, Admins, Managers, Members)
+   - Checkbox selection for bulk actions
+   - Actions: View, Edit, Delete
+
+d) BULK ACTIONS (NEW):
+   - Select multiple users via checkboxes
+   - "Select All" checkbox in table header
+   - Bulk action bar appears when users are selected
+   - Bulk Delete: Delete multiple users at once (cannot delete self)
+   - Bulk Role Change: Change role for multiple users to:
+     * Member
+     * Manager
+     * Admin
+   - Confirmation dialogs for all bulk actions
+   - Activity logging for bulk operations
+
+e) View User Details:
+   - Modal popup with full user information
+   - Shows all profile fields and timestamps
+
+f) Edit User:
+   - Pre-populates form with existing data
+   - Password change is optional during edit
+   - Updates profile picture if new one uploaded
+
+g) Delete User:
+   - Confirmation dialog before deletion
+   - Cannot delete own account (self-protection)
+   - Removes profile picture and participant records
+   - Logs deletion activity
+
+API ENDPOINTS:
+--------------
+GET    /admin/manage-users           - List all users (Inertia page)
+POST   /admin/users                  - Create new user
+GET    /admin/users/{id}             - Get user details (JSON)
+PUT    /admin/users/{id}             - Update user
+DELETE /admin/users/{id}             - Delete user
+POST   /admin/users/bulk-delete      - Bulk delete users (NEW)
+POST   /admin/users/bulk-role        - Bulk change user roles (NEW)
+GET    /api/admin/users/statistics   - Get user statistics (JSON)
+
+VALIDATION RULES:
+-----------------
+- email: Required, must be @graduate.utm.my format
+- matric_id: Required, unique
+- role: Required, must be admin/manager/member
+- password: Required for new users, min 8 characters, must confirm
+- profile_picture: Optional, image only, max 2MB
+
+================================================================================
+4. ACTIVITY LOGS
+================================================================================
+
+URL: /admin/activity-logs
+Controller: ActivityLogController.php
+Model: ActivityLog.php
+Frontend: resources/js/pages/Admin/ActivityLogs.tsx
+
+DESCRIPTION:
+------------
+Comprehensive audit trail system that logs all significant actions in the
+system for security monitoring and compliance purposes.
+
+FEATURES:
+---------
+
+a) Quick Statistics:
+   - Total Logs count
+   - Recent logs (current page)
+   - Resource types tracked
+   - Active users count
+
+b) Advanced Filtering:
+   - Search by keywords (description, action, user name)
+   - Filter by action category (user, event, auth, etc.)
+   - Date range filter (from/to)
+   - User filter dropdown
+   - Resource type filter
+
+c) Activity Log Table:
+   - When: Relative time + exact timestamp
+   - Actor: User avatar + name (or "System")
+   - Activity: Action badge with color coding
+   - Resource: Type and ID
+   - Memo: Description preview
+   - View: Detail button
+
+d) Log Detail Modal (Audit Inspector):
+   - Full log metadata
+   - Origin IP address
+   - Object/Resource type
+   - Action tag
+   - Memo summary
+   - State Transformation (Diff Viewer)
+     - Shows old values vs new values
+     - Highlights changed attributes
+   - Environment signature (User Agent)
+   - Copy raw metadata to clipboard
+
+e) Export Functionality:
+   - Export to CSV with filters applied
+   - Includes: ID, Timestamp, User, Action, Resource, Description, IP
+
+LOGGED ACTIVITIES:
+------------------
+- user.created: When new user is added
+- user.updated: When user profile is modified
+- user.deleted: When user is removed
+- user.bulk_deleted: When multiple users deleted (NEW)
+- user.bulk_role_changed: When multiple user roles changed (NEW)
+- auth.login: When user logs in
+- auth.logout: When user logs out
+- event.created: When new event is created
+- event.updated: When event is modified
+- event.deleted: When event is deleted
+- support.ticket.responded: When admin responds to ticket
+- And more...
+
+API ENDPOINTS:
+--------------
+GET /admin/activity-logs                  - List logs (paginated, 25/page)
+GET /admin/activity-logs/export           - Export to CSV
+GET /admin/activity-logs/{id}             - Get single log details
+
+================================================================================
+5. CONTACT SUPPORT SYSTEM
+================================================================================
+
+USER SIDE:
+----------
+URL: /contact-support
+Controller: ContactSupportController.php
+Frontend: resources/js/pages/ContactSupport.tsx
+
+ADMIN SIDE:
+-----------
+URL: /admin/support-tickets
+Controller: AdminSupportController.php
+Frontend: resources/js/pages/Admin/SupportTickets.tsx
+          resources/js/pages/Admin/SupportTicketDetail.tsx
+
+DESCRIPTION:
+------------
+Support ticket system where users can submit support requests and
+admins can view, respond, and manage tickets. Features include ticket
+categories and admin-controlled priority levels.
+
+USER FEATURES (Contact Support):
+--------------------------------
+a) Submit Support Ticket Form:
+   - Name (pre-filled from profile)
+   - Email (pre-filled from profile)
+   - Subject (max 255 chars)
+   - Category Selection:
+     * General Inquiry
+     * Technical Issue
+     * Account Problem
+     * Event Related
+     * Payment Issue
+     * Other
+   - Message (max 2000 chars with counter)
+   - Submit button with loading state
+   Note: Priority is set by admin when reviewing tickets
+
+b) Success Confirmation:
+   - Shows success message after submission
+   - Options: Submit another ticket, View my tickets
+
+c) Support History:
+   URL: /support-history
+   - Lists user's own submitted tickets
+   - Shows status, category, priority, and admin responses
+
+ADMIN FEATURES (Support Tickets Management):
+--------------------------------------------
+
+a) Statistics Dashboard:
+   - Pending tickets count (yellow)
+   - In Progress tickets count (blue)
+   - Resolved tickets count (green)
+   - Total tickets count (purple)
+
+b) Ticket List:
+   - Tabbed view: All, Pending, In Progress, Resolved
+   - Each ticket shows:
+     - Status badge
+     - Priority badge (NEW) - with color coding
+     - Category badge (NEW)
+     - Ticket ID
+     - Subject
+     - Message preview
+     - Submitter name
+     - Submission date
+   - Click to view details
+   - Pagination support
+
+c) Ticket Detail View:
+   URL: /admin/support-tickets/{id}
+   - Full ticket information
+   - User details (name, email, submission date)
+   - Category and Priority badges
+   - User Message section (displays original message)
+   - Status dropdown (Pending/In Progress/Resolved)
+   - Priority dropdown (Low/Medium/High/Urgent) - Admin sets priority
+   - Admin Response textarea (max 2000 chars)
+   - Save Changes button
+   - Delete Ticket button
+   - Shows last responded by info if previously responded
+
+d) Email Notifications (ENHANCED):
+   - User receives notification when admin responds
+   - NEW: Dedicated support response email template
+     * Shows ticket ID and subject
+     * Shows current status
+     * Includes full admin response text
+     * Shows responder name and timestamp
+     * Links to view ticket in support history
+     * Professional branded design
+
+TICKET STATUS FLOW:
+-------------------
+pending -> in_progress -> resolved
+
+TICKET DATA STRUCTURE:
+----------------------
+{
+  "id": number,
+  "user_id": number,
+  "name": string,
+  "email": string,
+  "subject": string,
+  "message": string,
+  "category": "general" | "technical" | "account" | "event" | "payment" | "other",
+  "priority": "low" | "medium" | "high" | "urgent",  // Set by admin
+  "status": "pending" | "in_progress" | "resolved",
+  "admin_response": string | null,
+  "responded_by": number | null,
+  "responded_at": timestamp | null,
+  "created_at": timestamp
+}
+
+API ENDPOINTS:
+--------------
+User Side:
+  GET  /contact-support              - Display form
+  POST /contact-support              - Submit ticket (with category)
+  GET  /support-history              - View own tickets
+
+Admin Side:
+  GET    /admin/support-tickets              - List all tickets
+  GET    /admin/support-tickets/{id}         - View ticket details
+  PUT    /admin/support-tickets/{id}         - Update status/priority/response
+  DELETE /admin/support-tickets/{id}         - Delete ticket
+
+================================================================================
+6. TESTING GUIDE
+================================================================================
+
+PREREQUISITES:
+--------------
+1. Application running (npm run dev + php artisan serve)
+2. Database migrated and seeded
+3. Admin user account created
+
+ADMIN TEST ACCOUNT:
+-------------------
+If you need to create an admin user, use tinker:
+  php artisan tinker
+  User::factory()->create([
+    'name' => 'Admin User',
+    'email' => 'admin@graduate.utm.my',
+    'password' => bcrypt('password'),
+    'role' => 'admin',
+    'email_verified_at' => now()
+  ]);
+
+--------------------------------------------------------------------------------
+TEST CASE 1: ADMIN DASHBOARD
+--------------------------------------------------------------------------------
+
+Step 1: Login and Access Dashboard
+  1. Go to http://localhost:8000/login
+  2. Login with admin credentials
+  3. Navigate to /admin/dashboard
+
+Expected Result:
+  - Dashboard loads without errors
+  - Statistics cards show correct counts
+  - Charts render properly
+  - Recent activities are displayed
+
+Step 2: Verify Statistics Accuracy
+  1. Note the Total Users count
+  2. Open new tab, go to /admin/manage-users
+  3. Verify user count matches
+
+Expected Result:
+  - Numbers are consistent between dashboard and actual data
+
+Step 3: Test Quick Actions
+  1. Click each quick action button
+  2. Verify navigation works correctly
+
+Expected Result:
+  - Each button navigates to correct page
+  - Back navigation works
+
+--------------------------------------------------------------------------------
+TEST CASE 2: MANAGE USERS - BULK ACTIONS (NEW)
+--------------------------------------------------------------------------------
+
+Step 1: Access Manage Users
+  1. Navigate to /admin/manage-users
+  2. Wait for page to load
+
+Expected Result:
+  - Page loads with user list
+  - Checkboxes visible in first column
+
+Step 2: Test User Selection
+  1. Click checkbox on first user
+  2. Verify bulk action bar appears (orange bar)
+  3. Click "Select All" checkbox in header
+  4. Verify all users are selected
+  5. Click "Clear selection" button
+
+Expected Result:
+  - Bulk action bar shows/hides correctly
+  - Selection count updates
+  - "You" badge appears next to your own account
+
+Step 3: Test Bulk Role Change
+  1. Select 2-3 users (not yourself)
+  2. Click "Change Role" dropdown
+  3. Select "Manager"
+  4. Confirm in dialog
+
+Expected Result:
+  - Success message appears
+  - Selected users now have Manager role
+  - Selection is cleared
+
+Step 4: Test Bulk Delete
+  1. Select 1-2 test users (not yourself)
+  2. Click "Delete" button
+  3. Confirm in dialog
+
+Expected Result:
+  - Success message shows deleted count
+  - Users removed from list
+  - Your own account cannot be deleted
+
+Step 5: Test Self-Protection
+  1. Select only yourself
+  2. Try to delete
+
+Expected Result:
+  - Delete button shows (0) in count
+  - Error message if attempted
+
+--------------------------------------------------------------------------------
+TEST CASE 3: ACTIVITY LOGS
+--------------------------------------------------------------------------------
+
+Step 1: Verify Bulk Actions Are Logged
+  1. After performing bulk operations (Test Case 2)
+  2. Navigate to /admin/activity-logs
+  3. Look for:
+     - user.bulk_deleted entries
+     - user.bulk_role_changed entries
+
+Expected Result:
+  - All bulk operations are logged
+  - Shows count of affected users
+  - Shows list of user names (up to 5)
+
+Step 2: View Log Details
+  1. Click eye icon on bulk action log
+  2. Examine the Audit Inspector modal
+
+Expected Result:
+  - Shows old_values with user IDs and count
+  - Shows new_values (for role change)
+  - IP address and user agent recorded
+
+--------------------------------------------------------------------------------
+TEST CASE 4: CONTACT SUPPORT - CATEGORY
+--------------------------------------------------------------------------------
+
+Step 1: Access Contact Support
+  1. Login as any user
+  2. Navigate to /contact-support
+
+Expected Result:
+  - Form displays with Category dropdown
+  - Default: Category = General
+  - No priority field (admin sets this)
+
+Step 2: Submit Ticket with Category
+  1. Fill in:
+     - Subject: "Test Technical Issue"
+     - Category: "Technical Issue"
+     - Message: "This is a test message"
+  2. Click "Submit Support Ticket"
+
+Expected Result:
+  - Success confirmation screen appears
+  - Ticket submitted successfully
+
+Step 3: Verify Admin View
+  1. Login as admin
+  2. Navigate to /admin/support-tickets
+  3. Find the test ticket
+
+Expected Result:
+  - Ticket shows Status, Priority, and Category badges
+  - Priority defaults to "Medium" (admin can change)
+  - Category badge shows "Technical"
+
+--------------------------------------------------------------------------------
+TEST CASE 5: ADMIN RESPONSE TO TICKET
+--------------------------------------------------------------------------------
+
+Step 1: View Ticket Detail
+  1. Login as admin
+  2. Navigate to /admin/support-tickets
+  3. Click on a ticket
+
+Expected Result:
+  - User Message section visible
+  - Status and Priority dropdowns available
+  - Admin Response textarea available
+
+Step 2: Respond to Ticket
+  1. Set Priority to "High"
+  2. Set Status to "In Progress"
+  3. Type response: "Thank you for contacting us. We are looking into this."
+  4. Click "Save Changes"
+
+Expected Result:
+  - Success message appears
+  - Ticket updated with response
+  - "Last responded by" info shown
+
+Step 3: Verify User Notification
+  1. Check if user received notification
+  2. Verify email was sent with new template
+
+Expected Result:
+  - User gets in-app notification
+  - Email contains full response text
+  - Email shows ticket status
+
+--------------------------------------------------------------------------------
+TEST CASE 6: SUPPORT RESPONSE EMAIL (NEW)
+--------------------------------------------------------------------------------
+
+Step 1: Trigger Response Email
+  1. Login as admin
+  2. Update a ticket status and add response
+  3. Save changes
+
+Expected Result:
+  - Email queued for user
+  - Check logs for email sending
+
+Step 2: Verify Email Content
+  1. Check email inbox (or mail trap)
+  2. Verify email template
+
+Expected Result:
+  - Purple/orange branded header
+  - Shows ticket ID and subject
+  - Shows status badge (Resolved/In Progress)
+  - Contains full admin response
+  - Shows responder name
+  - Has "View My Tickets" button
+  - Footer with copyright
+
+--------------------------------------------------------------------------------
+EDGE CASES TO TEST
+--------------------------------------------------------------------------------
+
+Role-Based Access Control:
+  1. Login as member -> Try /admin/dashboard -> Should be blocked (403)
+  2. Login as manager -> Try /admin/dashboard -> Should be blocked (403)
+  3. Login as admin -> Try /admin/dashboard -> Should work
+
+Data Validation:
+  1. Try creating user with non-UTM email -> Should fail
+  2. Try creating user with duplicate matric ID -> Should fail
+  3. Try submitting support ticket without category -> Should fail
+  4. Try submitting support ticket without priority -> Should fail
+
+Self-Protection:
+  1. Admin cannot delete self
+  2. Admin cannot change own role via bulk action
+  3. Deleting yourself shows error message
+
+Bulk Operations:
+  1. Select all users, delete -> Own account excluded
+  2. Select 0 users, try action -> Button disabled
+  3. Mixed role change (some already have role) -> Shows correct count
+
+================================================================================
+IMPROVEMENT SUMMARY (WHAT WAS ADDED)
+================================================================================
+
+HIGH PRIORITY (Implemented):
+----------------------------
+1. Support Response Email Template
+   - Created SupportResponseMail.php mailable
+   - Created support-response.blade.php template
+   - Professional design with status, response, and action buttons
+   - Updated NotificationService to use new template
+
+2. Ticket Categories & Priority
+   - Added migration for category and priority fields
+   - Updated SupportTicket model with constants and helpers
+   - Updated ContactSupport.tsx with Category dropdown (priority set by admin)
+   - Updated SupportTickets.tsx to display badges
+   - Updated SupportTicketDetail.tsx to display and edit priority
+   - Updated AdminSupportController for validation
+
+MEDIUM PRIORITY (Implemented):
+------------------------------
+3. Bulk Actions for Manage Users
+   - Added checkbox selection to user table
+   - Created bulk action bar with selection count
+   - Implemented Bulk Delete with confirmation
+   - Implemented Bulk Role Change with dropdown
+   - Added self-protection (cannot delete/change own account)
+   - Created bulkDelete() and bulkRole() controller methods
+   - Added routes for bulk operations
+   - Activity logging for all bulk operations
+
+DESIGN DECISIONS:
+-----------------
+- Priority is set by admin only (not user) to allow proper ticket triage
+- Simple admin response model (one response per ticket) for clear flow
+- Users view responses in Support History page
+
+================================================================================
+FILE CHANGES SUMMARY
+================================================================================
+
+NEW FILES CREATED:
+------------------
+- app/Mail/SupportResponseMail.php
+- resources/views/emails/support-response.blade.php
+- database/migrations/2026_01_01_123430_add_category_and_priority_to_support_tickets_table.php
+
+MODIFIED FILES:
+---------------
+- app/Models/SupportTicket.php (added category, priority fields)
+- app/Services/NotificationService.php (use new email template)
+- app/Http/Controllers/ContactSupportController.php (category validation, default priority)
+- app/Http/Controllers/AdminSupportController.php (priority update in response)
+- app/Http/Controllers/AdminManageUsersController.php (bulkDelete, bulkRole methods)
+- resources/js/pages/ContactSupport.tsx (category field only)
+- resources/js/pages/Admin/SupportTickets.tsx (display badges)
+- resources/js/pages/Admin/SupportTicketDetail.tsx (priority edit, admin response)
+- resources/js/pages/Admin/ManageUsers.tsx (bulk actions UI)
+- routes/web.php (new routes for bulk actions)
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================
+
+For technical support or questions about this documentation, contact:
+- Email: eventra111@gmail.com
+- GitHub Issues: (project repository)
+
+Document last updated: January 2026

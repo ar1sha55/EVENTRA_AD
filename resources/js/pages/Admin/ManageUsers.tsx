@@ -38,7 +38,19 @@ import {
   User as UserIcon,
   Shield,
   UserCog,
+  CheckSquare,
+  Square,
+  MoreHorizontal,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -115,6 +127,13 @@ export default function ManageUsersPage({ users }: Props) {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [dialogMessage, setDialogMessage] = useState("");
+
+  // Bulk selection state
+  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [showBulkRoleDialog, setShowBulkRoleDialog] = useState(false);
+  const [bulkNewRole, setBulkNewRole] = useState<'admin' | 'manager' | 'member'>('member');
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
 
   // Calculate statistics using useMemo (client-side)
   const statistics = useMemo(() => {
@@ -272,6 +291,85 @@ export default function ManageUsersPage({ users }: Props) {
       default:
         return <Badge>{role}</Badge>;
     }
+  };
+
+  // Bulk selection handlers
+  const handleSelectAll = () => {
+    if (selectedUsers.length === filteredUsers.length) {
+      setSelectedUsers([]);
+    } else {
+      setSelectedUsers(filteredUsers.map(u => u.id));
+    }
+  };
+
+  const handleSelectUser = (userId: number) => {
+    setSelectedUsers(prev =>
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const isAllSelected = filteredUsers.length > 0 && selectedUsers.length === filteredUsers.length;
+  const isSomeSelected = selectedUsers.length > 0 && selectedUsers.length < filteredUsers.length;
+
+  // Get current user ID to prevent self-actions
+  const currentUserId = (usePage().props as any).auth?.user?.id;
+
+  // Filter out current user from selection for delete operations
+  const selectedUsersForDelete = selectedUsers.filter(id => id !== currentUserId);
+
+  const handleBulkDelete = () => {
+    if (selectedUsersForDelete.length === 0) {
+      setDialogMessage("Cannot delete: You cannot delete your own account.");
+      setShowErrorDialog(true);
+      return;
+    }
+    setShowBulkDeleteDialog(true);
+  };
+
+  const confirmBulkDelete = () => {
+    setIsBulkProcessing(true);
+    router.post('/admin/users/bulk-delete', {
+      user_ids: selectedUsersForDelete,
+    }, {
+      preserveScroll: true,
+      onSuccess: () => {
+        setSelectedUsers([]);
+        setShowBulkDeleteDialog(false);
+        setIsBulkProcessing(false);
+      },
+      onError: () => {
+        setIsBulkProcessing(false);
+      }
+    });
+  };
+
+  const handleBulkRoleChange = () => {
+    if (selectedUsers.length === 0) return;
+    setShowBulkRoleDialog(true);
+  };
+
+  const confirmBulkRoleChange = () => {
+    setIsBulkProcessing(true);
+    router.post('/admin/users/bulk-role', {
+      user_ids: selectedUsers.filter(id => id !== currentUserId),
+      role: bulkNewRole,
+    }, {
+      preserveScroll: true,
+      onSuccess: () => {
+        setSelectedUsers([]);
+        setShowBulkRoleDialog(false);
+        setIsBulkProcessing(false);
+      },
+      onError: () => {
+        setIsBulkProcessing(false);
+      }
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedUsers([]);
   };
 
   return (
@@ -704,6 +802,65 @@ export default function ManageUsersPage({ users }: Props) {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Bulk Action Bar */}
+              {selectedUsers.length > 0 && (
+                <Card className="bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800">
+                  <CardContent className="py-3">
+                    <div className="flex items-center justify-between flex-wrap gap-3">
+                      <div className="flex items-center gap-3">
+                        <CheckSquare className="h-5 w-5 text-orange-600" />
+                        <span className="font-medium text-orange-900 dark:text-orange-100">
+                          {selectedUsers.length} user{selectedUsers.length > 1 ? 's' : ''} selected
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={clearSelection}
+                          className="text-orange-700 hover:text-orange-900 hover:bg-orange-100"
+                        >
+                          Clear selection
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="gap-2">
+                              <UserCog className="h-4 w-4" />
+                              Change Role
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuLabel>Change role to</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => { setBulkNewRole('member'); handleBulkRoleChange(); }}>
+                              <UserIcon className="h-4 w-4 mr-2 text-green-600" />
+                              Member
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { setBulkNewRole('manager'); handleBulkRoleChange(); }}>
+                              <UserCog className="h-4 w-4 mr-2 text-blue-600" />
+                              Manager
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { setBulkNewRole('admin'); handleBulkRoleChange(); }}>
+                              <Shield className="h-4 w-4 mr-2 text-red-600" />
+                              Admin
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleBulkDelete}
+                          className="gap-2"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete ({selectedUsersForDelete.length})
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -722,6 +879,13 @@ export default function ManageUsersPage({ users }: Props) {
                 <table className="w-full text-sm">
                   <thead className="bg-muted">
                     <tr>
+                      <th className="px-4 py-3 text-left font-semibold w-10">
+                        <Checkbox
+                          checked={isAllSelected}
+                          onCheckedChange={handleSelectAll}
+                          className="data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600"
+                        />
+                      </th>
                       <th className="px-4 py-3 text-left font-semibold w-12">Profile</th>
                       <th className="px-4 py-3 text-left font-semibold">Name</th>
                       <th className="px-4 py-3 text-left font-semibold">Email</th>
@@ -733,7 +897,19 @@ export default function ManageUsersPage({ users }: Props) {
                   </thead>
                   <tbody>
                     {filteredUsers.map((user) => (
-                      <tr key={user.id} className="border-b hover:bg-muted/50 transition-colors">
+                      <tr
+                        key={user.id}
+                        className={`border-b hover:bg-muted/50 transition-colors ${
+                          selectedUsers.includes(user.id) ? 'bg-orange-50 dark:bg-orange-950/20' : ''
+                        }`}
+                      >
+                        <td className="px-4 py-2">
+                          <Checkbox
+                            checked={selectedUsers.includes(user.id)}
+                            onCheckedChange={() => handleSelectUser(user.id)}
+                            className="data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600"
+                          />
+                        </td>
                         <td className="px-4 py-2">
                           <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
                             {user.profile_picture ? (
@@ -743,7 +919,14 @@ export default function ManageUsersPage({ users }: Props) {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 font-medium">{user.name}</td>
+                        <td className="px-4 py-3 font-medium">
+                          <div className="flex items-center gap-2">
+                            {user.name}
+                            {user.id === currentUserId && (
+                              <Badge variant="outline" className="text-xs">You</Badge>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
                         <td className="px-4 py-3">{user.matric_id}</td>
                         <td className="px-4 py-3">{getRoleBadge(user.role)}</td>
@@ -774,6 +957,7 @@ export default function ManageUsersPage({ users }: Props) {
                               onClick={() => handleDelete(user)}
                               className="text-destructive hover:text-destructive"
                               title="Delete"
+                              disabled={user.id === currentUserId}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -907,6 +1091,63 @@ export default function ManageUsersPage({ users }: Props) {
             <AlertDialogFooter className="sm:justify-center">
               <AlertDialogAction onClick={() => setShowErrorDialog(false)}>
                 Close
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {selectedUsersForDelete.length} Users?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete <strong>{selectedUsersForDelete.length}</strong> selected user{selectedUsersForDelete.length > 1 ? 's' : ''} and all their associated data.
+                {selectedUsers.includes(currentUserId) && (
+                  <span className="block mt-2 text-orange-600">
+                    Note: Your own account will not be deleted.
+                  </span>
+                )}
+                <span className="block mt-2 font-medium text-destructive">
+                  This action cannot be undone.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isBulkProcessing}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmBulkDelete}
+                className="bg-destructive hover:bg-destructive/90"
+                disabled={isBulkProcessing}
+              >
+                {isBulkProcessing ? 'Deleting...' : `Delete ${selectedUsersForDelete.length} Users`}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Bulk Role Change Confirmation Dialog */}
+        <AlertDialog open={showBulkRoleDialog} onOpenChange={setShowBulkRoleDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Change Role for {selectedUsers.filter(id => id !== currentUserId).length} Users?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will change the role to <strong className="capitalize">{bulkNewRole}</strong> for the selected users.
+                {selectedUsers.includes(currentUserId) && (
+                  <span className="block mt-2 text-orange-600">
+                    Note: Your own role will not be changed.
+                  </span>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isBulkProcessing}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmBulkRoleChange}
+                className="bg-orange-600 hover:bg-orange-700"
+                disabled={isBulkProcessing}
+              >
+                {isBulkProcessing ? 'Updating...' : 'Change Roles'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

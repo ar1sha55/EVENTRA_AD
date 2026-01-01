@@ -252,4 +252,109 @@ class AdminManageUsersController extends Controller
 
         return response()->json($stats);
     }
+
+    /**
+     * Bulk delete users
+     */
+    public function bulkDelete(Request $request)
+    {
+        $validated = $request->validate([
+            'user_ids' => ['required', 'array', 'min:1'],
+            'user_ids.*' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        // Filter out current user
+        $userIds = array_filter($validated['user_ids'], function ($id) {
+            return $id !== auth()->id();
+        });
+
+        if (empty($userIds)) {
+            return back()->with('error', 'No valid users to delete.');
+        }
+
+        $users = User::whereIn('id', $userIds)->get();
+        $deletedCount = 0;
+        $deletedNames = [];
+
+        foreach ($users as $user) {
+            // Delete profile picture if exists
+            if ($user->profile_picture && Storage::disk('public')->exists($user->profile_picture)) {
+                Storage::disk('public')->delete($user->profile_picture);
+            }
+
+            // Delete all participant records
+            foreach ($user->participants as $participant) {
+                if ($participant->payment_proof_path && Storage::disk('public')->exists($participant->payment_proof_path)) {
+                    Storage::disk('public')->delete($participant->payment_proof_path);
+                }
+            }
+
+            $deletedNames[] = $user->name;
+            $user->delete();
+            $deletedCount++;
+        }
+
+        // Log activity
+        ActivityLog::logActivity(
+            'user.bulk_deleted',
+            "Bulk deleted {$deletedCount} users: " . implode(', ', array_slice($deletedNames, 0, 5)) . (count($deletedNames) > 5 ? '...' : ''),
+            'User',
+            null,
+            ['deleted_user_ids' => $userIds, 'count' => $deletedCount],
+            null
+        );
+
+        return back()->with('success', "{$deletedCount} user(s) deleted successfully!");
+    }
+
+    /**
+     * Bulk change user roles
+     */
+    public function bulkRole(Request $request)
+    {
+        $validated = $request->validate([
+            'user_ids' => ['required', 'array', 'min:1'],
+            'user_ids.*' => ['required', 'integer', 'exists:users,id'],
+            'role' => ['required', 'in:admin,manager,member'],
+        ]);
+
+        // Filter out current user
+        $userIds = array_filter($validated['user_ids'], function ($id) {
+            return $id !== auth()->id();
+        });
+
+        if (empty($userIds)) {
+            return back()->with('error', 'No valid users to update.');
+        }
+
+        $newRole = $validated['role'];
+        $users = User::whereIn('id', $userIds)->get();
+        $updatedCount = 0;
+        $updatedNames = [];
+
+        foreach ($users as $user) {
+            $oldRole = $user->role;
+            if ($oldRole !== $newRole) {
+                $user->update(['role' => $newRole]);
+                $updatedNames[] = $user->name;
+                $updatedCount++;
+            }
+        }
+
+        if ($updatedCount === 0) {
+            return back()->with('info', 'No users were updated (they may already have the selected role).');
+        }
+
+        // Log activity
+        ActivityLog::logActivity(
+            'user.bulk_role_changed',
+            "Bulk changed role to {$newRole} for {$updatedCount} users: " . implode(', ', array_slice($updatedNames, 0, 5)) . (count($updatedNames) > 5 ? '...' : ''),
+            'User',
+            null,
+            ['user_ids' => $userIds, 'count' => $updatedCount],
+            ['new_role' => $newRole]
+        );
+
+        return back()->with('success', "Role changed to '{$newRole}' for {$updatedCount} user(s)!");
+    }
 }

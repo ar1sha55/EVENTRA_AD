@@ -160,6 +160,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
     Route::put('admin/users/{user}', [AdminManageUsersController::class, 'update'])->name('admin.users.update');
     Route::delete('admin/users/{user}', [AdminManageUsersController::class, 'destroy'])->name('admin.users.destroy');
     Route::get('api/admin/users/statistics', [AdminManageUsersController::class, 'statistics'])->name('api.admin.users.statistics');
+    Route::post('admin/users/bulk-delete', [AdminManageUsersController::class, 'bulkDelete'])->name('admin.users.bulk-delete');
+    Route::post('admin/users/bulk-role', [AdminManageUsersController::class, 'bulkRole'])->name('admin.users.bulk-role');
 
     // Activity Logs Routes
     Route::get('admin/activity-logs', [ActivityLogController::class, 'index'])->name('admin.activity-logs');
@@ -171,6 +173,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
     Route::get('admin/support-tickets/{ticket}', [AdminSupportController::class, 'show'])->name('admin.support-tickets.show');
     Route::put('admin/support-tickets/{ticket}', [AdminSupportController::class, 'update'])->name('admin.support-tickets.update');
     Route::delete('admin/support-tickets/{ticket}', [AdminSupportController::class, 'destroy'])->name('admin.support-tickets.destroy');
+    Route::post('admin/support-tickets/{ticket}/reply', [AdminSupportController::class, 'addReply'])->name('admin.support-tickets.reply');
 });
 
 require __DIR__.'/settings.php';

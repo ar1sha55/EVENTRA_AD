@@ -29,6 +29,7 @@ class ContactSupportController extends Controller
             'email' => 'required|email|max:255',
             'subject' => 'required|string|max:255',
             'message' => 'required|string|max:2000',
+            'category' => 'required|in:general,technical,account,event,payment,other',
         ]);
 
         $ticket = SupportTicket::create([
@@ -37,6 +38,8 @@ class ContactSupportController extends Controller
             'email' => $validated['email'],
             'subject' => $validated['subject'],
             'message' => $validated['message'],
+            'category' => $validated['category'],
+            'priority' => 'medium', // Default priority, admin can change
             'status' => 'pending',
         ]);
 
