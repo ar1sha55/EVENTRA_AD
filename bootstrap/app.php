@@ -18,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        // Trust all proxies for production (Render uses proxies)
+        $middleware->trustProxies(at: '*');
+
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,
