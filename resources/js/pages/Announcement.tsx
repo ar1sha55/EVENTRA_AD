@@ -1,6 +1,6 @@
 import AppLayout from "@/layouts/app-layout";
 import { type BreadcrumbItem } from "@/types";
-import { Head, usePage } from "@inertiajs/react";
+import { Head, usePage, router } from "@inertiajs/react";
 import {
   Card,
   CardHeader,
@@ -8,7 +8,8 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { Megaphone, CalendarDays } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Megaphone, CalendarDays, Bell, RefreshCw } from "lucide-react";
 
 const breadcrumbs: BreadcrumbItem[] = [
   {
@@ -21,9 +22,13 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface Announcement {
   id: number;
   title: string;
-  date: string;
-  author: string;
   message: string;
+  sent_at: string;
+  created_at: string;
+  user?: {
+    id: number;
+    name: string;
+  };
 }
 
 export default function AnnouncementsPage() {
@@ -31,44 +36,36 @@ export default function AnnouncementsPage() {
   const props = page.props as any;
   const flash = props.flash || {};
 
-  // Mock data — replace with backend announcements later
-  const announcements: Announcement[] = props.announcements ?? [
-    {
-      id: 1,
-      title: "Community Clean-Up Drive :D",
-      date: "November 10, 2024",
-      author: "Event Manager",
-      message:
-        "Join us for a community clean-up at the city park. Volunteers are encouraged to bring reusable gloves and bags. Let's make our environment cleaner!",
-    },
-    {
-      id: 2,
-      title: "Volunteer Appreciation Day",
-      date: "December 1, 2024",
-      author: "Admin",
-      message:
-        "A big thank you to all our volunteers this year! Join us at the main hall for a small ceremony and appreciation lunch.",
-    },
-    {
-      id: 3,
-      title: "Food Donation Week Launch",
-      date: "January 15, 2025",
-      author: "Event Manager",
-      message:
-        "We’re launching our annual Food Donation Week! Check the events section for details on how to participate and contribute.",
-    },
-  ];
+  const announcements: Announcement[] = props.announcements ?? [];
+
+  // Format date helper
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Announcements" />
 
-      <div className="flex flex-col gap-6 p-4">
+      <div className="flex flex-col gap-6 p-4 md:p-8 max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Megaphone className="h-6 w-6 text-muted-foreground" />
-            <h1 className="text-2xl font-semibold">Announcements</h1>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Megaphone className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold">Announcements</h1>
+              <p className="text-muted-foreground">
+                Stay updated with the latest news and updates
+              </p>
+            </div>
           </div>
 
           {flash.success && (
@@ -92,7 +89,7 @@ export default function AnnouncementsPage() {
                   </CardTitle>
                   <CardDescription className="flex items-center gap-1 text-sm text-muted-foreground">
                     <CalendarDays className="h-4 w-4" />
-                    {a.date}
+                    {formatDate(a.sent_at || a.created_at)}
                   </CardDescription>
                 </div>
               </CardHeader>
@@ -101,16 +98,32 @@ export default function AnnouncementsPage() {
                   {a.message}
                 </p>
                 <p className="text-xs text-muted-foreground italic">
-                  Posted by: {a.author}
+                  Posted by: {a.user?.name || 'System'}
                 </p>
               </CardContent>
             </Card>
           ))}
 
           {announcements.length === 0 && (
-            <p className="text-center text-muted-foreground">
-              No announcements available.
-            </p>
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-6">
+                  <Bell className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">No Announcements Yet</h3>
+                <p className="text-muted-foreground text-center max-w-md mb-6">
+                  There are no announcements at the moment. Check back later for updates and news from the organizers.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => router.reload()}
+                  className="gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
+                </Button>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>

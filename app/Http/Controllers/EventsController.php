@@ -220,6 +220,61 @@ class EventsController extends Controller
         return back()->with('success', 'Event deleted successfully!');
     }
 
+    public function bulkUpdateStatus(Request $request)
+    {
+        $validated = $request->validate([
+            'event_ids' => 'required|array',
+            'event_ids.*' => 'exists:events,id',
+            'status' => 'required|in:draft,published,archived',
+        ]);
+
+        $eventIds = $validated['event_ids'];
+        $newStatus = $validated['status'];
+
+        // Update all selected events
+        Event::whereIn('id', $eventIds)->update(['status' => $newStatus]);
+
+        // Send notifications if publishing events
+        if ($newStatus === 'published') {
+            $publishedEvents = Event::whereIn('id', $eventIds)->get();
+            $members = User::where('role', 'member')->get();
+
+            foreach ($publishedEvents as $event) {
+                foreach ($members as $member) {
+                    NotificationService::notifyNewEvent($member, $event, sendEmail: false);
+                }
+            }
+        }
+
+        return back()->with('success', count($eventIds) . " event(s) updated to {$newStatus}");
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $validated = $request->validate([
+            'event_ids' => 'required|array',
+            'event_ids.*' => 'exists:events,id',
+        ]);
+
+        $eventIds = $validated['event_ids'];
+        $events = Event::whereIn('id', $eventIds)->get();
+
+        // Delete associated files
+        foreach ($events as $event) {
+            if ($event->image_path && Storage::disk('public')->exists($event->image_path)) {
+                Storage::disk('public')->delete($event->image_path);
+            }
+            if ($event->qr_code_path && Storage::disk('public')->exists($event->qr_code_path)) {
+                Storage::disk('public')->delete($event->qr_code_path);
+            }
+        }
+
+        // Delete events
+        Event::whereIn('id', $eventIds)->delete();
+
+        return back()->with('success', count($eventIds) . " event(s) deleted successfully");
+    }
+
     /**
      * Get context-aware update message based on status change
      */

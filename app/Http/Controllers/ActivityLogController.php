@@ -69,7 +69,7 @@ class ActivityLogController extends Controller
             ->orderBy('name')
             ->get();
 
-        return Inertia::render('Admin/ActivityLogs', [
+        return Inertia::render('Admin/AuditTrail', [
             'logs' => $logs,
             'actionTypes' => $actionTypes,
             'users' => $users,
@@ -117,7 +117,7 @@ class ActivityLogController extends Controller
         $logs = $query->get();
 
         // Generate CSV
-        $filename = 'activity-logs-' . now()->format('Y-m-d-His') . '.csv';
+        $filename = 'audit-trail-' . now()->format('Y-m-d-His') . '.csv';
 
         $headers = [
             'Content-Type' => 'text/csv',

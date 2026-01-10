@@ -30,19 +30,40 @@ import { usePage } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
 import AppLogo from './app-logo';
 import { useRoleSwitcher } from '@/hooks/use-role-switcher';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 
 export function AppSidebar() {
     const { auth } = usePage().props;
     const actualRole = auth?.user?.role || 'user';
     const { selectedView } = useRoleSwitcher();
+    const [badges, setBadges] = useState<Record<string, number>>({});
 
     // Use selectedView for admins, actualRole for others
     const effectiveRole = actualRole === 'admin' ? selectedView : actualRole;
 
+    // Fetch sidebar badge counts
+    useEffect(() => {
+        const fetchBadges = async () => {
+            try {
+                const response = await axios.get('/api/sidebar-badges');
+                setBadges(response.data);
+            } catch (error) {
+                console.error('Failed to fetch sidebar badges:', error);
+            }
+        };
+
+        fetchBadges();
+
+        // Refresh badges every 30 seconds
+        const interval = setInterval(fetchBadges, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
     // Member-only navigation (regular members)
     const memberOnlyNavItems = [
         {
-            title: 'Dashboard',
+            title: 'My Dashboard',
             href: '/dashboard',
             icon: LayoutGrid,
         },
@@ -117,7 +138,7 @@ export function AppSidebar() {
     // Admin-only navigation (complete navigation for admins)
     const adminNavItems = [
         {
-            title: 'Dashboard',
+            title: 'Admin Dashboard',
             href: '/admin/dashboard',
             icon: Shield,
         },
@@ -140,8 +161,8 @@ export function AppSidebar() {
             icon: Users,
         },
         {
-            title: 'Activity Logs',
-            href: '/admin/activity-logs',
+            title: 'Audit Trail',
+            href: '/admin/audit-trail',
             icon: History,
         },
         {
@@ -165,6 +186,26 @@ export function AppSidebar() {
         // Admins see complete admin navigation
         roleBasedNavItems = [...adminNavItems];
     }
+
+    // Attach badges to navigation items
+    roleBasedNavItems = roleBasedNavItems.map(item => {
+        // Handle items with subItems
+        if (item.subItems) {
+            const updatedSubItems = item.subItems.map((subItem: any) => {
+                if (subItem.href === '/support-history' && badges.my_tickets > 0) {
+                    return { ...subItem, badge: badges.my_tickets };
+                }
+                return subItem;
+            });
+            return { ...item, subItems: updatedSubItems };
+        }
+
+        // Handle top-level items
+        if (item.href === '/admin/support-tickets' && badges.support_tickets > 0) {
+            return { ...item, badge: badges.support_tickets };
+        }
+        return item;
+    });
 
     const footerNavItems: any[] = []; // You can add footer links here if needed
 

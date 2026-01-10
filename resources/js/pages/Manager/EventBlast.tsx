@@ -228,36 +228,27 @@ export default function EventBlastPage({ events, blasts, captionStyles }: Props)
       <div className="flex flex-col gap-8 p-4 md:p-8 max-w-[1600px] mx-auto">
         
         {/* Header Section */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-700 dark:from-indigo-900 dark:to-violet-950 p-8 shadow-xl text-white"
-        >
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
-          <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-          
-          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div className="flex items-center gap-6">
-              <div className="p-4 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-inner">
-                <Send className="h-8 w-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight text-white">Event Blast</h1>
-                <p className="text-indigo-100 mt-1 max-w-xl">
-                  Engage your audience instantly. Create, schedule, and automate announcements to your Telegram channel.
-                </p>
-              </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Send className="h-8 w-8 text-primary" />
             </div>
-            
-            <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md px-6 py-3 rounded-xl border border-white/20">
-              <TrendingUp className="h-5 w-5 text-emerald-300" />
-              <div className="flex flex-col">
-                <span className="text-2xl font-bold leading-none">{blasts.data.length}</span>
-                <span className="text-xs text-indigo-200 font-medium">Blasts Sent</span>
-              </div>
+            <div>
+              <h1 className="text-3xl font-bold">Event Blast</h1>
+              <p className="text-muted-foreground">
+                Create and schedule announcements to your Telegram channel
+              </p>
             </div>
           </div>
-        </motion.div>
+
+          <div className="flex items-center gap-3 px-4 py-2 bg-muted rounded-lg">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            <div className="flex flex-col">
+              <span className="text-xl font-bold leading-none">{blasts.data.length}</span>
+              <span className="text-xs text-muted-foreground">Blasts Sent</span>
+            </div>
+          </div>
+        </div>
 
         <div className="grid lg:grid-cols-12 gap-8">
           

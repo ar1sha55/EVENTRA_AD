@@ -73,7 +73,6 @@ import axios from "axios";
 import { toast } from "sonner";
 
 const breadcrumbs: BreadcrumbItem[] = [
-  { title: "Manager", href: "/manager/dashboard" },
   { title: "Past Events Analytics", href: "/manager/manage-analytics" },
 ];
 
@@ -1063,11 +1062,16 @@ export default function ManageAnalytics() {
       <div className="flex flex-col gap-8 p-6 max-w-[1600px] mx-auto">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Past Events Analytics</h1>
-            <p className="text-muted-foreground mt-1">
-              Review performance metrics and documentation for concluded events.
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <ChartBar className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold">Past Events Analytics</h1>
+              <p className="text-muted-foreground">
+                Review performance metrics and documentation for concluded events
+              </p>
+            </div>
           </div>
           
           <div className="relative w-full md:w-80 group">

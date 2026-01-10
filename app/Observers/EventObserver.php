@@ -33,10 +33,8 @@ class EventObserver
             ]
         );
 
-        // Only publish to Telegram if the event is published
-        if ($event->status === 'published') {
-            $this->publishToTelegram($event);
-        }
+        // Note: Telegram blast is NOT automatic on publish.
+        // Manager must explicitly choose to blast via EventBlast page.
     }
 
    
@@ -78,15 +76,9 @@ class EventObserver
             }
         }
 
-        // Check if status changed to 'published'
-        if ($event->status === 'published' && $event->wasChanged('status')) {
-            // If changing from draft/archived to published, publish for the first time
-            if (!$event->telegram_message_id) {
-                $this->publishToTelegram($event);
-            }
-        }
-
-        // If event is published and details were updated
+        // Note: Telegram blast is NOT automatic on publish.
+        // Manager must explicitly choose to blast via EventBlast page.
+        // However, if event was already blasted and details are updated, we update the Telegram message.
         if ($event->status === 'published' && $event->telegram_message_id) {
             // Check if important fields were updated
             $importantFields = ['name', 'description', 'start_date', 'end_date', 'location', 'capacity', 'fee'];

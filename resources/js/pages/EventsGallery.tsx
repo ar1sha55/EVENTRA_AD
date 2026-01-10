@@ -91,12 +91,20 @@ export default function EventsGallery() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<GalleryEvent | null>(null);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState("analytics");
 
   // Feedback state
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackComment, setFeedbackComment] = useState("");
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [hoveredStar, setHoveredStar] = useState(0);
+
+  // Swipe gesture state for mobile photo navigation
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  // Minimum swipe distance (in pixels)
+  const minSwipeDistance = 50;
 
   useEffect(() => {
     fetchEvents();
@@ -117,6 +125,37 @@ export default function EventsGallery() {
       );
     }
   }, [searchQuery, events]);
+
+  // Handle deep-link from dashboard - auto-open event and feedback tab
+  useEffect(() => {
+    if (events.length === 0) return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const eventId = urlParams.get('event_id');
+    const openFeedback = urlParams.get('open_feedback');
+
+    if (eventId) {
+      const event = events.find((e) => e.id === parseInt(eventId));
+      if (event) {
+        setSelectedEvent(event);
+        setCurrentPhotoIndex(0);
+
+        // Auto-open feedback tab if requested
+        if (openFeedback === 'true') {
+          setActiveTab('feedback');
+
+          // Pre-fill feedback form if user already submitted feedback
+          if (event.user_feedback) {
+            setFeedbackRating(event.user_feedback.rating);
+            setFeedbackComment(event.user_feedback.comment || '');
+          }
+        }
+
+        // Clean up URL without reloading
+        window.history.replaceState({}, '', '/events-gallery');
+      }
+    }
+  }, [events]);
 
   const fetchEvents = async () => {
     try {
@@ -142,14 +181,42 @@ export default function EventsGallery() {
     });
   };
 
+  const formatDateRange = (startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const startFormatted = start.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    const endFormatted = end.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    
+    // If same month, show: "Jan 15 - 20, 2024"
+    if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+      return `${startFormatted} - ${end.getDate()}, ${end.getFullYear()}`;
+    }
+    // Otherwise show: "Jan 15 - Feb 20, 2024"
+    return `${startFormatted} - ${endFormatted}`;
+  };
+
   const handleEventClick = (event: GalleryEvent) => {
     setSelectedEvent(event);
     setCurrentPhotoIndex(0);
+    // Keep current tab if it exists for the new event, otherwise reset to analytics
+    if (activeTab === "analytics" || activeTab === "photos" || activeTab === "documents" || activeTab === "summaries" || activeTab === "feedback") {
+      // Tab is valid, keep it
+    } else {
+      setActiveTab("analytics");
+    }
   };
 
   const handleCloseModal = () => {
     setSelectedEvent(null);
     setCurrentPhotoIndex(0);
+    setActiveTab("analytics"); // Reset tab when closing
   };
 
   const handleNextPhoto = () => {
@@ -161,6 +228,31 @@ export default function EventsGallery() {
   const handlePrevPhoto = () => {
     if (currentPhotoIndex > 0) {
       setCurrentPhotoIndex(currentPhotoIndex - 1);
+    }
+  };
+
+  // Swipe gesture handlers for mobile
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && selectedEvent && currentPhotoIndex < selectedEvent.photos.length - 1) {
+      handleNextPhoto();
+    }
+    if (isRightSwipe && currentPhotoIndex > 0) {
+      handlePrevPhoto();
     }
   };
 
@@ -226,46 +318,44 @@ export default function EventsGallery() {
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Events Gallery" />
 
-      <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          {/* Hero Section */}
-          <div className="text-center mb-12 space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
-              <Images className="h-4 w-4" />
-              <span>Relive the Moments</span>
+      <div className="flex flex-col gap-6 p-4 md:p-8 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Images className="h-8 w-8 text-primary" />
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-              Events Gallery
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Explore highlights from our past events and community moments
-            </p>
+            <div>
+              <h1 className="text-3xl font-bold">Events Gallery</h1>
+              <p className="text-muted-foreground">
+                Explore highlights from our past events and community moments
+              </p>
+            </div>
           </div>
 
           {/* Search Bar */}
-          <div className="max-w-2xl mx-auto mb-12">
-            <div className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              <Input
-                placeholder="Search events by name or location..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 pr-12 h-14 text-base bg-background/60 backdrop-blur-sm border-border/50 focus:border-primary shadow-sm"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Clear search"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              )}
-            </div>
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search events..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
+        </div>
 
-          {/* Events Grid */}
-          {loading ? (
+        {/* Events Grid */}
+        {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
               <p className="text-muted-foreground">Loading gallery...</p>
@@ -294,7 +384,7 @@ export default function EventsGallery() {
               {filteredEvents.map((event) => (
                 <Card
                   key={event.id}
-                  className="group cursor-pointer overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-border/50"
+                  className="group cursor-pointer overflow-hidden hover:shadow-lg transition-shadow duration-200 border-border/50 flex flex-col"
                   onClick={() => handleEventClick(event)}
                 >
                   {/* Event Image */}
@@ -305,6 +395,19 @@ export default function EventsGallery() {
                           src={`/storage/${event.image_path}`}
                           alt={event.name}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          loading="lazy"
+                          onError={(e) => {
+                            // Fallback to placeholder if image fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.parentElement!.innerHTML = `
+                              <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                                <svg class="h-16 w-16 text-primary/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                              </div>
+                            `;
+                          }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                       </>
@@ -315,15 +418,15 @@ export default function EventsGallery() {
                     )}
 
                     {/* Documentation Count Badge */}
-                    <div className="absolute top-3 right-3">
-                      <Badge className="bg-black/60 text-white border-white/20 backdrop-blur-sm">
+                    <div className="absolute top-3 right-3 z-10">
+                      <Badge className="bg-black/70 text-white border-white/20 backdrop-blur-sm shadow-lg">
                         <FileText className="h-3 w-3 mr-1.5" />
                         {event.total_documentation_count} {event.total_documentation_count === 1 ? "item" : "items"}
                       </Badge>
                     </div>
 
                     {/* Attendance Badge */}
-                    <div className="absolute top-3 left-3">
+                    <div className="absolute top-3 left-3 z-10">
                       <Badge
                         variant="secondary"
                         className={`${
@@ -332,38 +435,72 @@ export default function EventsGallery() {
                             : event.attendance_rate >= 50
                             ? "bg-amber-500/90 text-white"
                             : "bg-gray-500/90 text-white"
-                        } border-white/20 backdrop-blur-sm`}
+                        } border-white/20 backdrop-blur-sm shadow-lg`}
                       >
                         <TrendingUp className="h-3 w-3 mr-1.5" />
                         {event.attendance_rate}%
                       </Badge>
                     </div>
+
+                    {/* Photo count indicator */}
+                    {event.photos_count > 0 && (
+                      <div className="absolute bottom-3 right-3 z-10">
+                        <Badge className="bg-black/70 text-white border-white/20 backdrop-blur-sm shadow-lg">
+                          <Images className="h-3 w-3 mr-1.5" />
+                          {event.photos_count} {event.photos_count === 1 ? "photo" : "photos"}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
 
                   {/* Event Details */}
-                  <CardContent className="p-5 space-y-3">
+                  <CardContent className="p-5 space-y-3 flex-1 flex flex-col">
                     <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-primary transition-colors">
                       {event.name}
                     </h3>
 
-                    <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                    <div className="flex flex-col gap-2 text-sm text-muted-foreground flex-1">
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 flex-shrink-0" />
-                        <span className="truncate">{formatDate(event.end_date)}</span>
+                        <Calendar className="h-4 w-4 flex-shrink-0 text-primary" />
+                        <span className="truncate" title={formatDateRange(event.start_date, event.end_date)}>
+                          {formatDateRange(event.start_date, event.end_date)}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 flex-shrink-0" />
-                        <span className="truncate">{event.location}</span>
+                        <MapPin className="h-4 w-4 flex-shrink-0 text-primary" />
+                        <span className="truncate" title={event.location}>{event.location}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 flex-shrink-0" />
-                        <span>{event.approved_participants_count} participants</span>
+                        <Users className="h-4 w-4 flex-shrink-0 text-primary" />
+                        <span>{event.approved_participants_count} {event.approved_participants_count === 1 ? "participant" : "participants"}</span>
                       </div>
+                    </div>
+
+                    {/* Documentation breakdown */}
+                    <div className="flex items-center gap-3 pt-2 border-t text-xs text-muted-foreground">
+                      {event.photos_count > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Images className="h-3 w-3" />
+                          {event.photos_count}
+                        </span>
+                      )}
+                      {event.documents_count > 0 && (
+                        <span className="flex items-center gap-1">
+                          <FileText className="h-3 w-3" />
+                          {event.documents_count}
+                        </span>
+                      )}
+                      {event.summaries_count > 0 && (
+                        <span className="flex items-center gap-1">
+                          <FileText className="h-3 w-3" />
+                          {event.summaries_count}
+                        </span>
+                      )}
                     </div>
 
                     <Button
                       variant="secondary"
-                      className="w-full mt-2 hover:bg-primary hover:text-primary-foreground"
+                      className="w-full mt-2 bg-orange-600 hover:bg-orange-700 text-white transition-colors"
                     >
                       View Gallery
                     </Button>
@@ -372,30 +509,29 @@ export default function EventsGallery() {
               ))}
             </div>
           )}
-        </div>
       </div>
 
       {/* Photo Viewer Modal */}
       <Dialog open={!!selectedEvent} onOpenChange={handleCloseModal}>
-        <DialogContent className="max-w-[95vw] md:max-w-6xl h-[90vh] p-0 gap-0 flex flex-col bg-background overflow-hidden">
+        <DialogContent className="max-w-[100vw] md:max-w-[95vw] lg:max-w-6xl h-[100vh] md:h-[90vh] p-0 gap-0 flex flex-col bg-background overflow-hidden rounded-none md:rounded-lg">
           {selectedEvent && (
             <>
               {/* Header */}
-              <div className="shrink-0 border-b bg-background/95 backdrop-blur-sm px-6 py-4">
+              <div className="shrink-0 border-b bg-background/95 backdrop-blur-sm px-4 md:px-6 py-3 md:py-4">
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-2xl font-bold truncate">{selectedEvent.name}</h2>
-                  <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-muted-foreground">
+                  <h2 className="text-xl md:text-2xl font-bold truncate">{selectedEvent.name}</h2>
+                  <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-2 text-xs md:text-sm text-muted-foreground">
                     <span className="flex items-center gap-1.5">
-                      <Calendar className="h-4 w-4" />
-                      {formatDate(selectedEvent.end_date)}
+                      <Calendar className="h-3 w-3 md:h-4 md:w-4" />
+                      {formatDateRange(selectedEvent.start_date, selectedEvent.end_date)}
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <MapPin className="h-4 w-4" />
-                      {selectedEvent.location}
+                      <MapPin className="h-3 w-3 md:h-4 md:w-4" />
+                      <span className="truncate max-w-[150px] md:max-w-none">{selectedEvent.location}</span>
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <Users className="h-4 w-4" />
-                      {selectedEvent.approved_participants_count} participants
+                      <Users className="h-3 w-3 md:h-4 md:w-4" />
+                      {selectedEvent.approved_participants_count} {selectedEvent.approved_participants_count === 1 ? "participant" : "participants"}
                     </span>
                   </div>
                 </div>
@@ -403,31 +539,52 @@ export default function EventsGallery() {
 
               {/* Documentation Viewer with Tabs */}
               <div className="flex-1 overflow-hidden">
-                <Tabs defaultValue="analytics" className="h-full flex flex-col">
-                  <div className="shrink-0 border-b bg-background/95 backdrop-blur-sm px-6">
-                    <TabsList className="w-full justify-start h-12">
-                      <TabsTrigger value="analytics" className="gap-2">
-                        <BarChart3 className="h-4 w-4" />
-                        Analytics
+                <Tabs 
+                  value={activeTab} 
+                  onValueChange={(value) => {
+                    setActiveTab(value);
+                    // Reset photo index when leaving photos tab
+                    if (value !== 'photos' && currentPhotoIndex > 0) {
+                      setCurrentPhotoIndex(0);
+                    }
+                  }} 
+                  className="h-full flex flex-col"
+                >
+                  <div className="shrink-0 border-b bg-background/95 backdrop-blur-sm px-2 md:px-6 overflow-x-auto">
+                    <TabsList className="w-full justify-start h-11 md:h-12 min-w-max md:min-w-0">
+                      <TabsTrigger value="analytics" className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-3">
+                        <BarChart3 className="h-3 w-3 md:h-4 md:w-4" />
+                        <span className="hidden sm:inline">Analytics</span>
+                        <span className="sm:hidden">Stats</span>
                       </TabsTrigger>
-                      <TabsTrigger value="photos" className="gap-2">
-                        <ImageIcon className="h-4 w-4" />
-                        Photos ({selectedEvent.photos_count})
+                      <TabsTrigger value="photos" className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-3">
+                        <ImageIcon className="h-3 w-3 md:h-4 md:w-4" />
+                        <span className="hidden sm:inline">Photos</span>
+                        <span className="sm:hidden">({selectedEvent.photos_count})</span>
+                        <span className="hidden sm:inline">({selectedEvent.photos_count})</span>
                       </TabsTrigger>
-                      <TabsTrigger value="documents" className="gap-2">
-                        <FileText className="h-4 w-4" />
-                        Documents ({selectedEvent.documents_count})
+                      <TabsTrigger value="documents" className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-3">
+                        <FileText className="h-3 w-3 md:h-4 md:w-4" />
+                        <span className="hidden sm:inline">Documents</span>
+                        <span className="sm:hidden">Docs</span>
+                        <span className="hidden sm:inline">({selectedEvent.documents_count})</span>
+                        <span className="sm:hidden">({selectedEvent.documents_count})</span>
                       </TabsTrigger>
-                      <TabsTrigger value="summaries" className="gap-2">
-                        <FileText className="h-4 w-4" />
-                        Summaries ({selectedEvent.summaries_count})
+                      <TabsTrigger value="summaries" className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-3">
+                        <FileText className="h-3 w-3 md:h-4 md:w-4" />
+                        <span className="hidden sm:inline">Summaries</span>
+                        <span className="sm:hidden">Sum</span>
+                        <span className="hidden sm:inline">({selectedEvent.summaries_count})</span>
+                        <span className="sm:hidden">({selectedEvent.summaries_count})</span>
                       </TabsTrigger>
-                      <TabsTrigger value="feedback" className="gap-2">
-                        <MessageSquare className="h-4 w-4" />
-                        Feedback
+                      <TabsTrigger value="feedback" className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-3">
+                        <MessageSquare className="h-3 w-3 md:h-4 md:w-4" />
+                        <span className="hidden sm:inline">Feedback</span>
+                        <span className="sm:hidden">Rate</span>
                         {selectedEvent.user_feedback && (
-                          <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                            Submitted
+                          <Badge variant="secondary" className="ml-1 h-4 md:h-5 px-1 md:px-1.5 text-[10px] md:text-xs">
+                            <span className="hidden sm:inline">Submitted</span>
+                            <span className="sm:hidden">✓</span>
                           </Badge>
                         )}
                       </TabsTrigger>
@@ -436,7 +593,7 @@ export default function EventsGallery() {
 
                   {/* Analytics Tab */}
                   <TabsContent value="analytics" className="flex-1 mt-0 data-[state=active]:flex flex-col overflow-hidden">
-                    <div className="overflow-auto p-6">
+                    <div className="overflow-auto p-4 md:p-6">
                       <div className="max-w-5xl mx-auto space-y-8">
                         {/* Hero Stats */}
                         <div className="text-center mb-8">
@@ -611,12 +768,18 @@ export default function EventsGallery() {
                     {selectedEvent.photos.length > 0 ? (
                       <>
                         {/* Image Viewer */}
-                        <div className="flex-1 relative bg-black/5 flex items-center justify-center overflow-hidden">
-                          <div className="relative w-full h-full flex items-center justify-center p-4">
+                        <div 
+                          className="flex-1 relative bg-black/5 flex items-center justify-center overflow-hidden"
+                          onTouchStart={onTouchStart}
+                          onTouchMove={onTouchMove}
+                          onTouchEnd={onTouchEnd}
+                        >
+                          <div className="relative w-full h-full flex items-center justify-center p-2 md:p-4">
                             <img
                               src={`/storage/${selectedEvent.photos[currentPhotoIndex].file_path}`}
                               alt={selectedEvent.photos[currentPhotoIndex].title || "Event photo"}
                               className="max-h-full max-w-full object-contain rounded-lg shadow-2xl"
+                              loading="lazy"
                             />
 
                             {selectedEvent.photos.length > 1 && (
@@ -624,22 +787,22 @@ export default function EventsGallery() {
                                 <Button
                                   size="icon"
                                   variant="secondary"
-                                  className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full shadow-lg bg-background/80 hover:bg-background backdrop-blur-md disabled:opacity-30"
+                                  className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 h-10 w-10 md:h-12 md:w-12 rounded-full shadow-lg bg-background/90 hover:bg-background backdrop-blur-md disabled:opacity-30 touch-manipulation"
                                   onClick={handlePrevPhoto}
                                   disabled={currentPhotoIndex === 0}
                                   aria-label="Previous photo"
                                 >
-                                  <ChevronLeft className="h-6 w-6" />
+                                  <ChevronLeft className="h-5 w-5 md:h-6 md:w-6" />
                                 </Button>
                                 <Button
                                   size="icon"
                                   variant="secondary"
-                                  className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full shadow-lg bg-background/80 hover:bg-background backdrop-blur-md disabled:opacity-30"
+                                  className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 h-10 w-10 md:h-12 md:w-12 rounded-full shadow-lg bg-background/90 hover:bg-background backdrop-blur-md disabled:opacity-30 touch-manipulation"
                                   onClick={handleNextPhoto}
                                   disabled={currentPhotoIndex === selectedEvent.photos.length - 1}
                                   aria-label="Next photo"
                                 >
-                                  <ChevronRight className="h-6 w-6" />
+                                  <ChevronRight className="h-5 w-5 md:h-6 md:w-6" />
                                 </Button>
                               </>
                             )}
@@ -652,37 +815,38 @@ export default function EventsGallery() {
                           </div>
                         </div>
 
-                        {/* Photo Info Section - Outside Image */}
-                        {(selectedEvent.photos[currentPhotoIndex].title ||
-                          selectedEvent.photos[currentPhotoIndex].description) && (
-                          <div className="shrink-0 border-t bg-background/95 backdrop-blur-sm px-6 py-4">
-                            <div className="max-w-3xl">
-                              {selectedEvent.photos[currentPhotoIndex].title && (
-                                <h4 className="font-semibold text-lg mb-2">
-                                  {selectedEvent.photos[currentPhotoIndex].title}
-                                </h4>
-                              )}
-                              {selectedEvent.photos[currentPhotoIndex].description && (
-                                <p className="text-muted-foreground">
-                                  {selectedEvent.photos[currentPhotoIndex].description}
-                                </p>
-                              )}
-                            </div>
+                        {/* Photo Info Section - Always visible for consistency */}
+                        <div className="shrink-0 border-t bg-background/95 backdrop-blur-sm px-4 md:px-6 py-3 md:py-4">
+                          <div className="max-w-3xl mx-auto">
+                            {selectedEvent.photos[currentPhotoIndex].title ? (
+                              <h4 className="font-semibold text-base md:text-lg mb-1 md:mb-2">
+                                {selectedEvent.photos[currentPhotoIndex].title}
+                              </h4>
+                            ) : (
+                              <h4 className="font-semibold text-base md:text-lg mb-1 md:mb-2 text-muted-foreground">
+                                Photo {currentPhotoIndex + 1} of {selectedEvent.photos.length}
+                              </h4>
+                            )}
+                            {selectedEvent.photos[currentPhotoIndex].description && (
+                              <p className="text-sm md:text-base text-muted-foreground">
+                                {selectedEvent.photos[currentPhotoIndex].description}
+                              </p>
+                            )}
                           </div>
-                        )}
+                        </div>
 
                         {/* Thumbnail Strip */}
                         {selectedEvent.photos.length > 1 && (
-                          <div className="shrink-0 border-t bg-background/95 backdrop-blur-sm p-4">
-                            <div className="flex gap-2 overflow-x-auto pb-2">
+                          <div className="shrink-0 border-t bg-background/95 backdrop-blur-sm p-3 md:p-4">
+                            <div className="flex gap-2 md:gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
                               {selectedEvent.photos.map((photo, index) => (
                                 <button
                                   key={photo.id}
                                   onClick={() => setCurrentPhotoIndex(index)}
-                                  className={`relative shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                                  className={`relative shrink-0 w-16 h-16 md:w-24 md:h-24 rounded-lg overflow-hidden border-2 transition-all touch-manipulation ${
                                     index === currentPhotoIndex
-                                      ? "border-primary ring-2 ring-primary/20 scale-105"
-                                      : "border-transparent hover:border-border"
+                                      ? "border-primary ring-2 ring-primary/20 scale-105 z-10"
+                                      : "border-transparent hover:border-border opacity-70 hover:opacity-100"
                                   }`}
                                   aria-label={`View photo ${index + 1}`}
                                 >
@@ -690,7 +854,11 @@ export default function EventsGallery() {
                                     src={`/storage/${photo.file_path}`}
                                     alt={photo.title || `Thumbnail ${index + 1}`}
                                     className="w-full h-full object-cover"
+                                    loading="lazy"
                                   />
+                                  {index === currentPhotoIndex && (
+                                    <div className="absolute inset-0 bg-primary/10" />
+                                  )}
                                 </button>
                               ))}
                             </div>
@@ -764,7 +932,7 @@ export default function EventsGallery() {
                   {/* Summaries Tab */}
                   <TabsContent value="summaries" className="flex-1 mt-0 data-[state=active]:flex flex-col overflow-hidden">
                     {selectedEvent.summaries.length > 0 ? (
-                      <div className="overflow-auto p-6">
+                      <div className="overflow-auto p-4 md:p-6">
                         <div className="max-w-4xl mx-auto space-y-6">
                           {selectedEvent.summaries.map((summary, index) => (
                             <Card key={summary.id} className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-background to-muted/20">
@@ -833,7 +1001,7 @@ export default function EventsGallery() {
 
                   {/* Feedback Tab */}
                   <TabsContent value="feedback" className="flex-1 mt-0 data-[state=active]:flex flex-col overflow-hidden">
-                    <div className="overflow-auto p-6">
+                    <div className="overflow-auto p-4 md:p-6">
                       <div className="max-w-2xl mx-auto space-y-6">
                         {selectedEvent.can_submit_feedback ? (
                           <Card className="border-0 shadow-lg">

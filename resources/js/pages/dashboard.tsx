@@ -6,7 +6,8 @@ import { edit as profileEdit } from '@/routes/profile';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { CalendarDays, Bell, BarChart3, MapPin, Award, Clock, User, Hand, CheckCircle, ArrowRight, Calendar, ClipboardList, Mail, History, AlertCircle } from "lucide-react";
+import { CalendarDays, Bell, BarChart3, MapPin, Award, Clock, User, Hand, CheckCircle, ArrowRight, Calendar, ClipboardList, Mail, History, AlertCircle, Star, MessageSquare } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,10 +16,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 
 const breadcrumbs: BreadcrumbItem[] = [
   {
-    title: 'Dashboard',
+    title: 'My Dashboard',
     href: dashboard().url,
   },
 ];
@@ -90,6 +92,7 @@ interface RegisteredEvent {
   image_path?: string;
   status: 'pending_approval' | 'approved' | 'rejected';
   registration_date: string;
+  has_feedback?: boolean;
 }
 
 interface DashboardNotification {
@@ -116,37 +119,36 @@ interface DashboardProps {
 
 // --- Helper Components ---
 
-const SummaryCard = ({ 
-    title, 
-    value, 
-    icon: Icon, 
-    subtext, 
-    className,
-    titleColor,
-    valueColor,
-    iconColor
-}: { 
-    title: string; 
-    value: number | string; 
-    icon: any; 
-    subtext?: React.ReactNode; 
-    className: string;
-    titleColor: string;
-    valueColor: string;
+const SummaryCard = ({
+    title,
+    value,
+    icon: Icon,
+    subtext,
+    borderColor,
+    iconColor,
+    onClick,
+}: {
+    title: string;
+    value: number | string;
+    icon: any;
+    subtext?: React.ReactNode;
+    borderColor: string;
     iconColor: string;
+    onClick?: () => void;
 }) => (
-    <Card className={`${className} shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 cursor-default`}>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className={`text-sm font-medium ${titleColor}`}>
-                {title}
-            </CardTitle>
-            <Icon className={`h-8 w-8 ${iconColor}`} />
-        </CardHeader>
-        <CardContent>
-            <div className={`text-4xl font-bold ${valueColor}`}>
-                {value}
+    <Card
+        className={`border-l-4 ${borderColor} hover:shadow-md transition-shadow ${onClick ? 'cursor-pointer hover:scale-[1.02]' : ''}`}
+        onClick={onClick}
+    >
+        <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-sm font-medium text-muted-foreground">{title}</p>
+                    <p className="text-2xl font-bold">{value}</p>
+                    {subtext && <div className="mt-1">{subtext}</div>}
+                </div>
+                <Icon className={`h-8 w-8 ${iconColor}`} />
             </div>
-            {subtext && <div className="mt-1">{subtext}</div>}
         </CardContent>
     </Card>
 );
@@ -168,16 +170,18 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
   // Helper functions
   const getInitials = (name: string) => name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
-  // Check if profile is complete
-  const isProfileComplete = user.profile_picture && user.secondary_email && user.phone_number && user.faculty;
-  const getMissingFields = () => {
-    const missing = [];
-    if (!user.profile_picture) missing.push('profile picture');
-    if (!user.secondary_email) missing.push('secondary email');
-    if (!user.phone_number) missing.push('phone number');
-    if (!user.faculty) missing.push('faculty');
-    return missing;
-  };
+  // Profile completion tracking
+  const profileFields = [
+    { key: 'profile_picture', label: 'Profile Picture', completed: !!user.profile_picture },
+    { key: 'secondary_email', label: 'Secondary Email', completed: !!user.secondary_email },
+    { key: 'phone_number', label: 'Phone Number', completed: !!user.phone_number },
+    { key: 'faculty', label: 'Faculty', completed: !!user.faculty },
+  ];
+  const completedFieldsCount = profileFields.filter(f => f.completed).length;
+  const totalFieldsCount = profileFields.length;
+  const profileCompletionPercent = Math.round((completedFieldsCount / totalFieldsCount) * 100);
+  const isProfileComplete = completedFieldsCount === totalFieldsCount;
+  const getMissingFields = () => profileFields.filter(f => !f.completed).map(f => f.label.toLowerCase());
 
   // Colors for leaderboards
   const getMedalColor = (index: number) => {
@@ -220,6 +224,25 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
     if (diffDays === 1) return { text: 'Tomorrow', color: 'text-orange-600 bg-orange-50' };
     if (diffDays <= 7) return { text: `in ${diffDays} days`, color: 'text-yellow-600 bg-yellow-50' };
     return { text: `in ${diffDays} days`, color: 'text-blue-600 bg-blue-50' };
+  };
+
+  // Event availability status (Open/Full)
+  const getEventAvailability = (event: Event, userStatus: string | null) => {
+    const totalParticipants = event.participants?.filter(
+      p => p.status.toLowerCase() === 'approved' || p.status.toLowerCase() === 'pending_approval'
+    ).length || 0;
+    const isFull = event.capacity ? totalParticipants >= event.capacity : false;
+
+    // If user is already registered, don't show availability
+    if (userStatus === 'approved' || userStatus === 'pending_approval') {
+      return null;
+    }
+
+    if (isFull) {
+      return { text: 'Full', color: 'text-red-600 bg-red-50 border-red-100' };
+    }
+
+    return { text: 'Open', color: 'text-green-600 bg-green-50 border-green-100' };
   };
 
   // Handlers
@@ -342,7 +365,7 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                         <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                             Hi, {user.name.split(' ')[0]}!
                         </span>
-                        <Hand className="h-10 w-10 text-yellow-500 inline-block animate-pulse" />
+                        <Hand className="h-10 w-10 text-yellow-500 inline-block" />
                     </h1>
                     <p className="text-muted-foreground mt-2">Here's an overview of your volunteer activities.</p>
                 </div>
@@ -351,68 +374,112 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                 </Button>
             </div>
 
-            {/* Profile Completion Alert */}
+            {/* Profile Completion Card */}
             {!isProfileComplete && (
-                <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950 dark:border-amber-800">
-                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                    <AlertTitle className="text-amber-900 dark:text-amber-100 font-semibold">
-                        Complete Your Profile
-                    </AlertTitle>
-                    <AlertDescription className="text-amber-800 dark:text-amber-200">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-2">
-                            <p>
-                                Please complete your profile by adding your{' '}
-                                {getMissingFields().map((field, index) => (
-                                    <span key={field}>
-                                        <strong>{field}</strong>
-                                        {index < getMissingFields().length - 1 && ' and '}
-                                    </span>
-                                ))}.
-                            </p>
+                <Card className="border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950 dark:to-orange-950 dark:border-amber-800 shadow-sm">
+                    <CardContent className="pt-6">
+                        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                            {/* Progress Circle & Info */}
+                            <div className="flex items-center gap-4 flex-1">
+                                {/* Circular Progress Indicator */}
+                                <div className="relative flex-shrink-0">
+                                    <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center border-4 border-amber-300 dark:border-amber-700">
+                                        <span className="text-lg font-bold text-amber-700 dark:text-amber-300">
+                                            {completedFieldsCount}/{totalFieldsCount}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Text Content */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                                        <h3 className="font-semibold text-amber-900 dark:text-amber-100">
+                                            Complete Your Profile
+                                        </h3>
+                                        <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300 text-xs">
+                                            {profileCompletionPercent}%
+                                        </Badge>
+                                    </div>
+
+                                    {/* Progress Bar */}
+                                    <div className="mb-2">
+                                        <Progress
+                                            value={profileCompletionPercent}
+                                            className="h-2 bg-amber-200 dark:bg-amber-800"
+                                        />
+                                    </div>
+
+                                    {/* Field Status */}
+                                    <div className="flex flex-wrap gap-2">
+                                        {profileFields.map((field) => (
+                                            <span
+                                                key={field.key}
+                                                className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                                                    field.completed
+                                                        ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                                        : 'bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-200'
+                                                }`}
+                                            >
+                                                {field.completed ? (
+                                                    <CheckCircle className="h-3 w-3" />
+                                                ) : (
+                                                    <AlertCircle className="h-3 w-3" />
+                                                )}
+                                                {field.label}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Action Button */}
                             <Button
-                                variant="outline"
-                                size="sm"
                                 onClick={() => router.visit(profileEdit().url)}
-                                className="bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 whitespace-nowrap"
+                                className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm whitespace-nowrap"
                             >
+                                <User className="h-4 w-4 mr-2" />
                                 Update Profile
                             </Button>
                         </div>
-                    </AlertDescription>
-                </Alert>
+                    </CardContent>
+                </Card>
             )}
 
             {/* 2. Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <SummaryCard 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <SummaryCard
                     title="Total Registered"
                     value={stats.totalEvents}
                     icon={ClipboardList}
-                    className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800"
-                    titleColor="text-blue-900 dark:text-blue-100"
-                    valueColor="text-blue-900 dark:text-blue-100"
-                    iconColor="text-blue-600 dark:text-blue-400"
-                    subtext={<span className="text-xs text-blue-700">All time registrations</span>}
+                    borderColor="border-l-blue-500"
+                    iconColor="text-blue-500"
+                    subtext={<p className="text-xs text-muted-foreground">All time registrations</p>}
+                    onClick={() => {
+                        // Scroll to My Events section
+                        document.getElementById('my-events-section')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
                 />
-                <SummaryCard 
+                <SummaryCard
                     title="Upcoming Events"
                     value={stats.upcomingEventsCount}
                     icon={CalendarDays}
-                    className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800"
-                    titleColor="text-yellow-900 dark:text-yellow-100"
-                    valueColor="text-yellow-900 dark:text-yellow-100"
-                    iconColor="text-yellow-600 dark:text-yellow-400"
-                    subtext={<span className="text-xs text-yellow-700">Events happening soon</span>}
+                    borderColor="border-l-yellow-500"
+                    iconColor="text-yellow-500"
+                    subtext={<p className="text-xs text-muted-foreground">Events happening soon</p>}
+                    onClick={() => router.get('/join-events')}
                 />
-                <SummaryCard 
+                <SummaryCard
                     title="Pending Approvals"
                     value={registeredEvents.filter(e => e.status === 'pending_approval').length}
                     icon={Clock}
-                    className="bg-orange-50 border-orange-200 dark:bg-orange-950 dark:border-orange-800"
-                    titleColor="text-orange-900 dark:text-orange-100"
-                    valueColor="text-orange-900 dark:text-orange-100"
-                    iconColor="text-orange-600 dark:text-orange-400"
-                    subtext={<span className="text-xs text-orange-700">Awaiting confirmation</span>}
+                    borderColor="border-l-orange-500"
+                    iconColor="text-orange-500"
+                    subtext={<p className="text-xs text-muted-foreground">Awaiting confirmation</p>}
+                    onClick={() => {
+                        // Scroll to My Events section
+                        document.getElementById('my-events-section')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
                 />
             </div>
 
@@ -443,6 +510,19 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                                         const { status } = getParticipantStatus(event);
                                         const totalParticipants = event.participants?.filter(p => p.status.toLowerCase() === 'approved' || p.status.toLowerCase() === 'pending_approval').length || 0;
                                         const slotsLeft = event.capacity ? event.capacity - totalParticipants : null;
+                                        const isFull = event.capacity ? totalParticipants >= event.capacity : false;
+                                        const isPaid = event.fee && event.fee > 0;
+
+                                        // Consolidated availability text
+                                        const getAvailabilityInfo = () => {
+                                            if (status) return null; // User already registered
+                                            if (isFull) return { text: 'Full', color: 'text-red-600 bg-red-50 border-red-100' };
+                                            if (slotsLeft !== null && slotsLeft <= 5) {
+                                                return { text: `${slotsLeft} left`, color: 'text-orange-600 bg-orange-50 border-orange-100' };
+                                            }
+                                            return { text: 'Open', color: 'text-green-600 bg-green-50 border-green-100' };
+                                        };
+                                        const availabilityInfo = getAvailabilityInfo();
 
                                         return (
                                             <div
@@ -450,11 +530,12 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                                                 className="flex items-center gap-4 p-4 hover:bg-muted/40 transition-colors cursor-pointer group"
                                                 onClick={() => router.get(`/join-events?event_id=${event.id}`)}
                                             >
-                                                <div className="h-14 w-14 rounded-lg overflow-hidden flex-shrink-0 border bg-muted">
+                                                {/* Event thumbnail with date fallback */}
+                                                <div className="h-14 w-14 rounded-lg overflow-hidden flex-shrink-0 border bg-muted relative">
                                                     {event.image_path ? (
                                                         <img src={`/storage/${event.image_path}`} alt={event.name} className="h-full w-full object-cover" />
                                                     ) : (
-                                                        <div className="h-full w-full flex items-center justify-center bg-green-50 text-green-700 border border-green-100 group-hover:bg-green-100 transition-colors">
+                                                        <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5 text-primary">
                                                             <div className="flex flex-col items-center justify-center">
                                                                 <span className="text-[10px] font-bold uppercase tracking-wide">
                                                                     {new Date(event.start_date).toLocaleDateString('en-US', { month: 'short' })}
@@ -466,11 +547,20 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                                                         </div>
                                                     )}
                                                 </div>
+
+                                                {/* Event details */}
                                                 <div className="flex-1 min-w-0">
-                                                    <h4 className="font-semibold text-base text-foreground truncate group-hover:text-primary transition-colors">
-                                                        {event.name}
-                                                    </h4>
-                                                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="font-semibold text-base text-foreground truncate group-hover:text-primary transition-colors">
+                                                            {event.name}
+                                                        </h4>
+                                                        {isPaid && (
+                                                            <Badge variant="outline" className="text-[10px] h-5 px-1.5 bg-blue-50 text-blue-600 border-blue-200">
+                                                                RM{event.fee}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
                                                         <span className="flex items-center gap-1">
                                                             <CalendarDays className="h-3.5 w-3.5" />
                                                             {new Date(event.start_date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })}
@@ -480,32 +570,41 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                                                             {event.location}
                                                         </span>
                                                     </div>
-                                                    <div className="flex items-center gap-2 mt-1">
+                                                    {/* Consolidated badges row */}
+                                                    <div className="flex items-center gap-2 mt-1.5">
                                                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${countdown.color}`}>
                                                             {countdown.text}
                                                         </span>
-                                                        {event.fee && event.fee > 0 && (
-                                                            <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
-                                                                RM {event.fee}
+                                                        {availabilityInfo && (
+                                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${availabilityInfo.color}`}>
+                                                                {availabilityInfo.text}
                                                             </span>
                                                         )}
-                                                        {slotsLeft !== null && (
-                                                            <span className="text-[10px] font-medium text-gray-600 bg-gray-50 px-2 py-0.5 rounded-full border border-gray-100">
-                                                                {slotsLeft} {slotsLeft === 1 ? 'slot' : 'slots'} left
-                                                            </span>
+                                                        {status && (
+                                                            <>
+                                                                {status === 'approved' && <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 shadow-none text-[10px] h-5">Registered</Badge>}
+                                                                {status === 'pending_approval' && <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 border-yellow-200 shadow-none text-[10px] h-5">Pending</Badge>}
+                                                                {status === 'rejected' && <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200 shadow-none text-[10px] h-5">Rejected</Badge>}
+                                                            </>
                                                         )}
                                                     </div>
-                                                    {status && (
-                                                        <div className="mt-2">
-                                                            {status === 'approved' && <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200 shadow-none text-xs">Registered</Badge>}
-                                                            {status === 'pending_approval' && <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200 shadow-none text-xs">Pending Approval</Badge>}
-                                                            {status === 'rejected' && <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200 shadow-none text-xs">Rejected</Badge>}
-                                                        </div>
-                                                    )}
                                                 </div>
-                                                <Button size="icon" variant="ghost" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <ArrowRight className="h-4 w-4" />
-                                                </Button>
+
+                                                {/* Quick register or arrow */}
+                                                {!status && !isFull ? (
+                                                    <Button
+                                                        size="sm"
+                                                        className="opacity-0 group-hover:opacity-100 transition-opacity text-xs h-8"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleRegisterClick(event);
+                                                        }}
+                                                    >
+                                                        {isPaid ? 'Register' : 'Join'}
+                                                    </Button>
+                                                ) : (
+                                                    <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                )}
                                             </div>
                                         );
                                     })
@@ -514,59 +613,175 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                         </CardContent>
                     </Card>
 
-                    {/* My Registered Events */}
-                    <Card className="shadow-sm">
-                        <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-                            <div className="space-y-1">
-                                <CardTitle className="text-xl flex items-center gap-2">
-                                    <Award className="h-5 w-5 text-purple-600" />
-                                    My Registered Events
-                                </CardTitle>
-                                <CardDescription>Events you are actively participating in</CardDescription>
+                    {/* My Registered Events - with Tabs */}
+                    <Card id="my-events-section" className="shadow-sm">
+                        <CardHeader className="border-b pb-4">
+                            <div className="flex items-center justify-between">
+                                <div className="space-y-1">
+                                    <CardTitle className="text-xl flex items-center gap-2">
+                                        <Award className="h-5 w-5 text-purple-600" />
+                                        My Events
+                                    </CardTitle>
+                                    <CardDescription>Track your event registrations</CardDescription>
+                                </div>
+                                <Button variant="outline" size="sm" onClick={() => router.get('/join-events')}>
+                                    Browse More
+                                </Button>
                             </div>
                         </CardHeader>
                         <CardContent className="p-0">
                             {registeredEvents.length > 0 ? (
-                                <div className="divide-y">
-                                    {registeredEvents.map((event) => (
-                                        <div
-                                            key={event.id}
-                                            className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors group cursor-pointer"
-                                            onClick={() => router.get(`/join-events?event_id=${event.id}`)}
-                                        >
-                                            <div className="h-14 w-14 rounded-lg overflow-hidden flex-shrink-0 border bg-muted">
-                                                {event.image_path ? (
-                                                    <img src={`/storage/${event.image_path}`} alt={event.name} className="h-full w-full object-cover" />
-                                                ) : (
-                                                    <div className="h-full w-full flex items-center justify-center bg-primary/5 text-primary">
-                                                        <Calendar className="h-6 w-6 opacity-50" />
+                                <Tabs defaultValue="upcoming" className="w-full">
+                                    <div className="px-4 pt-4">
+                                        <TabsList className="grid w-full grid-cols-2">
+                                            <TabsTrigger value="upcoming" className="flex items-center gap-1.5">
+                                                <Calendar className="h-3.5 w-3.5" />
+                                                Upcoming
+                                                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                                                    {registeredEvents.filter(e => new Date(e.end_date) >= new Date()).length}
+                                                </Badge>
+                                            </TabsTrigger>
+                                            <TabsTrigger value="past" className="flex items-center gap-1.5">
+                                                <History className="h-3.5 w-3.5" />
+                                                Past
+                                                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                                                    {registeredEvents.filter(e => new Date(e.end_date) < new Date()).length}
+                                                </Badge>
+                                            </TabsTrigger>
+                                        </TabsList>
+                                    </div>
+
+                                    {/* Upcoming Events Tab */}
+                                    <TabsContent value="upcoming" className="mt-0">
+                                        {(() => {
+                                            const upcomingRegistered = registeredEvents.filter(e => new Date(e.end_date) >= new Date());
+                                            if (upcomingRegistered.length === 0) {
+                                                return (
+                                                    <div className="py-8 text-center text-muted-foreground">
+                                                        <Calendar className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                                                        <p className="text-sm">No upcoming events</p>
                                                     </div>
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-2 mb-1">
-                                                    <h4 className="font-semibold text-base text-foreground truncate group-hover:text-primary transition-colors">
-                                                        {event.name}
-                                                    </h4>
-                                                    <div className="flex-shrink-0">
-                                                        {event.status === 'approved' && <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200 shadow-none">Approved</Badge>}
-                                                        {event.status === 'pending_approval' && <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200 shadow-none">Pending</Badge>}
-                                                        {event.status === 'rejected' && <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200 shadow-none">Rejected</Badge>}
+                                                );
+                                            }
+                                            return (
+                                                <div className="divide-y">
+                                                    {upcomingRegistered.map((event) => {
+                                                        const daysUntil = Math.ceil((new Date(event.start_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                                                        const timeLabel = daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `In ${daysUntil} days`;
+                                                        const timeColor = daysUntil <= 1 ? 'text-red-600 bg-red-50' : daysUntil <= 3 ? 'text-orange-600 bg-orange-50' : 'text-blue-600 bg-blue-50';
+
+                                                        return (
+                                                            <div
+                                                                key={event.id}
+                                                                className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors group cursor-pointer"
+                                                                onClick={() => router.get(`/join-events?event_id=${event.id}`)}
+                                                            >
+                                                                <div className="h-12 w-12 rounded-lg overflow-hidden flex-shrink-0 border bg-muted">
+                                                                    {event.image_path ? (
+                                                                        <img src={`/storage/${event.image_path}`} alt={event.name} className="h-full w-full object-cover" />
+                                                                    ) : (
+                                                                        <div className="h-full w-full flex items-center justify-center bg-primary/5 text-primary">
+                                                                            <Calendar className="h-5 w-5 opacity-50" />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <h4 className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+                                                                        {event.name}
+                                                                    </h4>
+                                                                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 truncate">
+                                                                        <MapPin className="h-3 w-3" />
+                                                                        {event.location}
+                                                                    </p>
+                                                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${timeColor}`}>
+                                                                            {timeLabel}
+                                                                        </span>
+                                                                        {event.status === 'approved' && <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 shadow-none text-[10px] h-5">Approved</Badge>}
+                                                                        {event.status === 'pending_approval' && <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 border-yellow-200 shadow-none text-[10px] h-5">Pending</Badge>}
+                                                                        {event.status === 'rejected' && <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200 shadow-none text-[10px] h-5">Rejected</Badge>}
+                                                                    </div>
+                                                                </div>
+                                                                <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            );
+                                        })()}
+                                    </TabsContent>
+
+                                    {/* Past Events Tab */}
+                                    <TabsContent value="past" className="mt-0">
+                                        {(() => {
+                                            const pastRegistered = registeredEvents.filter(e => new Date(e.end_date) < new Date());
+                                            if (pastRegistered.length === 0) {
+                                                return (
+                                                    <div className="py-8 text-center text-muted-foreground">
+                                                        <History className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                                                        <p className="text-sm">No past events yet</p>
                                                     </div>
+                                                );
+                                            }
+                                            return (
+                                                <div className="divide-y">
+                                                    {pastRegistered.map((event) => {
+                                                        const daysSince = Math.ceil((new Date().getTime() - new Date(event.end_date).getTime()) / (1000 * 60 * 60 * 24));
+                                                        const timeLabel = daysSince === 1 ? 'Yesterday' : `${daysSince} days ago`;
+
+                                                        return (
+                                                            <div
+                                                                key={event.id}
+                                                                className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors group"
+                                                            >
+                                                                <div className="h-12 w-12 rounded-lg overflow-hidden flex-shrink-0 border bg-muted grayscale opacity-70">
+                                                                    {event.image_path ? (
+                                                                        <img src={`/storage/${event.image_path}`} alt={event.name} className="h-full w-full object-cover" />
+                                                                    ) : (
+                                                                        <div className="h-full w-full flex items-center justify-center bg-muted text-muted-foreground">
+                                                                            <Calendar className="h-5 w-5 opacity-50" />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <h4 className="font-medium text-sm text-foreground truncate">
+                                                                        {event.name}
+                                                                    </h4>
+                                                                    <div className="flex items-center gap-2 mt-1">
+                                                                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium text-gray-500 bg-gray-100">
+                                                                            {timeLabel}
+                                                                        </span>
+                                                                        {event.status === 'approved' && (
+                                                                            <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-100 border-gray-200 shadow-none text-[10px] h-5">Completed</Badge>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                {/* Feedback button for past approved events */}
+                                                                {event.status === 'approved' && (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant={event.has_feedback ? "outline" : "default"}
+                                                                        className={`text-xs h-7 ${event.has_feedback ? 'text-green-600 border-green-200' : ''}`}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            router.get(`/events-gallery?event_id=${event.event_id}&open_feedback=true`);
+                                                                        }}
+                                                                    >
+                                                                        {event.has_feedback ? (
+                                                                            <><CheckCircle className="h-3 w-3 mr-1" /> Feedback Sent</>
+                                                                        ) : (
+                                                                            <><Star className="h-3 w-3 mr-1" /> Give Feedback</>
+                                                                        )}
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
-                                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                                    <span className="flex items-center gap-1">
-                                                        <CalendarDays className="h-3.5 w-3.5" />
-                                                        {new Date(event.start_date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })}
-                                                    </span>
-                                                    <span className="flex items-center gap-1 truncate">
-                                                        <MapPin className="h-3.5 w-3.5" /> {event.location}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                            );
+                                        })()}
+                                    </TabsContent>
+                                </Tabs>
                             ) : (
                                 <EmptyState
                                     icon={Calendar}
@@ -722,14 +937,44 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                             <CardDescription>Community leaderboard</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
+                            {/* User's rank indicator */}
+                            {topVolunteers.length > 0 && (() => {
+                                const userRankIndex = topVolunteers.findIndex(v => v.id === user.id);
+                                const userRank = userRankIndex !== -1 ? userRankIndex + 1 : null;
+                                const userInTop5 = userRank !== null && userRank <= 5;
+
+                                if (userRank && !userInTop5) {
+                                    return (
+                                        <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                                    <span className="text-sm font-bold text-primary">#{userRank}</span>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium">Your Ranking</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {userRank <= 10 ? 'Almost there! Keep volunteering!' : 'Keep participating to climb up!'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                                                {topVolunteers[userRankIndex]?.total_hours || 0}h
+                                            </Badge>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
+                            <div className="space-y-3">
                                 {topVolunteers.length === 0 ? (
                                     <EmptyState icon={Award} message="No data available." />
                                 ) : (
-                                    topVolunteers.slice(0, 5).map((volunteer, index) => (
-                                        <div 
-                                            key={volunteer.id} 
-                                            className={`flex items-center gap-3 p-2 rounded-lg border transition-all hover:shadow-sm cursor-pointer ${getMedalBgColor(index)} bg-opacity-40`}
+                                    topVolunteers.slice(0, 5).map((volunteer, index) => {
+                                        const isCurrentUser = volunteer.id === user.id;
+                                        return (
+                                        <div
+                                            key={volunteer.id}
+                                            className={`flex items-center gap-3 p-2 rounded-lg border transition-all hover:shadow-sm cursor-pointer ${getMedalBgColor(index)} bg-opacity-40 ${isCurrentUser ? 'ring-2 ring-primary ring-offset-1' : ''}`}
                                             onClick={() => handleVolunteerClick(volunteer)}
                                         >
                                             <div className={`
@@ -755,7 +1000,8 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                                                 {volunteer.total_hours}h
                                             </Badge>
                                         </div>
-                                    ))
+                                    );
+                                })
                                 )}
                             </div>
                         </CardContent>

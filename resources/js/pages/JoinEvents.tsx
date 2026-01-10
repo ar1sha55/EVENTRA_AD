@@ -1,14 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, usePage, router } from '@inertiajs/react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, MapPin, Eye, ImageIcon, CheckCircle, Users, XCircle, Upload, X, RotateCcw } from 'lucide-react';
+import { CalendarDays, MapPin, Eye, ImageIcon, CheckCircle, Users, XCircle, Upload, X, RotateCcw, Clock, CalendarX, RefreshCw, Filter, ArrowUpDown } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { EventCardsGridSkeleton } from '@/components/ui/loading-skeletons';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 // Added AlertDialog imports
 import {
     AlertDialog,
@@ -72,13 +76,71 @@ export default function JoinEvents() {
     const [paymentProofPreview, setPaymentProofPreview] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
     const [posterPreviewOpen, setPosterPreviewOpen] = useState(false);
-    
+    const [isPageLoading, setIsPageLoading] = useState(false);
+
     // State for unregistration confirmation
     const [participantToUnregister, setParticipantToUnregister] = useState<number | null>(null);
+
+    // Filter and sort states
+    const [feeFilter, setFeeFilter] = useState<'all' | 'free' | 'paid'>('all');
+    const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'starting-soon'>('newest');
+    const [searchQuery, setSearchQuery] = useState('');
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const publishedEvents = events.filter((event: Event) => event.status === 'published');
+
+    // Filter and sort events
+    const filteredAndSortedEvents = useMemo(() => {
+        let filtered = [...publishedEvents];
+
+        // Apply fee filter
+        if (feeFilter === 'free') {
+            filtered = filtered.filter(e => !e.fee || e.fee === 0);
+        } else if (feeFilter === 'paid') {
+            filtered = filtered.filter(e => e.fee && e.fee > 0);
+        }
+
+        // Apply search filter
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            filtered = filtered.filter(e =>
+                e.name.toLowerCase().includes(query) ||
+                e.description.toLowerCase().includes(query) ||
+                e.location.toLowerCase().includes(query)
+            );
+        }
+
+        // Apply sorting
+        filtered.sort((a, b) => {
+            if (sortBy === 'newest') {
+                return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
+            } else if (sortBy === 'oldest') {
+                return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
+            } else { // starting-soon
+                const now = new Date().getTime();
+                const aDiff = Math.abs(new Date(a.start_date).getTime() - now);
+                const bDiff = Math.abs(new Date(b.start_date).getTime() - now);
+                return aDiff - bDiff;
+            }
+        });
+
+        return filtered;
+    }, [publishedEvents, feeFilter, sortBy, searchQuery]);
+
+    // Track page loading state for skeleton display during navigation
+    useEffect(() => {
+        const handleStart = () => setIsPageLoading(true);
+        const handleFinish = () => setIsPageLoading(false);
+
+        router.on('start', handleStart);
+        router.on('finish', handleFinish);
+
+        return () => {
+            router.on('start', handleStart);
+            router.on('finish', handleFinish);
+        };
+    }, []);
 
     // Check for event_id URL parameter and open event dialog automatically
     useEffect(() => {
@@ -155,27 +217,37 @@ export default function JoinEvents() {
 
             router.post(`/events/${eventId}/register`, formData, {
                 forceFormData: true,
+                preserveScroll: true,
                 onSuccess: () => {
                     setPaymentProofEvent(null);
                     setPaymentProofFile(null);
                     setPaymentProofPreview(null);
                     setProcessing(false);
-                    // Force reload to get fresh data
-                    router.visit('/join-events', { preserveState: false });
+                    toast.success('Registration submitted successfully!', {
+                        description: 'Your payment proof is being reviewed.',
+                    });
                 },
-                onError: () => {
+                onError: (errors) => {
                     setProcessing(false);
+                    toast.error('Registration failed', {
+                        description: Object.values(errors).flat().join(', ') || 'Please try again.',
+                    });
                 },
             });
         } else {
             router.post(`/events/${eventId}/register`, {}, {
+                preserveScroll: true,
                 onSuccess: () => {
                     setProcessing(false);
-                    // Force reload to get fresh data
-                    router.visit('/join-events', { preserveState: false });
+                    toast.success('Registration successful!', {
+                        description: 'You have been registered for this event.',
+                    });
                 },
-                onError: () => {
+                onError: (errors) => {
                     setProcessing(false);
+                    toast.error('Registration failed', {
+                        description: Object.values(errors).flat().join(', ') || 'Please try again.',
+                    });
                 },
             });
         }
@@ -190,11 +262,18 @@ export default function JoinEvents() {
     const executeUnregister = () => {
         if (participantToUnregister) {
             router.delete(`/participants/${participantToUnregister}`, {
+                preserveScroll: true,
                 onSuccess: () => {
                     setSelectedEvent(null);
                     setParticipantToUnregister(null);
-                    // Force reload to get fresh data
-                    router.visit('/join-events', { preserveState: false });
+                    toast.success('Unregistered successfully', {
+                        description: 'You have been removed from this event.',
+                    });
+                },
+                onError: () => {
+                    toast.error('Failed to unregister', {
+                        description: 'Please try again.',
+                    });
                 },
                 onFinish: () => setParticipantToUnregister(null),
             });
@@ -226,36 +305,285 @@ export default function JoinEvents() {
     const getStatusBadge = (status: string | null) => {
         switch (status) {
             case 'approved':
-                return <span className="text-green-600 font-semibold flex items-center gap-1"><CheckCircle className="h-4 w-4" /> Registered</span>;
+                return (
+                    <Badge className="bg-green-100 text-green-700 border-green-300 hover:bg-green-100 shadow-sm">
+                        <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                        Registered
+                    </Badge>
+                );
             case 'pending_approval':
-                return <span className="text-yellow-600 font-semibold flex items-center gap-1"><Upload className="h-4 w-4" /> Pending Approval</span>;
+                return (
+                    <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-100 shadow-sm">
+                        <Clock className="h-3.5 w-3.5 mr-1" />
+                        Pending Approval
+                    </Badge>
+                );
             case 'rejected':
-                return <span className="text-red-600 font-semibold flex items-center gap-1"><XCircle className="h-4 w-4" /> Rejected</span>;
+                return (
+                    <Badge variant="destructive" className="bg-red-100 text-red-700 border-red-300 hover:bg-red-100 shadow-sm">
+                        <XCircle className="h-3.5 w-3.5 mr-1" />
+                        Rejected
+                    </Badge>
+                );
             default:
                 return null;
         }
     };
 
+    // Prominent ribbon for registered events (shows on card image)
+    const getRegistrationRibbon = (status: string | null) => {
+        if (status === 'approved') {
+            return (
+                <div className="absolute top-0 left-0 bg-green-500 text-white px-3 py-1 text-xs font-bold rounded-br-lg shadow-md flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    REGISTERED
+                </div>
+            );
+        }
+        if (status === 'pending_approval') {
+            return (
+                <div className="absolute top-0 left-0 bg-yellow-500 text-white px-3 py-1 text-xs font-bold rounded-br-lg shadow-md flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    PENDING
+                </div>
+            );
+        }
+        return null;
+    };
+
+    // Helper to get event availability status
+    const getEventAvailabilityBadge = (event: Event, userStatus: string | null) => {
+        const now = new Date();
+        const endDate = new Date(event.end_date);
+        const startDate = new Date(event.start_date);
+        const isPast = endDate < now;
+        const isOngoing = startDate <= now && endDate >= now;
+
+        const totalParticipants = event.participants?.filter(
+            p => p.status.toLowerCase() === 'approved' || p.status.toLowerCase() === 'pending_approval'
+        ).length || 0;
+        const isFull = event.capacity ? totalParticipants >= event.capacity : false;
+
+        // If user is already registered, don't show availability badge
+        if (userStatus === 'approved' || userStatus === 'pending_approval') {
+            return null;
+        }
+
+        if (isPast) {
+            return (
+                <Badge variant="secondary" className="bg-gray-100 text-gray-600 border-gray-200">
+                    <Clock className="h-3 w-3 mr-1" />
+                    Past
+                </Badge>
+            );
+        }
+
+        if (isFull) {
+            return (
+                <Badge variant="destructive" className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100">
+                    Full
+                </Badge>
+            );
+        }
+
+        if (isOngoing) {
+            return (
+                <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100">
+                    Ongoing
+                </Badge>
+            );
+        }
+
+        // Event is open for registration
+        return (
+            <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Open
+            </Badge>
+        );
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title='Join Volunteering Events' />
+            <Head title='Join Events' />
 
-            <div className='flex flex-col gap-6 p-4'>
-                <div className='flex items-center justify-between'>
-                    <div className='flex items-center gap-2'>
-                        <Users className='h-6 w-6 text-muted-foreground' />
-                        <h1 className='text-2xl font-semibold'>Join Volunteering Events</h1>
+            <div className='flex flex-col gap-6 p-4 md:p-8 max-w-7xl mx-auto'>
+                {/* Header */}
+                <div className='flex items-center gap-3'>
+                    <div className='p-2 bg-primary/10 rounded-lg'>
+                        <Users className='h-8 w-8 text-primary' />
+                    </div>
+                    <div>
+                        <h1 className='text-3xl font-bold'>Join Events</h1>
+                        <p className='text-muted-foreground'>
+                            Explore and register for volunteering opportunities
+                        </p>
                     </div>
                 </div>
 
-                {publishedEvents.length === 0 ? (
-                    <div className='text-center py-12'>
-                        <p className='text-muted-foreground text-lg'>No events available at the moment.</p>
-                        <p className='text-sm text-muted-foreground mt-2'>Check back later for new volunteering opportunities!</p>
-                    </div>
+                {/* Filter and Sort Controls */}
+                {publishedEvents.length > 0 && (
+                    <Card className="bg-muted/30">
+                        <CardContent className="pt-6">
+                            <div className="flex flex-col gap-4">
+                                {/* Search Bar */}
+                                <div className="relative">
+                                    <Input
+                                        type="text"
+                                        placeholder="Search events by name, location, or description..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="pl-10"
+                                    />
+                                    <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    {searchQuery && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                                            onClick={() => setSearchQuery('')}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    )}
+                                </div>
+
+                                {/* Filters and Sort */}
+                                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                                    {/* Fee Filter Buttons */}
+                                    <div className="flex items-center gap-2">
+                                        <Filter className="h-4 w-4 text-muted-foreground" />
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant={feeFilter === 'all' ? 'default' : 'outline'}
+                                                size="sm"
+                                                onClick={() => setFeeFilter('all')}
+                                            >
+                                                All
+                                            </Button>
+                                            <Button
+                                                variant={feeFilter === 'free' ? 'default' : 'outline'}
+                                                size="sm"
+                                                onClick={() => setFeeFilter('free')}
+                                                className={feeFilter === 'free' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                                            >
+                                                Free
+                                            </Button>
+                                            <Button
+                                                variant={feeFilter === 'paid' ? 'default' : 'outline'}
+                                                size="sm"
+                                                onClick={() => setFeeFilter('paid')}
+                                                className={feeFilter === 'paid' ? 'bg-amber-600 hover:bg-amber-700' : ''}
+                                            >
+                                                Paid
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {/* Sort Dropdown */}
+                                    <div className="flex items-center gap-2">
+                                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                                        <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                                            <SelectTrigger className="w-[180px]">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="newest">Newest First</SelectItem>
+                                                <SelectItem value="oldest">Oldest First</SelectItem>
+                                                <SelectItem value="starting-soon">Starting Soon</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                {/* Results count */}
+                                {(feeFilter !== 'all' || searchQuery) && (
+                                    <div className="flex items-center justify-between pt-2 border-t">
+                                        <p className="text-sm text-muted-foreground">
+                                            Showing {filteredAndSortedEvents.length} of {publishedEvents.length} events
+                                        </p>
+                                        {(feeFilter !== 'all' || searchQuery) && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setFeeFilter('all');
+                                                    setSearchQuery('');
+                                                }}
+                                                className="gap-1"
+                                            >
+                                                <X className="h-3 w-3" />
+                                                Clear filters
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Loading Skeleton */}
+                {isPageLoading ? (
+                    <EventCardsGridSkeleton count={6} />
+                ) : publishedEvents.length === 0 ? (
+                    /* Empty State with Illustration - No Events */
+                    <Card className="border-dashed">
+                        <CardContent className="flex flex-col items-center justify-center py-16">
+                            <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-6">
+                                <CalendarX className="h-10 w-10 text-muted-foreground" />
+                            </div>
+                            <h3 className="text-xl font-semibold mb-2">No Events Available</h3>
+                            <p className="text-muted-foreground text-center max-w-md mb-6">
+                                There are no events open for registration at the moment. Check back later for new volunteering opportunities!
+                            </p>
+                            <div className="flex gap-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => router.reload()}
+                                    className="gap-2"
+                                >
+                                    <RefreshCw className="h-4 w-4" />
+                                    Refresh
+                                </Button>
+                                <Button
+                                    onClick={() => router.visit('/events-gallery')}
+                                    className="gap-2"
+                                >
+                                    <ImageIcon className="h-4 w-4" />
+                                    View Past Events
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : filteredAndSortedEvents.length === 0 ? (
+                    /* Empty State - No Matching Events */
+                    <Card className="border-dashed">
+                        <CardContent className="flex flex-col items-center justify-center py-12">
+                            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                                <Filter className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                            <h3 className="text-lg font-semibold mb-2">No Events Match Your Filters</h3>
+                            <p className="text-muted-foreground text-center max-w-md mb-4">
+                                Try adjusting your search query or filters to find more events.
+                            </p>
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setSearchQuery('');
+                                    setFeeFilter('all');
+                                    setSortBy('newest');
+                                }}
+                                className="gap-2"
+                            >
+                                <RefreshCw className="h-4 w-4" />
+                                Clear All Filters
+                            </Button>
+                        </CardContent>
+                    </Card>
                 ) : (
                     <div className='grid gap-6 sm:grid-cols-2 lg:grid-cols-3'>
-                        {publishedEvents.map((event: Event) => {
+                        {filteredAndSortedEvents.map((event: Event) => {
                             const { status, participantId } = getParticipantStatus(event);
                             const totalParticipants = event.participants?.filter(p => p.status.toLowerCase() === 'approved' || p.status.toLowerCase() === 'pending_approval').length || 0;
                             const slotsLeft = event.capacity ? event.capacity - totalParticipants : 'Unlimited';
@@ -265,24 +593,42 @@ export default function JoinEvents() {
                             return (
                                 <Card
                                     key={event.id}
-                                    className='hover:shadow-lg transition-all cursor-pointer hover:border-primary/50 flex flex-col h-full'
+                                    className={`hover:shadow-lg transition-all cursor-pointer flex flex-col h-full overflow-hidden ${
+                                        status === 'approved'
+                                            ? 'border-green-300 bg-green-50/30 hover:border-green-400'
+                                            : status === 'pending_approval'
+                                            ? 'border-yellow-300 bg-yellow-50/30 hover:border-yellow-400'
+                                            : 'hover:border-primary/50'
+                                    }`}
                                     onClick={(e) => handleCardClick(event, e)}
                                 >
-                                    {event.image_path && (
-                                        <div className='relative h-48 overflow-hidden rounded-t-lg shrink-0'> 
+                                    {/* Card Header Area - Image or Placeholder */}
+                                    <div className='relative h-48 overflow-hidden shrink-0'>
+                                        {event.image_path ? (
                                             <img
                                                 src={`/storage/${event.image_path}`}
                                                 alt={event.name}
                                                 className='w-full h-full object-cover'
                                             />
-                                            {isFull && !status && (
-                                                <div className='absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold'>
-                                                    FULL
+                                        ) : (
+                                            /* Styled placeholder for events without images */
+                                            <div className='w-full h-full bg-gradient-to-br from-primary/10 via-primary/5 to-secondary/10 flex items-center justify-center'>
+                                                <div className='text-center'>
+                                                    <CalendarDays className='h-12 w-12 text-primary/30 mx-auto mb-2' />
+                                                    <span className='text-xs text-muted-foreground/60 font-medium uppercase tracking-wider'>
+                                                        {new Date(event.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                    </span>
                                                 </div>
-                                            )}
+                                            </div>
+                                        )}
+                                        {/* Registration ribbon (top-left) */}
+                                        {getRegistrationRibbon(status)}
+                                        {/* Event availability badge (top-right) */}
+                                        <div className='absolute top-2 right-2'>
+                                            {getEventAvailabilityBadge(event, status)}
                                         </div>
-                                    )}
-                                    <CardHeader>
+                                    </div>
+                                    <CardHeader className='pb-2'>
                                         <CardTitle className='flex items-start justify-between gap-2'>
                                             <span className='line-clamp-1'>{event.name}</span>
                                             {isPaidEvent && (
@@ -312,11 +658,6 @@ export default function JoinEvents() {
                                                 }
                                             </span>
                                         </div>
-                                        {status && (
-                                            <div className='pt-2 border-t mt-auto'>
-                                                {getStatusBadge(status)}
-                                            </div>
-                                        )}
                                     </CardContent>
                                     
                                     <CardFooter className='flex gap-2 mt-auto'> 

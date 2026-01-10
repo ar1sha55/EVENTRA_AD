@@ -51,7 +51,6 @@ export function RoleSwitcher() {
         // Show toast notification
         toast.success(`Switched to ${option?.label}`, {
             description: option?.description,
-            duration: 3000,
         });
 
         // Force fresh navigation to remount layout components

@@ -18,7 +18,6 @@ import {
 import type { BreadcrumbItem } from "@/types";
 
 const breadcrumbs: BreadcrumbItem[] = [
-  { title: "Admin", href: "/admin/dashboard" },
   { title: "Support Tickets", href: "/admin/support-tickets" },
 ];
 
@@ -130,14 +129,16 @@ export default function SupportTickets({ tickets, stats, currentStatus }: Props)
       <Head title="Support Tickets Management" />
       <div className="p-6 space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <LifeBuoy className="h-8 w-8 text-purple-600" />
-            Support Tickets Management
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage and respond to user support tickets
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <LifeBuoy className="h-8 w-8 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold">Support Tickets</h1>
+            <p className="text-muted-foreground">
+              Manage and respond to user support tickets
+            </p>
+          </div>
         </div>
 
         {/* Stats Cards */}

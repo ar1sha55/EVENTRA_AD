@@ -74,40 +74,36 @@ interface PageProps {
 
 // --- Helper Components ---
 
-const SummaryCard = ({ 
-    title, 
-    value, 
-    icon: Icon, 
-    subtext, 
-    className,
-    titleColor,
-    valueColor,
+const SummaryCard = ({
+    title,
+    value,
+    icon: Icon,
+    subtext,
+    borderColor,
     iconColor,
     onClick,
-    ...props 
-}: { 
-    title: string; 
-    value: number | string; 
-    icon: any; 
-    subtext?: React.ReactNode; 
-    className: string;
-    titleColor: string;
-    valueColor: string;
+}: {
+    title: string;
+    value: number | string;
+    icon: any;
+    subtext?: React.ReactNode;
+    borderColor: string;
     iconColor: string;
     onClick?: () => void;
 }) => (
-    <Card className={className} onClick={onClick} {...props}>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className={`text-sm font-medium ${titleColor}`}>
-                {title}
-            </CardTitle>
-            <Icon className={`h-8 w-8 ${iconColor}`} />
-        </CardHeader>
-        <CardContent>
-            <div className={`text-4xl font-bold ${valueColor}`}>
-                {value}
+    <Card
+        className={`border-l-4 ${borderColor} hover:shadow-md transition-shadow ${onClick ? 'cursor-pointer' : ''}`}
+        onClick={onClick}
+    >
+        <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-sm font-medium text-muted-foreground">{title}</p>
+                    <p className="text-2xl font-bold">{value}</p>
+                    {subtext && <div className="mt-1">{subtext}</div>}
+                </div>
+                <Icon className={`h-8 w-8 ${iconColor}`} />
             </div>
-            {subtext && <div className="mt-1">{subtext}</div>}
         </CardContent>
     </Card>
 );
@@ -194,7 +190,7 @@ export default function ManagerDashboard({ dashboardData }: { dashboardData: Das
 
     if (!dashboardData) {
         return (
-            <AppLayout>
+            <AppLayout breadcrumbs={[{ title: 'Manager Dashboard', href: '/manager/dashboard' }]}>
                 <Head title="Manager Dashboard" />
                 <div className="py-12 flex justify-center"><p>No dashboard data available.</p></div>
             </AppLayout>
@@ -223,7 +219,7 @@ export default function ManagerDashboard({ dashboardData }: { dashboardData: Das
     };
 
     return (
-        <AppLayout>
+        <AppLayout breadcrumbs={[{ title: 'Manager Dashboard', href: '/manager/dashboard' }]}>
             <Head title="Manager Dashboard" />
             <div className="py-8">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
@@ -246,47 +242,39 @@ export default function ManagerDashboard({ dashboardData }: { dashboardData: Das
                     </div>
 
                     {/* Stats */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <SummaryCard 
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <SummaryCard
                             title="Upcoming Events"
                             value={summary.upcoming_events}
                             icon={CalendarDays}
-                            className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800 hover:bg-yellow-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer"
-                            titleColor="text-yellow-900 dark:text-yellow-100"
-                            valueColor="text-yellow-900 dark:text-yellow-100"
-                            iconColor="text-yellow-600 dark:text-yellow-400"
+                            borderColor="border-l-yellow-500"
+                            iconColor="text-yellow-500"
                         />
                         <SummaryCard
                             title="Completed Events"
                             value={summary.completed_events}
                             icon={CheckCircle}
-                            className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800 hover:bg-green-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer"
-                            titleColor="text-green-900 dark:text-green-100"
-                            valueColor="text-green-900 dark:text-green-100"
-                            iconColor="text-green-600 dark:text-green-400"
+                            borderColor="border-l-green-500"
+                            iconColor="text-green-500"
                             onClick={() => router.visit('/manager/manage-analytics')}
                         />
-                        <SummaryCard 
+                        <SummaryCard
                             title="Total Members"
                             value={summary.total_members}
                             icon={Users}
-                            className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800 hover:bg-blue-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer"
-                            titleColor="text-blue-900 dark:text-blue-100"
-                            valueColor="text-blue-900 dark:text-blue-100"
-                            iconColor="text-blue-600 dark:text-blue-400"
+                            borderColor="border-l-blue-500"
+                            iconColor="text-blue-500"
                         />
-                        <SummaryCard 
+                        <SummaryCard
                             title="Total Registrations"
                             value={summary.total_registrations}
                             icon={ClipboardList}
-                            className="bg-pink-50 border-pink-200 dark:bg-pink-950 dark:border-pink-800 hover:bg-pink-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer"
-                            titleColor="text-pink-900 dark:text-pink-100"
-                            valueColor="text-pink-900 dark:text-pink-100"
-                            iconColor="text-pink-600 dark:text-pink-400"
+                            borderColor="border-l-purple-500"
+                            iconColor="text-purple-500"
                             subtext={
-                                <span className="text-xs text-pink-700 dark:text-pink-300 font-medium">
+                                <p className="text-xs text-muted-foreground">
                                     {summary.pending_registrations} pending approval
-                                </span>
+                                </p>
                             }
                         />
                     </div>

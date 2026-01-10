@@ -77,10 +77,18 @@ export default function SendAnnouncementsPage({ announcements: initialAnnounceme
   return (
     <AppLayout breadcrumbs={[{ title: "Send Announcement", href: "/send-announcement" }]}>
       <Head title="Send Announcement" />
-      <div className="p-6 flex flex-col gap-6 min-h-[calc(100vh-4rem)]">
-        <div className="flex items-center gap-2">
-          <Megaphone className="h-6 w-6 text-muted-foreground" />
-          <h1 className="text-2xl font-semibold">Send Announcement</h1>
+      <div className="flex flex-col gap-6 p-4 md:p-8 max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Megaphone className="h-8 w-8 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold">Send Announcement</h1>
+            <p className="text-muted-foreground">
+              Broadcast messages to all members via notification and email
+            </p>
+          </div>
         </div>
 
         {/* Form Card */}

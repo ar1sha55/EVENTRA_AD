@@ -197,4 +197,48 @@ class ManageMembersController extends Controller
             'created_at' => $member->created_at,
         ]);
     }
+
+    /**
+     * Bulk delete members
+     */
+    public function bulkDelete(Request $request)
+    {
+        $validated = $request->validate([
+            'member_ids' => ['required', 'array', 'min:1'],
+            'member_ids.*' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        // Only allow deleting members (not managers or admins)
+        $memberIds = $validated['member_ids'];
+        $members = User::whereIn('id', $memberIds)
+            ->where('role', 'member')
+            ->get();
+
+        if ($members->isEmpty()) {
+            return back()->with('error', 'No valid members to delete.');
+        }
+
+        $deletedCount = 0;
+        $deletedNames = [];
+
+        foreach ($members as $member) {
+            // Delete profile picture if exists
+            if ($member->profile_picture && Storage::disk('public')->exists($member->profile_picture)) {
+                Storage::disk('public')->delete($member->profile_picture);
+            }
+
+            // Delete all participant records
+            foreach ($member->participants as $participant) {
+                if ($participant->payment_proof_path && Storage::disk('public')->exists($participant->payment_proof_path)) {
+                    Storage::disk('public')->delete($participant->payment_proof_path);
+                }
+            }
+
+            $deletedNames[] = $member->name;
+            $member->delete();
+            $deletedCount++;
+        }
+
+        return back()->with('success', "{$deletedCount} member(s) deleted successfully!");
+    }
 }

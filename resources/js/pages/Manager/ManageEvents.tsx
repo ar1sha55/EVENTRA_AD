@@ -5,6 +5,8 @@ import EventFormModal from './Partials/EventFormModal';
 import EventViewModal from './Partials/EventViewModal';
 import { type BreadcrumbItem } from "@/types";
 import { toast } from 'sonner';
+import { TablePagination } from '@/components/ui/table-pagination';
+import { usePagination } from '@/hooks/usePagination';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -35,6 +37,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -61,7 +64,11 @@ import {
     ChartBar,
     Send,
     Edit3,
+    RefreshCw,
+    Trash2,
+    X,
 } from 'lucide-react';
+import { TableSkeleton, StatCardsGridSkeleton } from '@/components/ui/loading-skeletons';
 
 interface Participant {
     id: number;
@@ -143,6 +150,7 @@ export default function ManageEvents({ events }: ManageEventsProps) {
     const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
     const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published' | 'archived'>('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [isPageLoading, setIsPageLoading] = useState(false);
 
     // Default sort: Start Date, Descending (Newest first)
     const [sortField, setSortField] = useState<SortField>('start_date');
@@ -151,6 +159,23 @@ export default function ManageEvents({ events }: ManageEventsProps) {
     // Telegram blast dialog state
     const [showBlastDialog, setShowBlastDialog] = useState(false);
     const [publishedEventId, setPublishedEventId] = useState<number | null>(null);
+
+    // Bulk actions state
+    const [selectedEventIds, setSelectedEventIds] = useState<number[]>([]);
+
+    // Track page loading state for skeleton display during navigation
+    useEffect(() => {
+        const handleStart = () => setIsPageLoading(true);
+        const handleFinish = () => setIsPageLoading(false);
+
+        router.on('start', handleStart);
+        router.on('finish', handleFinish);
+
+        return () => {
+            router.on('start', handleStart);
+            router.on('finish', handleFinish);
+        };
+    }, []);
 
     // Handle opening view modal from notification
     useEffect(() => {
@@ -173,9 +198,7 @@ export default function ManageEvents({ events }: ManageEventsProps) {
 
         // Show success toast
         if (flash?.success) {
-            toast.success(flash.success, {
-                duration: 5000,
-            });
+            toast.success(flash.success);
         }
 
         // Show blast dialog if event was published
@@ -239,6 +262,53 @@ export default function ManageEvents({ events }: ManageEventsProps) {
         } else {
             setSortField(field);
             setSortDirection('asc');
+        }
+    };
+
+    // Bulk action handlers
+    const toggleSelectAll = () => {
+        if (selectedEventIds.length === paginatedEvents.length) {
+            setSelectedEventIds([]);
+        } else {
+            setSelectedEventIds(paginatedEvents.map(e => e.id));
+        }
+    };
+
+    const toggleSelectEvent = (eventId: number) => {
+        setSelectedEventIds(prev =>
+            prev.includes(eventId)
+                ? prev.filter(id => id !== eventId)
+                : [...prev, eventId]
+        );
+    };
+
+    const handleBulkStatusChange = (newStatus: 'draft' | 'published' | 'archived') => {
+        if (selectedEventIds.length === 0) return;
+
+        router.put('/events/bulk/status', {
+            event_ids: selectedEventIds,
+            status: newStatus,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setSelectedEventIds([]);
+                toast.success(`${selectedEventIds.length} event(s) updated to ${newStatus}`);
+            },
+        });
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedEventIds.length === 0) return;
+
+        if (confirm(`Are you sure you want to delete ${selectedEventIds.length} event(s)? This action cannot be undone.`)) {
+            router.delete('/events/bulk/delete', {
+                data: { event_ids: selectedEventIds },
+                preserveScroll: true,
+                onSuccess: () => {
+                    setSelectedEventIds([]);
+                    toast.success(`${selectedEventIds.length} event(s) deleted`);
+                },
+            });
         }
     };
 
@@ -330,6 +400,25 @@ export default function ManageEvents({ events }: ManageEventsProps) {
         return filtered;
     }, [events, statusFilter, searchQuery, sortField, sortDirection]);
 
+    // Pagination using the usePagination hook
+    const {
+        paginatedData: paginatedEvents,
+        currentPage,
+        totalPages,
+        itemsPerPage,
+        setPage,
+        setItemsPerPage,
+        resetPage,
+        showingFrom,
+        showingTo,
+        totalItems,
+    } = usePagination({ data: filteredAndSortedEvents, initialItemsPerPage: 25 });
+
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        resetPage();
+    }, [searchQuery, statusFilter, sortField, sortDirection, resetPage]);
+
     const getParticipantStats = (event: Event) => {
         if (!event.participants) return { approved: 0, pending: 0, total: 0 };
         const approved = event.participants.filter(p => p.status === 'approved').length;
@@ -347,9 +436,14 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                 <div className="max-w-7xl mx-auto space-y-6">
                     {/* Header with Create Button */}
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight">Manage Events</h1>
-                            <p className="text-muted-foreground mt-1">Create and manage your volunteering events</p>
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-lg">
+                                <Calendar className="h-8 w-8 text-primary" />
+                            </div>
+                            <div>
+                                <h1 className="text-3xl font-bold">Manage Events</h1>
+                                <p className="text-muted-foreground">Create and manage your volunteering events</p>
+                            </div>
                         </div>
                         <div className="flex gap-3">
                             <Button
@@ -369,55 +463,63 @@ export default function ManageEvents({ events }: ManageEventsProps) {
 
                     {/* Statistics Cards */}
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Total Events</CardTitle>
-                                <Calendar className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{statistics.total}</div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    {statistics.upcoming} upcoming
-                                </p>
+                        <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-muted-foreground">Total Events</p>
+                                        <p className="text-2xl font-bold">{statistics.total}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            {statistics.upcoming} upcoming
+                                        </p>
+                                    </div>
+                                    <Calendar className="h-8 w-8 text-blue-500" />
+                                </div>
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Total Participants</CardTitle>
-                                <Users className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{statistics.participants}</div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Approved members
-                                </p>
+                        <Card className="border-l-4 border-l-green-500 hover:shadow-md transition-shadow">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-muted-foreground">Total Participants</p>
+                                        <p className="text-2xl font-bold">{statistics.participants}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Approved members
+                                        </p>
+                                    </div>
+                                    <Users className="h-8 w-8 text-green-500" />
+                                </div>
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                                <DollarSign className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">RM {statistics.revenue.toFixed(2)}</div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    From paid events
-                                </p>
+                        <Card className="border-l-4 border-l-yellow-500 hover:shadow-md transition-shadow">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
+                                        <p className="text-2xl font-bold">RM {statistics.revenue.toFixed(2)}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            From paid events
+                                        </p>
+                                    </div>
+                                    <DollarSign className="h-8 w-8 text-yellow-500" />
+                                </div>
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Published</CardTitle>
-                                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{statistics.published}</div>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    {statistics.draft} drafts, {statistics.archived} archived
-                                </p>
+                        <Card className="border-l-4 border-l-purple-500 hover:shadow-md transition-shadow">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-muted-foreground">Published</p>
+                                        <p className="text-2xl font-bold">{statistics.published}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            {statistics.draft} drafts, {statistics.archived} archived
+                                        </p>
+                                    </div>
+                                    <CheckCircle className="h-8 w-8 text-purple-500" />
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
@@ -517,13 +619,75 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                         </CardContent>
                     </Card>
 
+                    {/* Bulk Actions Toolbar */}
+                    {selectedEventIds.length > 0 && (
+                        <Card className="border-primary/50 bg-primary/5">
+                            <CardContent className="py-4">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <Badge variant="default" className="text-sm px-3 py-1">
+                                            {selectedEventIds.length} selected
+                                        </Badge>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setSelectedEventIds([])}
+                                            className="h-8 gap-1"
+                                        >
+                                            <X className="h-3 w-3" />
+                                            Clear selection
+                                        </Button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleBulkStatusChange('published')}
+                                            className="gap-1"
+                                        >
+                                            <CheckCircle className="h-3 w-3" />
+                                            Publish
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleBulkStatusChange('draft')}
+                                            className="gap-1"
+                                        >
+                                            <Clock className="h-3 w-3" />
+                                            Set as Draft
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleBulkStatusChange('archived')}
+                                            className="gap-1"
+                                        >
+                                            <Archive className="h-3 w-3" />
+                                            Archive
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleBulkDelete}
+                                            className="gap-1 text-red-600 hover:text-red-600 hover:bg-red-50"
+                                        >
+                                            <Trash2 className="h-3 w-3" />
+                                            Delete
+                                        </Button>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     {/* Events Table */}
                     <Card>
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
                                 <Table>
                                     <TableCaption className="py-4">
-                                        {filteredAndSortedEvents.length === 0 ? (
+                                        {paginatedEvents.length === 0 ? (
                                             <div className="py-8">
                                                 <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                                                 <p className="text-muted-foreground text-lg">
@@ -538,12 +702,17 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                                     </Button>
                                                 )}
                                             </div>
-                                        ) : (
-                                            `Showing ${filteredAndSortedEvents.length} of ${statistics.total} events`
-                                        )}
+                                        ) : null}
                                     </TableCaption>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead className="w-12">
+                                                <Checkbox
+                                                    checked={selectedEventIds.length === paginatedEvents.length && paginatedEvents.length > 0}
+                                                    onCheckedChange={toggleSelectAll}
+                                                    aria-label="Select all events"
+                                                />
+                                            </TableHead>
                                             <TableHead>Poster</TableHead>
                                             <TableHead>
                                                 <SortButton field="name" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
@@ -576,13 +745,21 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {filteredAndSortedEvents.map((event) => {
+                                        {paginatedEvents.map((event) => {
                                             const participantStats = getParticipantStats(event);
                                             const isPastEvent = new Date(event.end_date) < new Date();
                                             const isUpcoming = new Date(event.start_date) > new Date();
 
                                             return (
                                                 <TableRow key={event.id} className={isPastEvent ? 'opacity-60' : ''}>
+                                                    <TableCell>
+                                                        <Checkbox
+                                                            checked={selectedEventIds.includes(event.id)}
+                                                            onCheckedChange={() => toggleSelectEvent(event.id)}
+                                                            aria-label={`Select ${event.name}`}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        />
+                                                    </TableCell>
                                                     <TableCell>
                                                         {event.image_path ? (
                                                             <div
@@ -750,6 +927,20 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                     </TableBody>
                                 </Table>
                             </div>
+
+                            {/* Pagination controls */}
+                            {filteredAndSortedEvents.length > 0 && (
+                                <TablePagination
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    totalItems={totalItems}
+                                    itemsPerPage={itemsPerPage}
+                                    showingFrom={showingFrom}
+                                    showingTo={showingTo}
+                                    onPageChange={setPage}
+                                    onItemsPerPageChange={setItemsPerPage}
+                                />
+                            )}
                         </CardContent>
                     </Card>
                 </div>

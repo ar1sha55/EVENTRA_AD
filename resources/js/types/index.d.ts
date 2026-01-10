@@ -28,6 +28,7 @@ export interface MainNavItem {
     icon?: LucideIcon | null;
     isActive?: boolean;
     subItems?: SubItems[];
+    badge?: number;
 }
 
 export interface SubItems{
@@ -35,6 +36,7 @@ export interface SubItems{
     href:string;
     icon?: LucideIcon | null;
     isActive?: boolean;
+    badge?: number;
 }
 
 export interface SharedData {

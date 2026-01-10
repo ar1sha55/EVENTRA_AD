@@ -38,9 +38,19 @@ import {
   CheckCircle2,
   XCircle,
   User as UserIcon,
+  Info,
+  GraduationCap,
+  Lock,
+  CheckSquare,
+  Square,
+  MoreHorizontal,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TablePagination } from "@/components/ui/table-pagination";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { usePagination } from "@/hooks/usePagination";
 import {
   Select,
   SelectContent,
@@ -49,6 +59,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import InputError from "@/components/input-error";
 
 const breadcrumbs: BreadcrumbItem[] = [
   {
@@ -94,7 +106,11 @@ export default function ManageMembersPage({ members = [] }: Props) {
   const { flash } = usePage<{ flash: { success?: string; error?: string } }>().props;
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("name-asc");
+
+  // Sorting state
+  type SortField = 'name' | 'email' | 'matric_id' | 'faculty' | 'created_at';
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const [form, setForm] = useState<FormState>({
     name: "",
@@ -127,9 +143,56 @@ export default function ManageMembersPage({ members = [] }: Props) {
     message: "",
   });
 
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [showErrorDialog, setShowErrorDialog] = useState(false);
-  const [dialogMessage, setDialogMessage] = useState("");
+  // Bulk selection state
+  const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+
+  // Form errors state - Laravel returns errors as arrays, so we handle both string and string[]
+  const [errors, setErrors] = useState<Record<string, string | string[]>>({});
+
+  // Helper function to get error message (handles both string and array)
+  const getErrorMessage = (field: string): string | undefined => {
+    const error = errors[field];
+    if (!error) return undefined;
+    if (Array.isArray(error)) {
+      return error[0]; // Return first error message
+    }
+    return error;
+  };
+
+  // Helper function to clear a specific error field
+  const clearError = (field: string) => {
+    if (errors[field]) {
+      const { [field]: removed, ...restErrors } = errors;
+      setErrors(restErrors);
+    }
+  };
+
+  // Phone number validation function
+  const validatePhoneNumber = (phone: string): string | undefined => {
+    if (!phone || phone.trim() === '') {
+      return undefined; // Phone number is optional
+    }
+
+    // Remove common formatting characters (spaces, dashes, parentheses, plus sign)
+    const cleaned = phone.replace(/[\s\-\(\)\+]/g, '');
+    
+    // Check if it contains only digits
+    if (!/^\d+$/.test(cleaned)) {
+      return 'Phone number must contain only digits and common formatting characters (+, -, spaces)';
+    }
+
+    // Check length (10-13 digits after cleaning)
+    if (cleaned.length < 10 || cleaned.length > 13) {
+      return 'Phone number must be between 10 and 13 digits';
+    }
+
+    return undefined; // Valid
+  };
+
+  // Client-side validation errors state
+  const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
 
   // Filter and sort members using useMemo (client-side - instant and responsive)
   const filteredMembers = useMemo(() => {
@@ -145,33 +208,72 @@ export default function ManageMembersPage({ members = [] }: Props) {
       );
     }
 
-    // Apply sorting
+    // Dynamic sorting based on sortField and sortDirection
     filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "name-asc":
-          return a.name.localeCompare(b.name);
-        case "name-desc":
-          return b.name.localeCompare(a.name);
-        case "date-newest":
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case "date-oldest":
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        default:
-          return 0;
+      let aValue: string | number = '';
+      let bValue: string | number = '';
+
+      switch (sortField) {
+        case 'name':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'email':
+          aValue = a.email.toLowerCase();
+          bValue = b.email.toLowerCase();
+          break;
+        case 'matric_id':
+          aValue = a.matric_id.toLowerCase();
+          bValue = b.matric_id.toLowerCase();
+          break;
+        case 'faculty':
+          aValue = (a.faculty || '').toLowerCase();
+          bValue = (b.faculty || '').toLowerCase();
+          break;
+        case 'created_at':
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
+          break;
       }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
     });
 
     return filtered;
-  }, [members, searchQuery, sortBy]);
+  }, [members, searchQuery, sortField, sortDirection]);
 
-  // Handle flash messages
+  // Pagination using the usePagination hook
+  const {
+    paginatedData: paginatedMembers,
+    currentPage,
+    totalPages,
+    itemsPerPage,
+    setPage,
+    setItemsPerPage,
+    resetPage,
+    showingFrom,
+    showingTo,
+    totalItems,
+  } = usePagination({ data: filteredMembers, initialItemsPerPage: 25 });
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    resetPage();
+  }, [searchQuery, sortField, sortDirection, resetPage]);
+
+  // Clear selection when filters change (but not when page changes)
+  useEffect(() => {
+    setSelectedMembers([]);
+  }, [searchQuery]);
+
+  // Handle flash messages with toast
   useEffect(() => {
     if (flash?.success) {
-      setDialogMessage(flash.success);
-      setShowSuccessDialog(true);
+      toast.success(flash.success);
     } else if (flash?.error) {
-      setDialogMessage(flash.error);
-      setShowErrorDialog(true);
+      toast.error(flash.error);
     }
   }, [flash]);
 
@@ -192,10 +294,36 @@ export default function ManageMembersPage({ members = [] }: Props) {
     setEditingMember(null);
     setIsAdding(false);
     setPreview(null);
+    setErrors({}); // Clear errors when resetting form
+    setClientErrors({}); // Clear client-side validation errors
+  };
+
+  // Handle column sorting
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if clicking the same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field with ascending as default
+      setSortField(field);
+      setSortDirection('asc');
+    }
   };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+
+    // Clear previous errors
+    setErrors({});
+    setClientErrors({});
+
+    // Validate phone number client-side
+    const phoneError = validatePhoneNumber(form.phone_number);
+    if (phoneError) {
+      setClientErrors({ phone_number: phoneError });
+      toast.error('Please fix the validation errors before submitting.');
+      return;
+    }
 
     const postData = {
         ...form,
@@ -207,12 +335,28 @@ export default function ManageMembersPage({ members = [] }: Props) {
         ...postData,
       }, {
         preserveScroll: true,
-        onSuccess: () => resetForm(),
+        onSuccess: () => {
+          toast.success('Member updated successfully!');
+          resetForm();
+        },
+        onError: (pageErrors) => {
+          // Capture validation errors from backend
+          setErrors(pageErrors || {});
+          toast.error('Failed to update member. Please check the form for errors.');
+        },
       });
     } else {
       router.post('/manager/members', postData, {
         preserveScroll: true,
-        onSuccess: () => resetForm(),
+        onSuccess: () => {
+          toast.success('Member added successfully!');
+          resetForm();
+        },
+        onError: (pageErrors) => {
+          // Capture validation errors from backend
+          setErrors(pageErrors || {});
+          toast.error('Failed to add member. Please check the form for errors.');
+        },
       });
     }
   };
@@ -254,7 +398,14 @@ export default function ManageMembersPage({ members = [] }: Props) {
     if (deletingMember) {
       router.delete(`/manager/members/${deletingMember.id}`, {
         preserveScroll: true,
-        onSuccess: () => setDeletingMember(null),
+        onSuccess: () => {
+          toast.success('Member deleted successfully!');
+          setDeletingMember(null);
+        },
+        onError: () => {
+          toast.error('Failed to delete member.');
+          setDeletingMember(null);
+        },
       });
     }
   };
@@ -287,6 +438,7 @@ export default function ManageMembersPage({ members = [] }: Props) {
     e.preventDefault();
 
     if (!emailForm.subject || !emailForm.message) {
+      toast.error('Please fill in all email fields.');
       return;
     }
 
@@ -300,7 +452,13 @@ export default function ManageMembersPage({ members = [] }: Props) {
       },
       {
         preserveScroll: true,
-        onSuccess: () => handleCloseEmailDialog(),
+        onSuccess: () => {
+          toast.success('Email sent successfully!');
+          handleCloseEmailDialog();
+        },
+        onError: () => {
+          toast.error('Failed to send email.');
+        },
       }
     );
   };
@@ -313,6 +471,67 @@ export default function ManageMembersPage({ members = [] }: Props) {
     });
   };
 
+  // Bulk selection handlers - works on CURRENT PAGE only (standard behavior)
+  const handleSelectAll = () => {
+    const currentPageMemberIds = paginatedMembers.map(m => m.id);
+    const allCurrentPageSelected = currentPageMemberIds.every(id => selectedMembers.includes(id));
+
+    if (allCurrentPageSelected) {
+      // Deselect all members on current page
+      setSelectedMembers(prev => prev.filter(id => !currentPageMemberIds.includes(id)));
+    } else {
+      // Select all members on current page (add to existing selection)
+      setSelectedMembers(prev => [...new Set([...prev, ...currentPageMemberIds])]);
+    }
+  };
+
+  const handleSelectMember = (memberId: number) => {
+    setSelectedMembers(prev =>
+      prev.includes(memberId)
+        ? prev.filter(id => id !== memberId)
+        : [...prev, memberId]
+    );
+  };
+
+  // Check if all members on CURRENT PAGE are selected
+  const isAllCurrentPageSelected = paginatedMembers.length > 0 &&
+    paginatedMembers.every(m => selectedMembers.includes(m.id));
+
+  // Check if some (but not all) members on current page are selected
+  const isSomeCurrentPageSelected = paginatedMembers.some(m => selectedMembers.includes(m.id)) &&
+    !isAllCurrentPageSelected;
+
+  const handleBulkDelete = () => {
+    if (selectedMembers.length === 0) {
+      toast.error("Please select at least one member to delete.");
+      return;
+    }
+    setShowBulkDeleteDialog(true);
+  };
+
+  const confirmBulkDelete = () => {
+    setIsBulkProcessing(true);
+    router.post('/manager/members/bulk-delete', {
+      member_ids: selectedMembers,
+    }, {
+      preserveScroll: true,
+      onSuccess: () => {
+        toast.success(`${selectedMembers.length} member(s) deleted successfully!`);
+        setSelectedMembers([]);
+        setShowBulkDeleteDialog(false);
+        setIsBulkProcessing(false);
+      },
+      onError: () => {
+        toast.error('Failed to delete members.');
+        setIsBulkProcessing(false);
+      }
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedMembers([]);
+  };
+
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Manage Members" />
@@ -320,14 +539,16 @@ export default function ManageMembersPage({ members = [] }: Props) {
       <div className="flex flex-col gap-6 p-4 md:p-8 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
               <Users className="h-8 w-8 text-primary" />
-              Manage Members
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              View and manage all registered members
-            </p>
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold">Manage Members</h1>
+              <p className="text-muted-foreground">
+                View and manage all registered members
+              </p>
+            </div>
           </div>
           <Button
             type="button"
@@ -351,59 +572,92 @@ export default function ManageMembersPage({ members = [] }: Props) {
           </Button>
         </div>
 
-        {/* Add/Edit Member Form */}
-        {isAdding && (
-          <Card className="border-2 border-dashed border-primary/50">
-            <CardHeader>
-              <CardTitle className="text-2xl">
+        {/* Add/Edit Member Form Modal */}
+        <Dialog open={isAdding} onOpenChange={(open) => !open && resetForm()}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">
                 {editingMember ? "Edit Member" : "Add New Member"}
-              </CardTitle>
-              <CardDescription>
+              </DialogTitle>
+              <DialogDescription>
                 {editingMember
                   ? "Update the member information below."
                   : "Fill in the details to add a new member."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-6 mt-4">
                  {/* Profile Picture */}
-                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Profile Picture</h3>
-                  <div className="flex items-center gap-6">
-                      <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                 <div className="space-y-4 pb-6">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <UserIcon className="h-5 w-5 text-primary" />
+                    Profile Picture
+                  </h3>
+                  <div className="flex items-start gap-6">
+                      <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center overflow-hidden border-4 border-background shadow-lg">
                           {preview ? (
                               <img src={preview} alt="Profile preview" className="w-full h-full object-cover" />
                           ) : (
-                              <UserIcon className="w-12 h-12 text-muted-foreground" />
+                              <UserIcon className="w-16 h-16 text-muted-foreground" />
                           )}
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2 flex-1">
                           <Label htmlFor="profile_picture">Upload Image</Label>
-                          <Input
+                          <div className="flex items-center gap-3">
+                            <label htmlFor="profile_picture" className="cursor-pointer inline-flex items-center justify-center h-8 px-6 rounded-md text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                              Choose File
+                            </label>
+                            <Input
                               id="profile_picture"
                               type="file"
-                              onChange={handleFileChange}
+                              onChange={(e) => {
+                                handleFileChange(e);
+                                clearError('profile_picture');
+                              }}
                               accept="image/*"
-                              className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                          />
-                          <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 2MB.</p>
+                              className="hidden"
+                              aria-invalid={!!errors.profile_picture}
+                            />
+                            <span className={`text-sm flex-1 ${errors.profile_picture ? 'text-destructive' : 'text-muted-foreground'}`}>
+                              {form.profile_picture ? form.profile_picture.name : preview && editingMember ? 'Current image' : 'No file chosen'}
+                            </span>
+                          </div>
+                          <InputError message={getErrorMessage('profile_picture')} className="mt-1" />
+                          <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 2MB. Recommended: Square image for best results.</p>
                       </div>
                   </div>
                 </div>
 
                 {/* Basic Information */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Basic Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4 pb-6 border-t pt-6">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Info className="h-5 w-5 text-primary" />
+                    Basic Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">Full Name *</Label>
                       <Input
                         id="name"
                         value={form.name}
-                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        onChange={(e) => {
+                          setForm({ ...form, name: e.target.value });
+                          clearError('name');
+                        }}
+                        onFocus={(e) => {
+                          // Move cursor to end instead of selecting all text
+                          const input = e.target;
+                          const length = input.value.length;
+                          setTimeout(() => {
+                            input.setSelectionRange(length, length);
+                          }, 0);
+                        }}
                         placeholder="Enter full name"
                         required
+                        autoFocus={false}
+                        aria-invalid={!!errors.name}
+                        className={errors.name ? 'border-destructive' : ''}
                       />
+                      <InputError message={getErrorMessage('name')} className="mt-1" />
                     </div>
 
                     <div className="space-y-2">
@@ -411,49 +665,31 @@ export default function ManageMembersPage({ members = [] }: Props) {
                       <Input
                         id="matric_id"
                         value={form.matric_id}
-                        onChange={(e) => setForm({ ...form, matric_id: e.target.value })}
+                        onChange={(e) => {
+                          setForm({ ...form, matric_id: e.target.value });
+                          clearError('matric_id');
+                        }}
                         placeholder="e.g., A23CS0135"
                         required
+                        aria-invalid={!!errors.matric_id}
+                        className={errors.matric_id ? 'border-destructive' : ''}
                       />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Primary Email (UTM) *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={form.email}
-                        onChange={(e) => setForm({ ...form, email: e.target.value })}
-                        placeholder="name@graduate.utm.my"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="secondary_email">Secondary Email</Label>
-                      <Input
-                        id="secondary_email"
-                        type="email"
-                        value={form.secondary_email}
-                        onChange={(e) => setForm({ ...form, secondary_email: e.target.value })}
-                        placeholder="personal@email.com"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="phone_number">Phone Number</Label>
-                      <Input
-                        id="phone_number"
-                        value={form.phone_number}
-                        onChange={(e) => setForm({ ...form, phone_number: e.target.value })}
-                        placeholder="+60123456789"
-                      />
+                      <InputError message={getErrorMessage('matric_id')} className="mt-1" />
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="gender">Gender</Label>
-                      <Select value={form.gender} onValueChange={(value) => setForm({ ...form, gender: value })}>
-                        <SelectTrigger>
+                      <Select 
+                        value={form.gender} 
+                        onValueChange={(value) => {
+                          setForm({ ...form, gender: value });
+                          clearError('gender');
+                        }}
+                      >
+                        <SelectTrigger 
+                          className={errors.gender ? 'border-destructive' : ''}
+                          aria-invalid={!!errors.gender}
+                        >
                           <SelectValue placeholder="Select gender" />
                         </SelectTrigger>
                         <SelectContent>
@@ -461,19 +697,107 @@ export default function ManageMembersPage({ members = [] }: Props) {
                           <SelectItem value="female">Female</SelectItem>
                         </SelectContent>
                       </Select>
+                      <InputError message={getErrorMessage('gender')} className="mt-1" />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="email">Primary Email (UTM) *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={form.email}
+                        onChange={(e) => {
+                          setForm({ ...form, email: e.target.value });
+                          clearError('email');
+                        }}
+                        placeholder="name@graduate.utm.my"
+                        required
+                        aria-invalid={!!errors.email}
+                        className={errors.email ? 'border-destructive' : ''}
+                      />
+                      <InputError message={getErrorMessage('email')} className="mt-1" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phone_number">Phone Number</Label>
+                      <Input
+                        id="phone_number"
+                        type="tel"
+                        value={form.phone_number}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setForm({ ...form, phone_number: value });
+                          clearError('phone_number');
+                          // Clear client-side error when user starts typing
+                          if (clientErrors.phone_number) {
+                            setClientErrors({ ...clientErrors, phone_number: '' });
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Validate on blur
+                          const phoneError = validatePhoneNumber(e.target.value);
+                          if (phoneError) {
+                            setClientErrors({ ...clientErrors, phone_number: phoneError });
+                          } else {
+                            const { phone_number, ...rest } = clientErrors;
+                            setClientErrors(rest);
+                          }
+                        }}
+                        placeholder="e.g. 0123456789"
+                        aria-invalid={!!(errors.phone_number || clientErrors.phone_number)}
+                        className={(errors.phone_number || clientErrors.phone_number) ? 'border-destructive' : ''}
+                      />
+                      <InputError 
+                        message={getErrorMessage('phone_number') || clientErrors.phone_number} 
+                        className="mt-1" 
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Optional: 10-13 digits
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 md:col-span-3">
+                      <Label htmlFor="secondary_email">Secondary Email</Label>
+                      <Input
+                        id="secondary_email"
+                        type="email"
+                        value={form.secondary_email}
+                        onChange={(e) => {
+                          setForm({ ...form, secondary_email: e.target.value });
+                          clearError('secondary_email');
+                        }}
+                        placeholder="personal@email.com"
+                        aria-invalid={!!errors.secondary_email}
+                        className={errors.secondary_email ? 'border-destructive' : ''}
+                      />
+                      <InputError message={getErrorMessage('secondary_email')} className="mt-1" />
                     </div>
                   </div>
                 </div>
 
                 {/* Academic Information */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Academic Information</h3>
+                <div className="space-y-4 pb-6 border-t pt-6">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <GraduationCap className="h-5 w-5 text-primary" />
+                    Academic Information
+                  </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="faculty">Faculty</Label>
-                      <Select value={form.faculty} onValueChange={(value) => setForm({ ...form, faculty: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select faculty" />
+                      <Select 
+                        value={form.faculty} 
+                        onValueChange={(value) => {
+                          setForm({ ...form, faculty: value });
+                          clearError('faculty');
+                        }}
+                      >
+                        <SelectTrigger 
+                          className={errors.faculty ? 'border-destructive' : ''}
+                          aria-invalid={!!errors.faculty}
+                        >
+                          <SelectValue placeholder="Select faculty">
+                            {form.faculty && form.faculty.toUpperCase()}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="fke">FKE - Electrical Engineering</SelectItem>
@@ -487,12 +811,22 @@ export default function ManageMembersPage({ members = [] }: Props) {
                           <SelectItem value="fssh">FSSH - Social Sciences</SelectItem>
                         </SelectContent>
                       </Select>
+                      <InputError message={getErrorMessage('faculty')} className="mt-1" />
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="nationality">Nationality</Label>
-                      <Select value={form.nationality} onValueChange={(value) => setForm({ ...form, nationality: value })}>
-                        <SelectTrigger>
+                      <Select 
+                        value={form.nationality} 
+                        onValueChange={(value) => {
+                          setForm({ ...form, nationality: value });
+                          clearError('nationality');
+                        }}
+                      >
+                        <SelectTrigger 
+                          className={errors.nationality ? 'border-destructive' : ''}
+                          aria-invalid={!!errors.nationality}
+                        >
                           <SelectValue placeholder="Select nationality" />
                         </SelectTrigger>
                         <SelectContent>
@@ -512,26 +846,34 @@ export default function ManageMembersPage({ members = [] }: Props) {
                           <SelectItem value="iran">Iran</SelectItem>
                         </SelectContent>
                       </Select>
+                      <InputError message={getErrorMessage('nationality')} className="mt-1" />
                     </div>
                   </div>
                 </div>
 
                 {/* Password */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">
+                <div className="space-y-4 pb-6 border-t pt-6">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Lock className="h-5 w-5 text-primary" />
                     {editingMember ? "Change Password (Optional)" : "Password *"}
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
                     <div className="space-y-2">
                       <Label htmlFor="password">Password {!editingMember && "*"}</Label>
                       <Input
                         id="password"
                         type="password"
                         value={form.password}
-                        onChange={(e) => setForm({ ...form, password: e.target.value })}
+                        onChange={(e) => {
+                          setForm({ ...form, password: e.target.value });
+                          clearError('password');
+                        }}
                         placeholder="Enter password"
                         required={!editingMember}
+                        aria-invalid={!!errors.password}
+                        className={errors.password ? 'border-destructive' : ''}
                       />
+                      <InputError message={getErrorMessage('password')} className="mt-1" />
                     </div>
 
                     <div className="space-y-2">
@@ -540,26 +882,35 @@ export default function ManageMembersPage({ members = [] }: Props) {
                         id="password_confirmation"
                         type="password"
                         value={form.password_confirmation}
-                        onChange={(e) => setForm({ ...form, password_confirmation: e.target.value })}
+                        onChange={(e) => {
+                          setForm({ ...form, password_confirmation: e.target.value });
+                          clearError('password_confirmation');
+                        }}
                         placeholder="Confirm password"
                         required={!editingMember}
+                        aria-invalid={!!errors.password_confirmation}
+                        className={errors.password_confirmation ? 'border-destructive' : ''}
                       />
+                      <InputError message={getErrorMessage('password_confirmation')} className="mt-1" />
                     </div>
                   </div>
+                  {editingMember && (
+                    <p className="text-xs text-muted-foreground">Leave blank to keep current password</p>
+                  )}
                 </div>
 
-                <div className="flex justify-end gap-3">
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">
-                    {editingMember ? "Update Member" : "Add Member"}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        )}
+              <div className="flex justify-end gap-3 pt-6 mt-6 border-t">
+                <Button type="button" variant="outline" onClick={resetForm} size="lg">
+                  Cancel
+                </Button>
+                <Button type="submit" className="bg-orange-600 hover:bg-orange-700" size="lg">
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  {editingMember ? "Update Member" : "Add Member"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* Members List */}
         <Card>
@@ -592,21 +943,6 @@ export default function ManageMembersPage({ members = [] }: Props) {
                         />
                       </div>
                     </div>
-
-                    {/* Sort Select */}
-                    <div className="w-full sm:w-48">
-                      <Select value={sortBy} onValueChange={setSortBy}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sort by" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="name-asc">Name (A-Z)</SelectItem>
-                          <SelectItem value="name-desc">Name (Z-A)</SelectItem>
-                          <SelectItem value="date-newest">Newest First</SelectItem>
-                          <SelectItem value="date-oldest">Oldest First</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
 
                   {/* Active Filters Display */}
@@ -634,6 +970,81 @@ export default function ManageMembersPage({ members = [] }: Props) {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Select All Pages Banner */}
+              {isAllCurrentPageSelected && selectedMembers.length < filteredMembers.length && (
+                <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+                  <CardContent className="py-2.5">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                        <span className="text-sm text-blue-900 dark:text-blue-100">
+                          All <strong>{paginatedMembers.length}</strong> members on this page are selected.
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedMembers(filteredMembers.map(m => m.id))}
+                        className="bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-200 h-8"
+                      >
+                        Select all {filteredMembers.length} members
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Bulk Action Bar */}
+              {selectedMembers.length > 0 && (
+                <Card className="bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800">
+                  <CardContent className="py-3">
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      {/* Left: Selection Info */}
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <CheckSquare className="h-5 w-5 text-orange-600 flex-shrink-0" />
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium text-orange-900 dark:text-orange-100 text-sm">
+                            {selectedMembers.length === filteredMembers.length ? (
+                              `All ${selectedMembers.length} filtered member${selectedMembers.length > 1 ? 's' : ''} selected`
+                            ) : selectedMembers.length > paginatedMembers.length ? (
+                              `${selectedMembers.length} member${selectedMembers.length > 1 ? 's' : ''} selected across pages`
+                            ) : (
+                              `${selectedMembers.length} member${selectedMembers.length > 1 ? 's' : ''} selected`
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Right: Actions */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={clearSelection}
+                          className="text-orange-700 hover:text-orange-900 hover:bg-orange-100 dark:hover:bg-orange-900 dark:text-orange-200"
+                        >
+                          Clear
+                        </Button>
+
+                        {/* Separator */}
+                        <div className="h-6 w-px bg-orange-200 dark:bg-orange-700" />
+
+                        {/* Primary Action: Delete */}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleBulkDelete}
+                          className="gap-2"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete ({selectedMembers.length})
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -652,18 +1063,78 @@ export default function ManageMembersPage({ members = [] }: Props) {
                 <table className="w-full text-sm">
                   <thead className="bg-muted">
                     <tr>
+                      <th className="px-4 py-3 text-left font-semibold w-10">
+                        <Checkbox
+                          checked={isAllCurrentPageSelected}
+                          onCheckedChange={handleSelectAll}
+                          className="data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600"
+                          aria-label="Select all members on current page"
+                        />
+                      </th>
                       <th className="px-4 py-3 text-left font-semibold w-12">Profile</th>
-                      <th className="px-4 py-3 text-left font-semibold">Name</th>
-                      <th className="px-4 py-3 text-left font-semibold">Email</th>
-                      <th className="px-4 py-3 text-left font-semibold">Matric ID</th>
-                      <th className="px-4 py-3 text-left font-semibold">Faculty</th>
-                      <th className="px-4 py-3 text-center font-semibold">Date Joined</th>
+                      <SortableTableHead
+                        field="name"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                        className="text-left"
+                      >
+                        Name
+                      </SortableTableHead>
+                      <SortableTableHead
+                        field="email"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                        className="text-left"
+                      >
+                        Email
+                      </SortableTableHead>
+                      <SortableTableHead
+                        field="matric_id"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                        className="text-left"
+                      >
+                        Matric ID
+                      </SortableTableHead>
+                      <SortableTableHead
+                        field="faculty"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                        className="text-left"
+                      >
+                        Faculty
+                      </SortableTableHead>
+                      <SortableTableHead
+                        field="created_at"
+                        currentSortField={sortField}
+                        currentSortDirection={sortDirection}
+                        onSort={handleSort}
+                        className="text-center"
+                      >
+                        Date Joined
+                      </SortableTableHead>
                       <th className="px-4 py-3 text-center font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredMembers.map((member) => (
-                      <tr key={member.id} className="border-b hover:bg-muted/50 transition-colors">
+                    {paginatedMembers.map((member) => (
+                      <tr
+                        key={member.id}
+                        className={`border-b hover:bg-muted/50 transition-colors ${
+                          selectedMembers.includes(member.id) ? 'bg-orange-50 dark:bg-orange-950/20' : ''
+                        }`}
+                      >
+                        <td className="px-4 py-2">
+                          <Checkbox
+                            checked={selectedMembers.includes(member.id)}
+                            onCheckedChange={() => handleSelectMember(member.id)}
+                            className="data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600"
+                          />
+                        </td>
                         <td className="px-4 py-2">
                             <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
                                 {member.profile_picture ? (
@@ -721,6 +1192,20 @@ export default function ManageMembersPage({ members = [] }: Props) {
                     ))}
                   </tbody>
                 </table>
+
+                {/* Pagination controls */}
+                {filteredMembers.length > 0 && (
+                  <TablePagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                    showingFrom={showingFrom}
+                    showingTo={showingTo}
+                    onPageChange={setPage}
+                    onItemsPerPageChange={setItemsPerPage}
+                  />
+                )}
               </div>
             )}
           </CardContent>
@@ -876,45 +1361,31 @@ export default function ManageMembersPage({ members = [] }: Props) {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Success Dialog */}
-        <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        {/* Bulk Delete Confirmation Dialog */}
+        <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4 mx-auto">
-                <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
-              </div>
-              <AlertDialogTitle className="text-center">Success!</AlertDialogTitle>
-              <AlertDialogDescription className="text-center">
-                {dialogMessage}
+              <AlertDialogTitle>Delete {selectedMembers.length} Members?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete <strong>{selectedMembers.length}</strong> selected member{selectedMembers.length > 1 ? 's' : ''} and all their associated data.
+                <span className="block mt-2 font-medium text-destructive">
+                  This action cannot be undone.
+                </span>
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter className="sm:justify-center">
-              <AlertDialogAction onClick={() => setShowSuccessDialog(false)}>
-                Continue
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isBulkProcessing}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmBulkDelete}
+                className="bg-destructive hover:bg-destructive/90"
+                disabled={isBulkProcessing}
+              >
+                {isBulkProcessing ? 'Deleting...' : `Delete ${selectedMembers.length} Members`}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Error Dialog */}
-        <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-4 mx-auto">
-                <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
-              </div>
-              <AlertDialogTitle className="text-center">Error</AlertDialogTitle>
-              <AlertDialogDescription className="text-center">
-                {dialogMessage}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="sm:justify-center">
-              <AlertDialogAction onClick={() => setShowErrorDialog(false)}>
-                Close
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     </AppLayout>
   );

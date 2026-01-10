@@ -112,4 +112,33 @@ class NotificationController extends Controller
 
         return response()->json(['message' => 'Notification not found'], 404);
     }
+
+    /**
+     * Get sidebar badge counts for navigation items
+     */
+    public function getSidebarBadges(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $badges = [];
+
+        // For all users: unread notifications
+        $badges['unread_notifications'] = NotificationService::getUnreadCount($user->id);
+
+        // For all users: support tickets with new admin responses
+        if ($user) {
+            $userTicketsWithNewResponses = \App\Models\SupportTicket::where('user_id', $user->id)
+                ->where('status', '!=', 'pending')
+                ->whereNotNull('admin_response')
+                ->whereColumn('updated_at', '>', 'created_at')
+                ->count();
+            $badges['my_tickets'] = $userTicketsWithNewResponses;
+        }
+
+        // For admins: pending support tickets
+        if ($user->role === 'admin') {
+            $badges['support_tickets'] = \App\Models\SupportTicket::where('status', 'pending')->count();
+        }
+
+        return response()->json($badges);
+    }
 }

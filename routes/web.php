@@ -69,6 +69,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/notifications/{id}/unread', [NotificationController::class, 'markAsUnread'])->name('notifications.markAsUnread');
     Route::put('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+
+    // Sidebar badge counts
+    Route::get('/api/sidebar-badges', [NotificationController::class, 'getSidebarBadges'])->name('api.sidebar-badges');
 });
 
 // =========================================================================
@@ -83,7 +86,11 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->group(function ()
     Route::resource('events', EventsController::class)->except(['show', 'create', 'edit']);
     Route::put('/events/{event}/status', [EventsController::class, 'updateStatus'])->name('events.updateStatus');
     Route::post('/events/{event}/broadcast', [ManagerDashboardController::class, 'broadcast'])->name('events.broadcast');
-    
+
+    // --- Bulk Event Actions ---
+    Route::put('/events/bulk/status', [EventsController::class, 'bulkUpdateStatus'])->name('events.bulk.status');
+    Route::delete('/events/bulk/delete', [EventsController::class, 'bulkDelete'])->name('events.bulk.delete');
+
     // --- Participant Management (Manager View) ---
     Route::get('/events/{event}/participants', [EventsController::class, 'participants'])->name('events.participants');
     Route::put('/participants/{participant}/status', [ParticipantsController::class, 'updateStatus'])->name('participants.updateStatus');
@@ -94,6 +101,7 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->group(function ()
     Route::get('/manager/members/{member}', [ManageMembersController::class, 'show'])->name('members.show');
     Route::put('/manager/members/{member}', [ManageMembersController::class, 'update'])->name('members.update');
     Route::delete('/manager/members/{member}', [ManageMembersController::class, 'destroy'])->name('members.destroy');
+    Route::post('/manager/members/bulk-delete', [ManageMembersController::class, 'bulkDelete'])->name('members.bulk-delete');
 
     // --- Other Manager Pages ---
     Route::get('/manager/manage-analytics', [TestController::class, 'manageAnalytics'])->name('manage-analytics');
@@ -163,10 +171,10 @@ Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
     Route::post('admin/users/bulk-delete', [AdminManageUsersController::class, 'bulkDelete'])->name('admin.users.bulk-delete');
     Route::post('admin/users/bulk-role', [AdminManageUsersController::class, 'bulkRole'])->name('admin.users.bulk-role');
 
-    // Activity Logs Routes
-    Route::get('admin/activity-logs', [ActivityLogController::class, 'index'])->name('admin.activity-logs');
-    Route::get('admin/activity-logs/export', [ActivityLogController::class, 'export'])->name('admin.activity-logs.export');
-    Route::get('admin/activity-logs/{activityLog}', [ActivityLogController::class, 'show'])->name('admin.activity-logs.show');
+    // Audit Trail Routes
+    Route::get('admin/audit-trail', [ActivityLogController::class, 'index'])->name('admin.audit-trail');
+    Route::get('admin/audit-trail/export', [ActivityLogController::class, 'export'])->name('admin.audit-trail.export');
+    Route::get('admin/audit-trail/{activityLog}', [ActivityLogController::class, 'show'])->name('admin.audit-trail.show');
 
     // Support Ticket Management
     Route::get('admin/support-tickets', [AdminSupportController::class, 'index'])->name('admin.support-tickets');

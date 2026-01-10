@@ -1,4 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
+import { Head } from '@inertiajs/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -116,7 +117,8 @@ export default function AdminDashboard() {
 
     if (loading) {
         return (
-            <AppLayout>
+            <AppLayout breadcrumbs={[{ title: 'Admin Dashboard', href: '/admin/dashboard' }]}>
+                <Head title="Admin Dashboard" />
                 <div className="container mx-auto p-6">
                     <div className="flex items-center justify-center h-96">
                         <div className="text-center">
@@ -130,7 +132,8 @@ export default function AdminDashboard() {
     }
 
     return (
-        <AppLayout>
+        <AppLayout breadcrumbs={[{ title: 'Admin Dashboard', href: '/admin/dashboard' }]}>
+            <Head title="Admin Dashboard" />
             <div className="container mx-auto p-6 space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
@@ -363,7 +366,7 @@ export default function AdminDashboard() {
                                 <Button
                                     variant="outline"
                                     className="h-auto justify-start text-left p-4 hover:bg-purple-50 dark:hover:bg-purple-950 hover:border-purple-200 dark:hover:border-purple-800 transition-all group"
-                                    onClick={() => router.get('/admin/activity-logs')}
+                                    onClick={() => router.get('/admin/audit-trail')}
                                 >
                                     <div className="flex items-start gap-3 w-full">
                                         <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg group-hover:scale-110 transition-transform">
@@ -371,7 +374,7 @@ export default function AdminDashboard() {
                                         </div>
                                         <div className="flex-1">
                                             <div className="font-semibold text-sm flex items-center gap-1">
-                                                Activity Logs
+                                                Audit Trail
                                                 <ArrowUpRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                                             </div>
                                             <span className="text-xs text-muted-foreground">
