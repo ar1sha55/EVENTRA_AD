@@ -50,6 +50,15 @@ Route::get('/cron/run', function () {
 // =========================================================================
 // Diagnostics Endpoints (for debugging)
 // =========================================================================
+// Simple test endpoint without authentication
+Route::get('/diagnostics/ping', function () {
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'Diagnostics endpoint is working',
+        'timestamp' => now()->format('Y-m-d H:i:s'),
+    ]);
+});
+
 Route::get('/diagnostics/blast-status', [\App\Http\Controllers\DiagnosticsController::class, 'checkBlastStatus'])
     ->middleware(\App\Http\Middleware\VerifyCronToken::class)
     ->name('diagnostics.blast-status');
@@ -57,6 +66,41 @@ Route::get('/diagnostics/blast-status', [\App\Http\Controllers\DiagnosticsContro
 Route::get('/diagnostics/test-scheduler', [\App\Http\Controllers\DiagnosticsController::class, 'testScheduler'])
     ->middleware(\App\Http\Middleware\VerifyCronToken::class)
     ->name('diagnostics.test-scheduler');
+
+// Temporary: Check scheduler logs and blast status
+Route::get('/diagnostics/blast-logs', function () {
+    $logPath = storage_path('logs/scheduler-blasts.log');
+    $logs = file_exists($logPath) ? file_get_contents($logPath) : 'Log file not found';
+
+    // Get recent blasts
+    $blasts = \App\Models\EventBlast::with('event')
+        ->latest()
+        ->limit(10)
+        ->get()
+        ->map(function ($blast) {
+            return [
+                'id' => $blast->id,
+                'event' => $blast->event->name ?? 'N/A',
+                'blast_type' => $blast->blast_type,
+                'status' => $blast->status,
+                'scheduled_at' => $blast->scheduled_at?->format('Y-m-d H:i:s'),
+                'sent_at' => $blast->sent_at?->format('Y-m-d H:i:s'),
+                'error' => $blast->error_message,
+                'created_at' => $blast->created_at->format('Y-m-d H:i:s'),
+            ];
+        });
+
+    // Check ready to send
+    $readyToSend = \App\Models\EventBlast::readyToSend()->with('event')->get();
+
+    return response()->json([
+        'current_time' => now()->format('Y-m-d H:i:s'),
+        'ready_to_send_count' => $readyToSend->count(),
+        'ready_to_send' => $readyToSend,
+        'recent_blasts' => $blasts,
+        'scheduler_logs' => $logs,
+    ]);
+});
 
 // =========================================================================
 // Diagnostic Endpoint (for checking Telegram config)
