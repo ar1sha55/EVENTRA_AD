@@ -11,5 +11,10 @@ Artisan::command('inspire', function () {
 // Schedule tasks
 // Changed to everyMinute() so it runs whenever UptimeRobot triggers (every ~5 min)
 // instead of waiting for exact 5-minute marks (XX:00, XX:05, etc.)
-Schedule::command('blasts:send-scheduled')->everyMinute();
-Schedule::command('notifications:send-upcoming-events')->dailyAt('09:00');
+Schedule::command('blasts:send-scheduled')
+    ->everyMinute()
+    ->appendOutputTo(storage_path('logs/scheduler-blasts.log'));
+    
+Schedule::command('notifications:send-upcoming-events')
+    ->dailyAt('09:00')
+    ->appendOutputTo(storage_path('logs/scheduler-notifications.log'));

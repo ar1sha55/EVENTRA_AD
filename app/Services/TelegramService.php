@@ -101,6 +101,16 @@ class TelegramService
      */
     public function sendBlast(Event $event, string $message, ?string $imagePath = null): ?int
     {
+        Log::info('TelegramService::sendBlast called', [
+            'event_id' => $event->id,
+            'event_name' => $event->name,
+            'bot_token_set' => !empty($this->botToken),
+            'channel_id_set' => !empty($this->channelId),
+            'channel_id' => $this->channelId,
+            'message_length' => strlen($message),
+            'has_image' => !is_null($imagePath) || !is_null($event->image_path),
+        ]);
+
         if (!$this->botToken || !$this->channelId) {
             Log::warning('Telegram bot token or channel ID not configured');
             return null;
@@ -118,15 +128,26 @@ class TelegramService
             $finalImagePath = $imagePath ?? $event->image_path;
 
             if ($finalImagePath && Storage::disk('public')->exists($finalImagePath)) {
+                Log::info('Sending blast with photo', ['image_path' => $finalImagePath]);
                 $messageId = $this->sendPhotoByPath($finalImagePath, $message);
             } else {
+                Log::info('Sending blast as text message');
                 $messageId = $this->sendMessage($message);
+            }
+
+            if ($messageId) {
+                Log::info('Blast sent successfully', ['message_id' => $messageId]);
+            } else {
+                Log::warning('Blast failed - no message ID returned');
             }
 
             return $messageId;
 
         } catch (\Exception $e) {
-            Log::error('Failed to send blast to Telegram: ' . $e->getMessage());
+            Log::error('Failed to send blast to Telegram: ' . $e->getMessage(), [
+                'exception' => get_class($e),
+                'trace' => $e->getTraceAsString(),
+            ]);
             return null;
         }
     }
@@ -136,6 +157,7 @@ class TelegramService
      */
     protected function sendMessage(string $message): ?int
     {
+        // First attempt with Markdown
         $response = Http::post("{$this->baseUrl}/sendMessage", [
             'chat_id' => $this->channelId,
             'text' => $message,
@@ -144,6 +166,47 @@ class TelegramService
 
         if ($response->successful()) {
             return $response->json('result.message_id');
+        }
+
+        // Log the error response from Telegram
+        Log::error('Telegram sendMessage failed', [
+            'status' => $response->status(),
+            'response' => $response->json(),
+            'message_length' => strlen($message),
+        ]);
+
+        // Check if it's a parse error and retry without Markdown
+        $errorDescription = $response->json('description', '');
+        if (str_contains($errorDescription, 'parse') || str_contains($errorDescription, 'markdown')) {
+            Log::info('Retrying message without Markdown parse mode');
+            
+            $retryResponse = Http::post("{$this->baseUrl}/sendMessage", [
+                'chat_id' => $this->channelId,
+                'text' => strip_tags($message), // Remove any HTML/Markdown formatting
+                'parse_mode' => null,
+            ]);
+
+            if ($retryResponse->successful()) {
+                Log::info('Message sent successfully without Markdown');
+                return $retryResponse->json('result.message_id');
+            }
+        }
+
+        // Check if message is too long (Telegram limit is 4096 characters)
+        if (strlen($message) > 4096) {
+            Log::warning('Message too long, truncating');
+            $truncatedMessage = substr($message, 0, 4093) . '...';
+            
+            $retryResponse = Http::post("{$this->baseUrl}/sendMessage", [
+                'chat_id' => $this->channelId,
+                'text' => $truncatedMessage,
+                'parse_mode' => null,
+            ]);
+
+            if ($retryResponse->successful()) {
+                Log::info('Truncated message sent successfully');
+                return $retryResponse->json('result.message_id');
+            }
         }
 
         return null;
@@ -162,6 +225,12 @@ class TelegramService
             return $this->sendMessage($caption);
         }
 
+        // Telegram caption limit is 1024 characters
+        if (strlen($caption) > 1024) {
+            Log::warning('Caption too long for photo, truncating', ['length' => strlen($caption)]);
+            $caption = substr($caption, 0, 1021) . '...';
+        }
+
         $response = Http::attach(
             'photo',
             file_get_contents($imagePath),
@@ -176,7 +245,38 @@ class TelegramService
             return $response->json('result.message_id');
         }
 
-        return null;
+        // Log the error response from Telegram
+        Log::error('Telegram sendPhoto failed', [
+            'status' => $response->status(),
+            'response' => $response->json(),
+            'caption_length' => strlen($caption),
+            'image_path' => $imagePath,
+        ]);
+
+        // If markdown parse error, retry without markdown
+        $errorDescription = $response->json('description', '');
+        if (str_contains($errorDescription, 'parse') || str_contains($errorDescription, 'markdown')) {
+            Log::info('Retrying photo with plain text caption');
+            
+            $retryResponse = Http::attach(
+                'photo',
+                file_get_contents($imagePath),
+                basename($imagePath)
+            )->post("{$this->baseUrl}/sendPhoto", [
+                'chat_id' => $this->channelId,
+                'caption' => strip_tags($caption),
+                'parse_mode' => null,
+            ]);
+
+            if ($retryResponse->successful()) {
+                Log::info('Photo sent successfully without Markdown');
+                return $retryResponse->json('result.message_id');
+            }
+        }
+
+        // If photo fails completely, fall back to text message
+        Log::warning('Photo send failed, falling back to text message');
+        return $this->sendMessage($caption);
     }
 
     /**
@@ -189,6 +289,12 @@ class TelegramService
         if (!file_exists($fullPath)) {
             Log::warning("Image not found: {$fullPath}");
             return $this->sendMessage($caption);
+        }
+
+        // Telegram caption limit is 1024 characters
+        if (strlen($caption) > 1024) {
+            Log::warning('Caption too long for photo, truncating', ['length' => strlen($caption)]);
+            $caption = substr($caption, 0, 1021) . '...';
         }
 
         $response = Http::attach(
@@ -205,7 +311,38 @@ class TelegramService
             return $response->json('result.message_id');
         }
 
-        return null;
+        // Log the error response from Telegram
+        Log::error('Telegram sendPhotoByPath failed', [
+            'status' => $response->status(),
+            'response' => $response->json(),
+            'caption_length' => strlen($caption),
+            'image_path' => $fullPath,
+        ]);
+
+        // If markdown parse error, retry without markdown
+        $errorDescription = $response->json('description', '');
+        if (str_contains($errorDescription, 'parse') || str_contains($errorDescription, 'markdown')) {
+            Log::info('Retrying photo with plain text caption');
+            
+            $retryResponse = Http::attach(
+                'photo',
+                file_get_contents($fullPath),
+                basename($fullPath)
+            )->post("{$this->baseUrl}/sendPhoto", [
+                'chat_id' => $this->channelId,
+                'caption' => strip_tags($caption),
+                'parse_mode' => null,
+            ]);
+
+            if ($retryResponse->successful()) {
+                Log::info('Photo sent successfully without Markdown');
+                return $retryResponse->json('result.message_id');
+            }
+        }
+
+        // If photo fails completely, fall back to text message
+        Log::warning('Photo send failed, falling back to text message');
+        return $this->sendMessage($caption);
     }
 
     /**
