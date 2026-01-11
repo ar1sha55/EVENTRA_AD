@@ -97,6 +97,20 @@ class TelegramService
     }
 
     /**
+     * Strip Markdown formatting from text
+     */
+    protected function stripMarkdown(string $text): string
+    {
+        // Remove Markdown formatting: *bold*, _italic_, `code`, [links](url)
+        $text = preg_replace('/\*(.+?)\*/', '$1', $text); // Remove *bold*
+        $text = preg_replace('/_(.+?)_/', '$1', $text);   // Remove _italic_
+        $text = preg_replace('/`(.+?)`/', '$1', $text);   // Remove `code`
+        $text = preg_replace('/\[(.+?)\]\(.+?\)/', '$1', $text); // Remove [text](url)
+
+        return $text;
+    }
+
+    /**
      * Send a blast message (manual or automated)
      */
     public function sendBlast(Event $event, string $message, ?string $imagePath = null): ?int
@@ -177,12 +191,12 @@ class TelegramService
 
         // Check if it's a parse error and retry without Markdown
         $errorDescription = $response->json('description', '');
-        if (str_contains($errorDescription, 'parse') || str_contains($errorDescription, 'markdown')) {
+        if (str_contains($errorDescription, 'parse') || str_contains($errorDescription, 'markdown') || str_contains($errorDescription, 'entities')) {
             Log::info('Retrying message without Markdown parse mode');
-            
+
             $retryResponse = Http::post("{$this->baseUrl}/sendMessage", [
                 'chat_id' => $this->channelId,
-                'text' => strip_tags($message), // Remove any HTML/Markdown formatting
+                'text' => $this->stripMarkdown($message), // Remove Markdown formatting
                 'parse_mode' => null,
             ]);
 
@@ -255,16 +269,16 @@ class TelegramService
 
         // If markdown parse error, retry without markdown
         $errorDescription = $response->json('description', '');
-        if (str_contains($errorDescription, 'parse') || str_contains($errorDescription, 'markdown')) {
+        if (str_contains($errorDescription, 'parse') || str_contains($errorDescription, 'markdown') || str_contains($errorDescription, 'entities')) {
             Log::info('Retrying photo with plain text caption');
-            
+
             $retryResponse = Http::attach(
                 'photo',
                 file_get_contents($imagePath),
                 basename($imagePath)
             )->post("{$this->baseUrl}/sendPhoto", [
                 'chat_id' => $this->channelId,
-                'caption' => strip_tags($caption),
+                'caption' => $this->stripMarkdown($caption),
                 'parse_mode' => null,
             ]);
 
@@ -321,16 +335,16 @@ class TelegramService
 
         // If markdown parse error, retry without markdown
         $errorDescription = $response->json('description', '');
-        if (str_contains($errorDescription, 'parse') || str_contains($errorDescription, 'markdown')) {
+        if (str_contains($errorDescription, 'parse') || str_contains($errorDescription, 'markdown') || str_contains($errorDescription, 'entities')) {
             Log::info('Retrying photo with plain text caption');
-            
+
             $retryResponse = Http::attach(
                 'photo',
                 file_get_contents($fullPath),
                 basename($fullPath)
             )->post("{$this->baseUrl}/sendPhoto", [
                 'chat_id' => $this->channelId,
-                'caption' => strip_tags($caption),
+                'caption' => $this->stripMarkdown($caption),
                 'parse_mode' => null,
             ]);
 
