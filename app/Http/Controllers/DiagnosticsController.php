@@ -115,14 +115,14 @@ class DiagnosticsController extends Controller
             ], 200, [], JSON_PRETTY_PRINT);
         }
 
-        // Try to send a test message
-        $testMessage = "🧪 *Test Message*\n\nThis is a diagnostic test from EVENTRA_AD.\n\n_Timestamp: " . now()->format('Y-m-d H:i:s') . "_";
+        // Try to send a test message (plain text to avoid Markdown issues)
+        $testMessage = "🧪 Test Message\n\nThis is a diagnostic test from EVENTRA_AD.\n\nTimestamp: " . now()->format('Y-m-d H:i:s') . "\n\nIf you see this message, your Telegram bot is working correctly!";
 
         try {
+            // First attempt without parse_mode (plain text)
             $response = \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", [
                 'chat_id' => $channelId,
                 'text' => $testMessage,
-                'parse_mode' => 'Markdown',
             ]);
 
             $responseData = $response->json();
@@ -137,6 +137,7 @@ class DiagnosticsController extends Controller
                     'channel_id' => $channelId,
                     'config_cached' => File::exists(base_path('bootstrap/cache/config.php')),
                 ],
+                'message_sent' => $response->successful() ? 'Test message sent successfully! Check your Telegram channel.' : 'Failed to send message',
                 'timestamp' => now()->format('Y-m-d H:i:s'),
             ], 200, [], JSON_PRETTY_PRINT);
 
