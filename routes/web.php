@@ -67,6 +67,10 @@ Route::get('/diagnostics/test-scheduler', [\App\Http\Controllers\DiagnosticsCont
     ->middleware(\App\Http\Middleware\VerifyCronToken::class)
     ->name('diagnostics.test-scheduler');
 
+Route::get('/diagnostics/test-telegram', [\App\Http\Controllers\DiagnosticsController::class, 'testTelegramConnection'])
+    ->middleware(\App\Http\Middleware\VerifyCronToken::class)
+    ->name('diagnostics.test-telegram');
+
 // Temporary: Check scheduler logs and blast status
 Route::get('/diagnostics/blast-logs', function () {
     $logPath = storage_path('logs/scheduler-blasts.log');
@@ -103,21 +107,9 @@ Route::get('/diagnostics/blast-logs', function () {
 });
 
 // =========================================================================
-// Diagnostic Endpoint (for checking Telegram config)
+// Diagnostic Endpoint (for checking Telegram config and testing connectivity)
 // =========================================================================
-Route::get('/test-telegram-config', function () {
-    $botToken = config('services.telegram.bot_token');
-    $channelId = config('services.telegram.channel_id');
-    
-    return response()->json([
-        'bot_token_set' => !empty($botToken),
-        'channel_id_set' => !empty($channelId),
-        'bot_token_length' => strlen($botToken ?? ''),
-        'channel_id_value' => $channelId ? substr($channelId, 0, 5) . '...' : 'not set',
-        'config_cached' => app()->configurationIsCached(),
-        'timestamp' => now()->toDateTimeString(),
-    ]);
-});
+Route::get('/test-telegram-config', [\App\Http\Controllers\DiagnosticsController::class, 'testTelegramConnection']);
 
 // =========================================================================
 // Authenticated Users (All Roles)

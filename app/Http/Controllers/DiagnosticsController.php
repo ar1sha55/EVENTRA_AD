@@ -96,4 +96,57 @@ class DiagnosticsController extends Controller
             'timestamp' => now()->format('Y-m-d H:i:s'),
         ]);
     }
+
+    public function testTelegramConnection()
+    {
+        $botToken = config('services.telegram.bot_token');
+        $channelId = config('services.telegram.channel_id');
+
+        // Check if credentials are configured
+        if (!$botToken || !$channelId) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Telegram credentials not configured',
+                'bot_token_set' => !empty($botToken),
+                'bot_token_length' => strlen($botToken ?? ''),
+                'channel_id_set' => !empty($channelId),
+                'channel_id_value' => $channelId ? substr($channelId, 0, 8) . '...' : 'not set',
+                'config_cached' => File::exists(base_path('bootstrap/cache/config.php')),
+            ], 200, [], JSON_PRETTY_PRINT);
+        }
+
+        // Try to send a test message
+        $testMessage = "🧪 *Test Message*\n\nThis is a diagnostic test from EVENTRA_AD.\n\n_Timestamp: " . now()->format('Y-m-d H:i:s') . "_";
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", [
+                'chat_id' => $channelId,
+                'text' => $testMessage,
+                'parse_mode' => 'Markdown',
+            ]);
+
+            $responseData = $response->json();
+
+            return response()->json([
+                'success' => $response->successful(),
+                'status_code' => $response->status(),
+                'telegram_response' => $responseData,
+                'config' => [
+                    'bot_token_length' => strlen($botToken),
+                    'bot_token_preview' => substr($botToken, 0, 10) . '...' . substr($botToken, -5),
+                    'channel_id' => $channelId,
+                    'config_cached' => File::exists(base_path('bootstrap/cache/config.php')),
+                ],
+                'timestamp' => now()->format('Y-m-d H:i:s'),
+            ], 200, [], JSON_PRETTY_PRINT);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
+                'timestamp' => now()->format('Y-m-d H:i:s'),
+            ], 200, [], JSON_PRETTY_PRINT);
+        }
+    }
 }
