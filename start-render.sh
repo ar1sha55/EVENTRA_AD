@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Combined web server + queue worker for Render.com
-# This script runs both the Laravel web server and queue worker in one container
+# Scheduler is triggered externally by UptimeRobot via /cron/run endpoint
 
 set -o errexit
 
@@ -10,7 +10,7 @@ echo "🚀 Starting EVENTRA_AD on Render.com..."
 echo "📊 Running database migrations..."
 php artisan migrate --force
 
-# Clear and cache configurations for production
+# Clear and cache configurations for production (at runtime so env vars are available)
 echo "⚙️ Optimizing application..."
 php artisan config:clear
 php artisan cache:clear
@@ -22,7 +22,7 @@ php artisan view:cache
 
 # Create storage link for file uploads
 echo "🔗 Creating storage link..."
-php artisan storage:link
+php artisan storage:link || true
 
 # Start queue worker in background
 echo "🔄 Starting queue worker..."

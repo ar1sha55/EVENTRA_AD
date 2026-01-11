@@ -12,9 +12,7 @@ npm ci
 echo "Building frontend assets..."
 npm run build
 
-echo "Caching Laravel configuration..."
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+# NOTE: Config caching is done at runtime in start-render.sh
+# This ensures environment variables (like TELEGRAM_BOT_TOKEN) are available
 
 echo "Build completed successfully!"
