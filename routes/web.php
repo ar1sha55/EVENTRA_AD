@@ -51,23 +51,11 @@ Route::get('/cron/run', function () {
 // Diagnostics Endpoints (for debugging)
 // =========================================================================
 Route::get('/diagnostics/blast-status', [\App\Http\Controllers\DiagnosticsController::class, 'checkBlastStatus'])
-    ->middleware(function ($request, $next) {
-        $token = $request->query('token');
-        if ($token !== config('app.cron_secret')) {
-            abort(403, 'Unauthorized');
-        }
-        return $next($request);
-    })
+    ->middleware(\App\Http\Middleware\VerifyCronToken::class)
     ->name('diagnostics.blast-status');
 
 Route::get('/diagnostics/test-scheduler', [\App\Http\Controllers\DiagnosticsController::class, 'testScheduler'])
-    ->middleware(function ($request, $next) {
-        $token = $request->query('token');
-        if ($token !== config('app.cron_secret')) {
-            abort(403, 'Unauthorized');
-        }
-        return $next($request);
-    })
+    ->middleware(\App\Http\Middleware\VerifyCronToken::class)
     ->name('diagnostics.test-scheduler');
 
 // =========================================================================
