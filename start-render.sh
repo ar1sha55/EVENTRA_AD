@@ -16,9 +16,10 @@ php artisan config:clear
 php artisan cache:clear
 php artisan route:clear
 php artisan view:clear
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+# TEMPORARILY DISABLED: Testing if config:cache is causing Telegram env vars to be cached as empty
+# php artisan config:cache
+# php artisan route:cache
+# php artisan view:cache
 
 # Create storage link for file uploads
 echo "🔗 Creating storage link..."

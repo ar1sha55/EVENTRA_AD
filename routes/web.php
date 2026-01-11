@@ -48,6 +48,23 @@ Route::get('/cron/run', function () {
 })->name('cron.run');
 
 // =========================================================================
+// Diagnostic Endpoint (for checking Telegram config)
+// =========================================================================
+Route::get('/test-telegram-config', function () {
+    $botToken = config('services.telegram.bot_token');
+    $channelId = config('services.telegram.channel_id');
+    
+    return response()->json([
+        'bot_token_set' => !empty($botToken),
+        'channel_id_set' => !empty($channelId),
+        'bot_token_length' => strlen($botToken ?? ''),
+        'channel_id_value' => $channelId ? substr($channelId, 0, 5) . '...' : 'not set',
+        'config_cached' => app()->configurationIsCached(),
+        'timestamp' => now()->toDateTimeString(),
+    ]);
+});
+
+// =========================================================================
 // Authenticated Users (All Roles)
 // =========================================================================
 Route::middleware(['auth', 'verified'])->group(function () {
