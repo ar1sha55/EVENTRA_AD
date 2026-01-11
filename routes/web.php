@@ -27,6 +27,27 @@ Route::get('/', function () {
 })->name('home');
 
 // =========================================================================
+// Cron Job Endpoint (for external scheduler trigger - UptimeRobot)
+// =========================================================================
+Route::get('/cron/run', function () {
+    // Validate secret token
+    $token = request()->query('token');
+    if ($token !== config('app.cron_secret')) {
+        abort(403, 'Unauthorized');
+    }
+    
+    // Run Laravel scheduler
+    Artisan::call('schedule:run');
+    
+    return response()->json([
+        'success' => true,
+        'message' => 'Scheduler executed successfully',
+        'output' => Artisan::output(),
+        'timestamp' => now()->toDateTimeString(),
+    ]);
+})->name('cron.run');
+
+// =========================================================================
 // Authenticated Users (All Roles)
 // =========================================================================
 Route::middleware(['auth', 'verified'])->group(function () {

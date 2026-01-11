@@ -69,6 +69,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Cron Secret Token
+    |--------------------------------------------------------------------------
+    |
+    | This secret token is used to authenticate external cron job triggers
+    | (e.g., UptimeRobot) that execute the Laravel scheduler. Keep this
+    | value secure and don't share it publicly.
+    |
+    */
+
+    'cron_secret' => env('CRON_SECRET'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |
