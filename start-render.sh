@@ -20,6 +20,10 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
+# Create storage link for file uploads
+echo "🔗 Creating storage link..."
+php artisan storage:link
+
 # Start queue worker in background
 echo "🔄 Starting queue worker..."
 php artisan queue:work --tries=3 --timeout=90 --sleep=3 --daemon &
