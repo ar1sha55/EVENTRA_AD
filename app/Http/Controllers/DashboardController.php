@@ -89,63 +89,73 @@ class DashboardController extends Controller
     private function getTopVolunteers()
     {
         try {
-            // Step 1: Get IDs of top participants based on total hours_logged
-            $topParticipantIds = DB::table('participants')
+            // Get all approved participants with their events
+            $allParticipations = DB::table('participants')
                 ->join('users', 'participants.user_id', '=', 'users.id')
-                ->select(
-                    'users.id',
-                    DB::raw('SUM(COALESCE(participants.hours_logged, 0)) as total_hours')
-                )
+                ->join('events', 'participants.event_id', '=', 'events.id')
                 ->where('participants.status', 'APPROVED')
                 ->whereNotNull('users.name')
-                ->groupBy('users.id')
-                ->orderByDesc('total_hours')
-                ->limit(10)
-                ->pluck('id')
-                ->toArray();
+                ->whereNotNull('events.start_date')
+                ->whereNotNull('events.end_date')
+                ->select(
+                    'users.id as user_id',
+                    'users.name',
+                    'users.email',
+                    'users.faculty',
+                    'users.profile_picture',
+                    'events.id as event_id',
+                    'events.name as event_name',
+                    'events.start_date',
+                    'events.end_date'
+                )
+                ->get();
 
-            // Step 2: Fetch full details including recent history for these users
+            // Group by user and calculate hours in PHP (database-agnostic)
+            $userHours = [];
+            foreach ($allParticipations as $participation) {
+                $userId = $participation->user_id;
+                
+                // Calculate hours using PHP date functions
+                $startDate = strtotime($participation->start_date);
+                $endDate = strtotime($participation->end_date);
+                $hours = abs($endDate - $startDate) / 3600; // Convert seconds to hours
+                
+                if (!isset($userHours[$userId])) {
+                    $userHours[$userId] = [
+                        'user' => $participation,
+                        'total_hours' => 0,
+                        'events' => []
+                    ];
+                }
+                
+                $userHours[$userId]['total_hours'] += $hours;
+                $userHours[$userId]['events'][] = [
+                    'id' => $participation->event_id,
+                    'name' => $participation->event_name,
+                    'date' => $participation->start_date,
+                    'hours' => round($hours, 2)
+                ];
+            }
+
+            // Sort by total hours and get top 10
+            usort($userHours, function($a, $b) {
+                return $b['total_hours'] <=> $a['total_hours'];
+            });
+            
             $topParticipants = [];
-            foreach ($topParticipantIds as $userId) {
-                $user = User::find($userId);
-                if (!$user) continue;
-
-                // Get all events this user participated in with hours logged
-                $participatedEvents = DB::table('participants')
-                    ->join('events', 'participants.event_id', '=', 'events.id')
-                    ->where('participants.user_id', $userId)
-                    ->where('participants.status', 'APPROVED')
-                    ->select(
-                        'events.id',
-                        'events.name',
-                        'events.start_date',
-                        DB::raw('COALESCE(participants.hours_logged, 0) as hours')
-                    )
-                    ->orderBy('events.start_date', 'desc')
-                    ->get();
-
-                $totalHours = $participatedEvents->sum('hours');
-                $eventsParticipated = $participatedEvents->count();
-
+            foreach (array_slice($userHours, 0, 10) as $userData) {
+                $user = $userData['user'];
+                
                 $topParticipants[] = [
-                    'id' => $user->id,
+                    'id' => $user->user_id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    // Use the helper to get full faculty name
                     'faculty' => $user->faculty ? $this->getFacultyFullName($user->faculty) : 'Not Specified',
                     'faculty_code' => $user->faculty,
                     'profile_picture' => $user->profile_picture,
-                    'total_hours' => (float) $totalHours,
-                    'events_participated' => $eventsParticipated,
-                    // Include specific event history if your frontend needs it
-                    'participated_events' => $participatedEvents->map(function($event) {
-                        return [
-                            'id' => $event->id,
-                            'name' => $event->name,
-                            'date' => $event->start_date,
-                            'hours' => (float) $event->hours,
-                        ];
-                    })->toArray(),
+                    'total_hours' => round($userData['total_hours'], 2),
+                    'events_participated' => count($userData['events']),
+                    'participated_events' => $userData['events']
                 ];
             }
 
