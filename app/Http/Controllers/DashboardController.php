@@ -187,44 +187,52 @@ class DashboardController extends Controller
      */
     public function getActivityChartData(Request $request)
     {
-        $user = auth()->user();
+        try {
+            $user = auth()->user();
 
-        // Get data for the last 6 months
-        $monthsData = [];
-        for ($i = 5; $i >= 0; $i--) {
-            $monthsData[] = now()->subMonths($i)->format('M');
+            // Get all approved participations from the last 6 months
+            $participations = DB::table('participants')
+                ->join('events', 'participants.event_id', '=', 'events.id')
+                ->where('participants.user_id', $user->id)
+                ->where('participants.status', 'APPROVED')
+                ->where('events.start_date', '>=', now()->subMonths(6))
+                ->select('events.start_date')
+                ->get();
+
+            // Group participations by month manually (database-agnostic)
+            $monthCounts = [];
+            foreach ($participations as $participation) {
+                $monthKey = date('Y-m', strtotime($participation->start_date));
+                $monthCounts[$monthKey] = ($monthCounts[$monthKey] ?? 0) + 1;
+            }
+
+            // Build the chart data for the last 6 months
+            $chartData = [];
+            for ($i = 5; $i >= 0; $i--) {
+                $date = now()->subMonths($i);
+                $monthKey = $date->format('Y-m');
+                $monthName = $date->format('M');
+
+                $chartData[] = [
+                    'name' => $monthName,
+                    'events' => $monthCounts[$monthKey] ?? 0
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $chartData
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching activity chart data: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch activity chart data',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
         }
-
-        // Get user's approved participations grouped by month
-        $participations = DB::table('participants')
-            ->join('events', 'participants.event_id', '=', 'events.id')
-            ->where('participants.user_id', $user->id)
-            ->where('participants.status', 'APPROVED')
-            ->where('events.start_date', '>=', now()->subMonths(6))
-            ->select(
-                DB::raw('DATE_FORMAT(events.start_date, "%Y-%m") as month'),
-                DB::raw('COUNT(*) as count')
-            )
-            ->groupBy('month')
-            ->get()
-            ->keyBy('month');
-
-        // Build the chart data
-        $chartData = [];
-        for ($i = 5; $i >= 0; $i--) {
-            $date = now()->subMonths($i);
-            $monthKey = $date->format('Y-m');
-            $monthName = $date->format('M');
-
-            $chartData[] = [
-                'name' => $monthName,
-                'events' => $participations->has($monthKey) ? (int) $participations[$monthKey]->count : 0
-            ];
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => $chartData
-        ]);
     }
 }
