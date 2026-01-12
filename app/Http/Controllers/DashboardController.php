@@ -89,17 +89,15 @@ class DashboardController extends Controller
     private function getTopVolunteers()
     {
         try {
-            // Step 1: Get IDs of top participants based on total hours
+            // Step 1: Get IDs of top participants based on total hours_logged
             $topParticipantIds = DB::table('participants')
                 ->join('users', 'participants.user_id', '=', 'users.id')
-                ->join('events', 'participants.event_id', '=', 'events.id')
                 ->select(
                     'users.id',
-                    DB::raw('SUM(TIMESTAMPDIFF(HOUR, events.start_date, events.end_date)) as total_hours')
+                    DB::raw('SUM(participants.hours_logged) as total_hours')
                 )
                 ->where('participants.status', 'APPROVED')
-                ->whereNotNull('events.start_date')
-                ->whereNotNull('events.end_date')
+                ->where('participants.hours_logged', '>', 0)
                 ->whereNotNull('users.name')
                 ->groupBy('users.id')
                 ->orderByDesc('total_hours')
@@ -113,18 +111,17 @@ class DashboardController extends Controller
                 $user = User::find($userId);
                 if (!$user) continue;
 
-                // Get all events this user participated in
+                // Get all events this user participated in with hours logged
                 $participatedEvents = DB::table('participants')
                     ->join('events', 'participants.event_id', '=', 'events.id')
                     ->where('participants.user_id', $userId)
                     ->where('participants.status', 'APPROVED')
-                    ->whereNotNull('events.start_date')
-                    ->whereNotNull('events.end_date')
+                    ->where('participants.hours_logged', '>', 0)
                     ->select(
                         'events.id',
                         'events.name',
                         'events.start_date',
-                        DB::raw('TIMESTAMPDIFF(HOUR, events.start_date, events.end_date) as hours')
+                        'participants.hours_logged as hours'
                     )
                     ->orderBy('events.start_date', 'desc')
                     ->get();
@@ -158,6 +155,7 @@ class DashboardController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Error fetching top volunteers: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             return [];
         }
     }

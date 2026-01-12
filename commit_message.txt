@@ -1,0 +1,20 @@
+Fix top volunteers not displaying due to database compatibility and incorrect data source
+
+Fixed two critical issues with the top volunteers section:
+
+1. Database compatibility issue:
+   - Removed MySQL-specific TIMESTAMPDIFF function that fails on PostgreSQL
+   - Made queries database-agnostic to work across different database systems
+
+2. Incorrect data source:
+   - Changed from calculating hours based on event duration (start_date - end_date)
+   - Now uses the actual hours_logged field from participants table
+   - This reflects the real volunteer hours logged, not just event duration
+
+Changes made:
+- Updated DashboardController::getTopVolunteers() to use hours_logged
+- Updated ManagerDashboardController::getTopParticipantsByHours() to use hours_logged
+- Added proper filtering for participants with hours_logged > 0
+- Added error logging with stack traces for better debugging
+
+This ensures top volunteers are displayed correctly based on actual logged hours.
