@@ -199,7 +199,7 @@ class DashboardController extends Controller
         $participations = DB::table('participants')
             ->join('events', 'participants.event_id', '=', 'events.id')
             ->where('participants.user_id', $user->id)
-            ->where('participants.status', 'approved')
+            ->where('participants.status', 'APPROVED')
             ->where('events.start_date', '>=', now()->subMonths(6))
             ->select(
                 DB::raw('DATE_FORMAT(events.start_date, "%Y-%m") as month'),
