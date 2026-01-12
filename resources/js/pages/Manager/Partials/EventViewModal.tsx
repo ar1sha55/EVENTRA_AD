@@ -56,9 +56,9 @@ export default function EventViewModal({ isOpen, onClose, event }: ModalProps) {
     if (!event) return null;
 
     const participantStats = event.participants ? {
-        approved: event.participants.filter(p => p.status === 'approved').length,
-        pending: event.participants.filter(p => p.status === 'pending_approval').length,
-        rejected: event.participants.filter(p => p.status === 'rejected').length,
+        approved: event.participants.filter(p => p.status.toLowerCase() === 'approved').length,
+        pending: event.participants.filter(p => p.status.toLowerCase() === 'pending' || p.status.toLowerCase() === 'pending_approval').length,
+        rejected: event.participants.filter(p => p.status.toLowerCase() === 'rejected').length,
         total: event.participants.length,
     } : { approved: 0, pending: 0, rejected: 0, total: 0 };
 

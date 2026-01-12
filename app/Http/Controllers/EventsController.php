@@ -371,7 +371,7 @@ class EventsController extends Controller
                 }
 
                 $existingParticipant->update([
-                    'status' => 'pending_approval', // Reset to pending
+                    'status' => 'PENDING', // Reset to pending
                     'payment_proof_path' => $paymentProofPath, // New proof
                     'registration_date' => now(), // Update date
                 ]);
@@ -388,7 +388,7 @@ class EventsController extends Controller
                 $participant = Participant::create([
                     'user_id' => Auth::id(),
                     'event_id' => $event->id,
-                    'status' => 'pending_approval',
+                    'status' => 'PENDING',
                     'payment_proof_path' => $paymentProofPath,
                     'registration_date' => now(),
                 ]);
@@ -407,7 +407,7 @@ class EventsController extends Controller
         if ($existingParticipant) {
             // RE-REGISTRATION (Free)
             $existingParticipant->update([
-                'status' => 'approved',
+                'status' => 'APPROVED',
                 'registration_date' => now(),
             ]);
 
@@ -426,7 +426,7 @@ class EventsController extends Controller
             $participant = Participant::create([
                 'user_id' => Auth::id(),
                 'event_id' => $event->id,
-                'status' => 'approved',
+                'status' => 'APPROVED',
                 'registration_date' => now(),
             ]);
 
@@ -506,7 +506,7 @@ class EventsController extends Controller
             }])
             ->withCount([
                 'participants as approved_participants_count' => function($query) {
-                    $query->where('status', 'approved');
+                    $query->where('status', 'APPROVED');
                 }
             ])
             ->orderBy('end_date', 'desc')
@@ -533,7 +533,7 @@ class EventsController extends Controller
                 $userParticipated = Auth::check()
                     && Participant::where('event_id', $event->id)
                         ->where('user_id', Auth::id())
-                        ->where('status', 'approved')
+                        ->where('status', 'APPROVED')
                         ->exists();
 
                 // Check if user can submit feedback

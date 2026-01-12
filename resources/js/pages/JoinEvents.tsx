@@ -332,7 +332,9 @@ export default function JoinEvents() {
 
     // Prominent ribbon for registered events (shows on card image)
     const getRegistrationRibbon = (status: string | null) => {
-        if (status === 'approved') {
+        if (!status) return null;
+        
+        if (status.toLowerCase() === 'approved') {
             return (
                 <div className="absolute top-0 left-0 bg-green-500 text-white px-3 py-1 text-xs font-bold rounded-br-lg shadow-md flex items-center gap-1">
                     <CheckCircle className="h-3 w-3" />
@@ -340,7 +342,7 @@ export default function JoinEvents() {
                 </div>
             );
         }
-        if (status === 'pending_approval') {
+        if (status.toLowerCase() === 'pending' || status.toLowerCase() === 'pending_approval') {
             return (
                 <div className="absolute top-0 left-0 bg-yellow-500 text-white px-3 py-1 text-xs font-bold rounded-br-lg shadow-md flex items-center gap-1">
                     <Clock className="h-3 w-3" />
@@ -594,9 +596,9 @@ export default function JoinEvents() {
                                 <Card
                                     key={event.id}
                                     className={`hover:shadow-lg transition-all cursor-pointer flex flex-col h-full overflow-hidden ${
-                                        status === 'approved'
+                                        status?.toLowerCase() === 'approved'
                                             ? 'border-green-300 bg-green-50/30 hover:border-green-400'
-                                            : status === 'pending_approval'
+                                            : (status?.toLowerCase() === 'pending' || status?.toLowerCase() === 'pending_approval')
                                             ? 'border-yellow-300 bg-yellow-50/30 hover:border-yellow-400'
                                             : 'hover:border-primary/50'
                                     }`}

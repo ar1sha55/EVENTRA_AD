@@ -202,7 +202,9 @@ export default function ManageParticipants({ event, participants }: ManagePartic
     }, [event.id]);
 
     const handleStatusChange = (participantId: number, status: 'approved' | 'rejected') => {
-        router.put(`/participants/${participantId}/status`, { status }, {
+        // Convert to uppercase to match database convention
+        const statusValue = status === 'approved' ? 'APPROVED' : 'REJECTED';
+        router.put(`/participants/${participantId}/status`, { status: statusValue }, {
             preserveScroll: true,
             onSuccess: () => {
                 setPaymentProofDialog(false);

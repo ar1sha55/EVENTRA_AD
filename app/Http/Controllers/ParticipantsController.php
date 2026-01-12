@@ -14,7 +14,7 @@ class ParticipantsController extends Controller
     public function updateStatus(Request $request, Participant $participant)
     {
         $validated = $request->validate([
-            'status' => 'required|in:pending_approval,approved,rejected',
+            'status' => 'required|in:PENDING,APPROVED,REJECTED',
         ]);
 
         $oldStatus = $participant->status;
@@ -29,11 +29,11 @@ class ParticipantsController extends Controller
             $event = $participant->event;
             $user = $participant->user;
 
-            if ($newStatus === 'approved') {
+            if ($newStatus === 'APPROVED') {
                 NotificationService::notifyRegistrationApproved($user, $event);
                 // Notify manager that they approved the registration
                 NotificationService::notifyManagerActionConfirmation(Auth::user(), $user, $event, 'approved');
-            } elseif ($newStatus === 'rejected') {
+            } elseif ($newStatus === 'REJECTED') {
                 NotificationService::notifyRegistrationRejected($user, $event);
                 // Notify manager that they rejected the registration
                 NotificationService::notifyManagerActionConfirmation(Auth::user(), $user, $event, 'rejected');
@@ -41,8 +41,8 @@ class ParticipantsController extends Controller
         }
 
         $statusMessage = match($newStatus) {
-            'approved' => 'Participant approved successfully!',
-            'rejected' => 'Participant rejected.',
+            'APPROVED' => 'Participant approved successfully!',
+            'REJECTED' => 'Participant rejected.',
             default => 'Participant status updated.',
         };
 

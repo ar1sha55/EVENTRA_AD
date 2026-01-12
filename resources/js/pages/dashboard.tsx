@@ -471,7 +471,7 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                 />
                 <SummaryCard
                     title="Pending Approvals"
-                    value={registeredEvents.filter(e => e.status === 'pending_approval').length}
+                    value={registeredEvents.filter(e => e.status.toLowerCase() === 'pending' || e.status.toLowerCase() === 'pending_approval').length}
                     icon={Clock}
                     borderColor="border-l-orange-500"
                     iconColor="text-orange-500"

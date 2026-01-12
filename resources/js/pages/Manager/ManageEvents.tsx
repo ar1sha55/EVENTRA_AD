@@ -324,7 +324,7 @@ export default function ManageEvents({ events }: ManageEventsProps) {
         const totalEvents = events.length;
         const totalRevenue = events.reduce((sum, event) => {
             if (event.fee && event.fee > 0 && event.participants) {
-                const approvedParticipants = event.participants.filter(p => p.status === 'approved').length;
+                const approvedParticipants = event.participants.filter(p => p.status.toLowerCase() === 'approved').length;
                 return sum + (event.fee * approvedParticipants);
             }
             return sum;
@@ -333,7 +333,7 @@ export default function ManageEvents({ events }: ManageEventsProps) {
         const totalParticipants = events.reduce((sum, event) => {
             // FIXED: Only count approved participants
             // Previous code counted 'pending_approval' too.
-            const count = event.participants?.filter(p => p.status === 'approved').length || 0;
+            const count = event.participants?.filter(p => p.status.toLowerCase() === 'approved').length || 0;
             return sum + count;
         }, 0);
 
@@ -445,8 +445,8 @@ export default function ManageEvents({ events }: ManageEventsProps) {
 
     const getParticipantStats = (event: Event) => {
         if (!event.participants) return { approved: 0, pending: 0, total: 0 };
-        const approved = event.participants.filter(p => p.status === 'approved').length;
-        const pending = event.participants.filter(p => p.status === 'pending_approval').length;
+        const approved = event.participants.filter(p => p.status.toLowerCase() === 'approved').length;
+        const pending = event.participants.filter(p => p.status.toLowerCase() === 'pending' || p.status.toLowerCase() === 'pending_approval').length;
         // Note: We keep 'total' here as approved + pending because for capacity limits (slots taken), 
         // pending users DO take up a slot until they are rejected.
         return { approved, pending, total: approved + pending };
