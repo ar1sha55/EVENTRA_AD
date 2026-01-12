@@ -221,6 +221,17 @@ Route::middleware(['auth', 'verified', 'role:manager,admin'])->group(function ()
 // API Routes (Used by Manager Dashboard Axios calls)
 // =========================================================================
 Route::middleware(['auth', 'verified', 'role:manager,admin'])->prefix('api')->group(function () {
+    // Test route to verify API is accessible
+    Route::get('/test', function () {
+        return response()->json([
+            'success' => true,
+            'message' => 'API is working',
+            'user' => auth()->user()->name,
+            'role' => auth()->user()->role,
+            'timestamp' => now()->toDateTimeString(),
+        ]);
+    })->name('api.test');
+
     // This returns the JSON data for the charts/stats
     Route::get('/manager/dashboard/summary', [ManagerDashboardController::class, 'getSummary'])
         ->name('api.manager.dashboard.summary');

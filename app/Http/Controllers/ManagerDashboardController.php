@@ -361,6 +361,8 @@ class ManagerDashboardController extends Controller
     public function getPastEventsAnalytics()
     {
         try {
+            Log::info('getPastEventsAnalytics called by user: ' . auth()->id());
+            
             $pastEvents = Event::where('end_date', '<', now())
                 ->with(['documentation' => function($query) {
                     $query->orderBy('sort_order')->orderBy('created_at', 'desc');
@@ -419,6 +421,8 @@ class ManagerDashboardController extends Controller
                     ];
                 });
 
+            Log::info('getPastEventsAnalytics completed successfully. Events count: ' . $pastEvents->count());
+
             return response()->json([
                 'success' => true,
                 'past_events' => $pastEvents,
@@ -426,9 +430,11 @@ class ManagerDashboardController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Error fetching past events analytics: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch past events analytics',
+                'message' => 'Failed to fetch past events analytics: ' . $e->getMessage(),
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
             ], 500);
         }
     }
