@@ -384,22 +384,22 @@ export default function AdminDashboard() {
                             <CardDescription className="text-xs sm:text-sm">Common administrative tasks</CardDescription>
                         </CardHeader>
                         <CardContent className="pb-6">
-                            <div className="grid gap-4 sm:gap-5 sm:grid-cols-2">
+                            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
                                 <Button
                                     variant="outline"
-                                    className="h-auto min-h-[90px] sm:min-h-[100px] justify-start text-left p-4 sm:p-6 hover:bg-blue-50 dark:hover:bg-blue-950 hover:border-blue-200 dark:hover:border-blue-800 transition-all group"
+                                    className="h-auto min-h-[70px] sm:min-h-[80px] justify-start text-left p-3 sm:p-4 hover:bg-blue-50 dark:hover:bg-blue-950 hover:border-blue-200 dark:hover:border-blue-800 transition-all group"
                                     onClick={() => router.get('/admin/manage-users')}
                                 >
-                                    <div className="flex items-start gap-3 sm:gap-4 w-full">
-                                        <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
-                                            <UserCog className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
+                                    <div className="flex items-start gap-2.5 sm:gap-3 w-full">
+                                        <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
+                                            <UserCog className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="font-semibold text-sm sm:text-base flex items-center gap-1 mb-1">
+                                            <div className="font-semibold text-xs sm:text-sm flex items-center gap-1 mb-0.5">
                                                 Manage Users
-                                                <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                                                <ArrowUpRight className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                                             </div>
-                                            <span className="text-xs sm:text-sm text-muted-foreground block leading-relaxed">
+                                            <span className="text-[10px] sm:text-xs text-muted-foreground block leading-relaxed">
                                                 View and manage all accounts
                                             </span>
                                         </div>
@@ -408,19 +408,19 @@ export default function AdminDashboard() {
 
                                 <Button
                                     variant="outline"
-                                    className="h-auto min-h-[90px] sm:min-h-[100px] justify-start text-left p-4 sm:p-6 hover:bg-purple-50 dark:hover:bg-purple-950 hover:border-purple-200 dark:hover:border-purple-800 transition-all group"
+                                    className="h-auto min-h-[70px] sm:min-h-[80px] justify-start text-left p-3 sm:p-4 hover:bg-purple-50 dark:hover:bg-purple-950 hover:border-purple-200 dark:hover:border-purple-800 transition-all group"
                                     onClick={() => router.get('/admin/audit-trail')}
                                 >
-                                    <div className="flex items-start gap-3 sm:gap-4 w-full">
-                                        <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
-                                            <History className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 dark:text-purple-400" />
+                                    <div className="flex items-start gap-2.5 sm:gap-3 w-full">
+                                        <div className="p-1.5 sm:p-2 bg-purple-100 dark:bg-purple-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
+                                            <History className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="font-semibold text-sm sm:text-base flex items-center gap-1 mb-1">
+                                            <div className="font-semibold text-xs sm:text-sm flex items-center gap-1 mb-0.5">
                                                 Audit Trail
-                                                <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                                                <ArrowUpRight className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                                             </div>
-                                            <span className="text-xs sm:text-sm text-muted-foreground block leading-relaxed">
+                                            <span className="text-[10px] sm:text-xs text-muted-foreground block leading-relaxed">
                                                 View system activity history
                                             </span>
                                         </div>
@@ -429,24 +429,24 @@ export default function AdminDashboard() {
 
                                 <Button
                                     variant="outline"
-                                    className="h-auto min-h-[90px] sm:min-h-[100px] justify-start text-left p-4 sm:p-6 hover:bg-orange-50 dark:hover:bg-orange-950 hover:border-orange-200 dark:hover:border-orange-800 transition-all group"
+                                    className="h-auto min-h-[70px] sm:min-h-[80px] justify-start text-left p-3 sm:p-4 hover:bg-orange-50 dark:hover:bg-orange-950 hover:border-orange-200 dark:hover:border-orange-800 transition-all group"
                                     onClick={() => router.get('/admin/support-tickets')}
                                 >
-                                    <div className="flex items-start gap-3 sm:gap-4 w-full">
-                                        <div className="p-2 sm:p-3 bg-orange-100 dark:bg-orange-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
-                                            <LifeBuoy className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400" />
+                                    <div className="flex items-start gap-2.5 sm:gap-3 w-full">
+                                        <div className="p-1.5 sm:p-2 bg-orange-100 dark:bg-orange-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
+                                            <LifeBuoy className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600 dark:text-orange-400" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="font-semibold text-sm sm:text-base flex items-center gap-1 mb-1">
+                                            <div className="font-semibold text-xs sm:text-sm flex items-center gap-1 mb-0.5">
                                                 Support Tickets
                                                 {stats && stats.openTickets > 0 && (
-                                                    <Badge className="ml-auto text-[10px] sm:text-xs bg-orange-500 text-white hover:bg-orange-600 border-orange-600 flex-shrink-0">
+                                                    <Badge className="ml-auto text-[9px] sm:text-[10px] bg-orange-500 text-white hover:bg-orange-600 border-orange-600 flex-shrink-0">
                                                         {stats.openTickets}
                                                     </Badge>
                                                 )}
-                                                <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                                                <ArrowUpRight className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                                             </div>
-                                            <span className="text-xs sm:text-sm text-muted-foreground block leading-relaxed">
+                                            <span className="text-[10px] sm:text-xs text-muted-foreground block leading-relaxed">
                                                 Manage user support requests
                                             </span>
                                         </div>
@@ -455,19 +455,19 @@ export default function AdminDashboard() {
 
                                 <Button
                                     variant="outline"
-                                    className="h-auto min-h-[90px] sm:min-h-[100px] justify-start text-left p-4 sm:p-6 hover:bg-green-50 dark:hover:bg-green-950 hover:border-green-200 dark:hover:border-green-800 transition-all group"
+                                    className="h-auto min-h-[70px] sm:min-h-[80px] justify-start text-left p-3 sm:p-4 hover:bg-green-50 dark:hover:bg-green-950 hover:border-green-200 dark:hover:border-green-800 transition-all group"
                                     onClick={() => router.get('/manager/manage-analytics')}
                                 >
-                                    <div className="flex items-start gap-3 sm:gap-4 w-full">
-                                        <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
-                                            <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
+                                    <div className="flex items-start gap-2.5 sm:gap-3 w-full">
+                                        <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
+                                            <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="font-semibold text-sm sm:text-base flex items-center gap-1 mb-1">
+                                            <div className="font-semibold text-xs sm:text-sm flex items-center gap-1 mb-0.5">
                                                 Analytics & Reports
-                                                <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                                                <ArrowUpRight className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                                             </div>
-                                            <span className="text-xs sm:text-sm text-muted-foreground block leading-relaxed">
+                                            <span className="text-[10px] sm:text-xs text-muted-foreground block leading-relaxed">
                                                 View detailed analytics
                                             </span>
                                         </div>
@@ -476,19 +476,19 @@ export default function AdminDashboard() {
 
                                 <Button
                                     variant="outline"
-                                    className="h-auto min-h-[90px] sm:min-h-[100px] justify-start text-left p-4 sm:p-6 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group"
+                                    className="h-auto min-h-[70px] sm:min-h-[80px] justify-start text-left p-3 sm:p-4 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group"
                                     onClick={() => router.get('/events')}
                                 >
-                                    <div className="flex items-start gap-3 sm:gap-4 w-full">
-                                        <div className="p-2 sm:p-3 bg-indigo-100 dark:bg-indigo-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
-                                            <ClipboardList className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 dark:text-indigo-400" />
+                                    <div className="flex items-start gap-2.5 sm:gap-3 w-full">
+                                        <div className="p-1.5 sm:p-2 bg-indigo-100 dark:bg-indigo-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
+                                            <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 dark:text-indigo-400" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="font-semibold text-sm sm:text-base flex items-center gap-1 mb-1">
+                                            <div className="font-semibold text-xs sm:text-sm flex items-center gap-1 mb-0.5">
                                                 Manage Events
-                                                <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                                                <ArrowUpRight className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                                             </div>
-                                            <span className="text-xs sm:text-sm text-muted-foreground block leading-relaxed">
+                                            <span className="text-[10px] sm:text-xs text-muted-foreground block leading-relaxed">
                                                 Create and manage all events
                                             </span>
                                         </div>
@@ -497,19 +497,19 @@ export default function AdminDashboard() {
 
                                 <Button
                                     variant="outline"
-                                    className="h-auto min-h-[90px] sm:min-h-[100px] justify-start text-left p-4 sm:p-6 hover:bg-pink-50 dark:hover:bg-pink-950 hover:border-pink-200 dark:hover:border-pink-800 transition-all group"
+                                    className="h-auto min-h-[70px] sm:min-h-[80px] justify-start text-left p-3 sm:p-4 hover:bg-pink-50 dark:hover:bg-pink-950 hover:border-pink-200 dark:hover:border-pink-800 transition-all group"
                                     onClick={() => router.get('/manager/event-blast')}
                                 >
-                                    <div className="flex items-start gap-3 sm:gap-4 w-full">
-                                        <div className="p-2 sm:p-3 bg-pink-100 dark:bg-pink-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
-                                            <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-pink-600 dark:text-pink-400" />
+                                    <div className="flex items-start gap-2.5 sm:gap-3 w-full">
+                                        <div className="p-1.5 sm:p-2 bg-pink-100 dark:bg-pink-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
+                                            <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 text-pink-600 dark:text-pink-400" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="font-semibold text-sm sm:text-base flex items-center gap-1 mb-1">
+                                            <div className="font-semibold text-xs sm:text-sm flex items-center gap-1 mb-0.5">
                                                 Event Blast
-                                                <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                                                <ArrowUpRight className="h-2.5 w-2.5 sm:h-3 sm:w-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                                             </div>
-                                            <span className="text-xs sm:text-sm text-muted-foreground block leading-relaxed">
+                                            <span className="text-[10px] sm:text-xs text-muted-foreground block leading-relaxed">
                                                 Send mass notifications to participants
                                             </span>
                                         </div>

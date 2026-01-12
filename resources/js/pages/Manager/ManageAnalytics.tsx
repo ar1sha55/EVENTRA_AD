@@ -877,14 +877,43 @@ export default function ManageAnalytics() {
   const fetchPastEvents = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("/api/manager/past-events-analytics");
+      const response = await axios.get("/api/manager/past-events-analytics", {
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
       if (response.data.success) {
         setPastEvents(response.data.past_events);
         setFilteredEvents(response.data.past_events);
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch past events');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching past events:", error);
-      toast.error("Failed to load past events");
+      const errorMessage = error.response?.data?.message 
+        || error.response?.statusText 
+        || error.message 
+        || 'Failed to load past events';
+      const statusCode = error.response?.status;
+      
+      if (statusCode === 404) {
+        toast.error("Route not found", {
+          description: "The analytics API endpoint may not be registered. Please clear route cache in production.",
+        });
+      } else if (statusCode === 403) {
+        toast.error("Access denied", {
+          description: "You don't have permission to access this resource.",
+        });
+      } else if (statusCode === 401) {
+        toast.error("Unauthorized", {
+          description: "Please log in again.",
+        });
+      } else {
+        toast.error("Failed to load past events", {
+          description: errorMessage,
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -893,13 +922,26 @@ export default function ManageAnalytics() {
   const fetchEventAnalytics = async (eventId: number) => {
     try {
       setLoadingAnalytics(true);
-      const response = await axios.get(`/api/manager/events/${eventId}/analytics`);
+      const response = await axios.get(`/api/manager/events/${eventId}/analytics`, {
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
       if (response.data.success) {
         setEventAnalytics(response.data.analytics);
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch event analytics');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching event analytics:", error);
-      toast.error("Failed to load event analytics");
+      const errorMessage = error.response?.data?.message 
+        || error.response?.statusText 
+        || error.message 
+        || 'Failed to load event analytics';
+      toast.error("Failed to load event analytics", {
+        description: errorMessage,
+      });
     } finally {
       setLoadingAnalytics(false);
     }
@@ -908,14 +950,27 @@ export default function ManageAnalytics() {
   const fetchEventParticipants = async (eventId: number) => {
     try {
       setLoadingParticipants(true);
-      const response = await axios.get(`/api/manager/events/${eventId}/participants`);
+      const response = await axios.get(`/api/manager/events/${eventId}/participants`, {
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
       if (response.data.success) {
         setParticipants(response.data.participants);
         setFeedbackStats(response.data.feedback_stats);
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch participants');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching participants:", error);
-      toast.error("Failed to load participant data");
+      const errorMessage = error.response?.data?.message 
+        || error.response?.statusText 
+        || error.message 
+        || 'Failed to load participant data';
+      toast.error("Failed to load participant data", {
+        description: errorMessage,
+      });
     } finally {
       setLoadingParticipants(false);
     }

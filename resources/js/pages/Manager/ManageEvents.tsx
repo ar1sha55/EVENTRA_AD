@@ -879,8 +879,14 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                                                 {event.capacity ? ` / ${event.capacity}` : ''}
                                                             </Button>
                                                             {participantStats.pending > 0 && (
-                                                                <Badge variant="secondary" className="text-xs">
-                                                                    {participantStats.pending} pending
+                                                                <Badge 
+                                                                    variant="outline"
+                                                                    className="text-xs bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/30 dark:hover:bg-orange-950/50 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 transition-colors cursor-pointer w-fit"
+                                                                    onClick={() => viewParticipants(event.id)}
+                                                                >
+                                                                    <Clock className="h-3 w-3 mr-1" />
+                                                                    <span className="font-semibold">{participantStats.pending}</span>
+                                                                    <span className="ml-1">pending</span>
                                                                 </Badge>
                                                             )}
                                                         </div>

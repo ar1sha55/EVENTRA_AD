@@ -2,7 +2,7 @@ import { send } from '@/routes/verification';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Transition } from '@headlessui/react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 import DeleteUser from '@/components/delete-user';
 import HeadingSmall from '@/components/heading-small';
@@ -16,6 +16,7 @@ import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import { edit } from '@/routes/profile';
 import { Upload, X, User } from 'lucide-react';
+import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -43,12 +44,24 @@ export default function Profile({
     mustVerifyEmail: boolean;
     status?: string;
 }) {
-    const { auth, errors: pageErrors } = usePage<SharedData>().props;
+    const page = usePage<SharedData>();
+    const { auth, errors: pageErrors, flash } = page.props;
     const errors = pageErrors || {};
     const isAdmin = auth.user.role === 'admin';
     const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Handle flash messages from backend (for cases like redirects)
+    useEffect(() => {
+        const flashData = flash as any;
+        if (flashData?.success) {
+            toast.success(flashData.success);
+        }
+        if (flashData?.error) {
+            toast.error(flashData.error);
+        }
+    }, [flash]);
 
     const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -71,6 +84,13 @@ export default function Profile({
                 if (fileInputRef.current) {
                     fileInputRef.current.value = '';
                 }
+                toast.success('Profile picture removed successfully');
+            },
+            onError: (errors) => {
+                const errorMessage = Object.values(errors).flat().join(', ') || 'Failed to remove profile picture.';
+                toast.error('Failed to remove profile picture', {
+                    description: errorMessage,
+                });
             },
             onFinish: () => {
                 setProcessing(false);
@@ -80,15 +100,64 @@ export default function Profile({
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setProcessing(true);
+        
+        const form = e.currentTarget;
+        const formData = new FormData(form);
+        const email = formData.get('email') as string;
+        const secondaryEmail = formData.get('secondary_email') as string;
+        const phoneNumber = formData.get('phone_number') as string;
 
-        const formData = new FormData(e.currentTarget);
+        // Validate primary email
+        if (email && !email.toLowerCase().endsWith('@graduate.utm.my')) {
+            toast.error('Invalid primary email', {
+                description: 'Primary email must end with @graduate.utm.my',
+            });
+            return;
+        }
+
+        // Validate secondary email (if provided)
+        if (secondaryEmail && secondaryEmail.trim() !== '' && !secondaryEmail.toLowerCase().endsWith('@gmail.com')) {
+            toast.error('Invalid secondary email', {
+                description: 'Secondary email must end with @gmail.com',
+            });
+            return;
+        }
+
+        // Validate phone number (if provided)
+        if (phoneNumber && phoneNumber.trim() !== '') {
+            // Remove spaces, dashes, and other formatting characters
+            const cleanedPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+            // Check if it starts with 0 and has 10-11 digits (Malaysian format)
+            const phoneRegex = /^0\d{9,10}$/;
+            if (!phoneRegex.test(cleanedPhone)) {
+                toast.error('Invalid phone number', {
+                    description: 'Phone number must be in format: 0123456789 (10-11 digits starting with 0)',
+                });
+                return;
+            }
+            // Update formData with cleaned phone number
+            formData.set('phone_number', cleanedPhone);
+        }
+
+        setProcessing(true);
         formData.append('_method', 'PATCH');
 
         router.post('/settings/profile', formData, {
             forceFormData: true,
             preserveScroll: true,
-            preserveState: false,
+            preserveState: true,
+            onSuccess: (page) => {
+                // Show toast immediately on success
+                toast.success('Profile updated successfully!', {
+                    description: 'Your profile information has been saved.',
+                });
+            },
+            onError: (errors) => {
+                const errorMessage = Object.values(errors).flat().join(', ') || 'Failed to update profile. Please check the form for errors.';
+                toast.error('Failed to update profile', {
+                    description: errorMessage,
+                });
+            },
             onFinish: () => {
                 setProcessing(false);
             },
@@ -212,8 +281,11 @@ export default function Profile({
                                             name="email"
                                             required
                                             autoComplete="username"
-                                            placeholder="Primary email address"
+                                            placeholder="example@graduate.utm.my"
                                         />
+                                        <p className="text-xs text-muted-foreground">
+                                            Must end with @graduate.utm.my
+                                        </p>
                                         <InputError message={errors.email} />
                                     </div>
 
@@ -225,8 +297,11 @@ export default function Profile({
                                             defaultValue={auth.user.secondary_email || ''}
                                             name="secondary_email"
                                             autoComplete="email"
-                                            placeholder="Secondary email (optional)"
+                                            placeholder="example@gmail.com"
                                         />
+                                        <p className="text-xs text-muted-foreground">
+                                            Must end with @gmail.com (optional)
+                                        </p>
                                         <InputError message={errors.secondary_email} />
                                     </div>
                                 </div>
@@ -239,8 +314,11 @@ export default function Profile({
                                         defaultValue={auth.user.phone_number || ''}
                                         name="phone_number"
                                         autoComplete="tel"
-                                        placeholder="+60 12-345 6789"
+                                        placeholder="0123456789"
                                     />
+                                    <p className="text-xs text-muted-foreground">
+                                        Format: 0123456789 (10-11 digits starting with 0)
+                                    </p>
                                     <InputError message={errors.phone_number} />
                                 </div>
 

@@ -92,7 +92,7 @@ const SummaryCard = ({
     onClick?: () => void;
 }) => (
     <Card
-        className={`border-l-4 ${borderColor} hover:shadow-md transition-shadow ${onClick ? 'cursor-pointer' : ''}`}
+        className={`border-l-4 ${borderColor} hover:shadow-md transition-shadow ${onClick ? 'cursor-pointer hover:scale-[1.02]' : ''}`}
         onClick={onClick}
     >
         <CardContent className="pt-6">
@@ -249,6 +249,7 @@ export default function ManagerDashboard({ dashboardData }: { dashboardData: Das
                             icon={CalendarDays}
                             borderColor="border-l-yellow-500"
                             iconColor="text-yellow-500"
+                            onClick={() => router.get('/events')}
                         />
                         <SummaryCard
                             title="Completed Events"
@@ -256,7 +257,7 @@ export default function ManagerDashboard({ dashboardData }: { dashboardData: Das
                             icon={CheckCircle}
                             borderColor="border-l-green-500"
                             iconColor="text-green-500"
-                            onClick={() => router.visit('/manager/manage-analytics')}
+                            onClick={() => router.get('/manager/manage-analytics')}
                         />
                         <SummaryCard
                             title="Total Members"
@@ -264,6 +265,7 @@ export default function ManagerDashboard({ dashboardData }: { dashboardData: Das
                             icon={Users}
                             borderColor="border-l-blue-500"
                             iconColor="text-blue-500"
+                            onClick={() => router.get('/manager/manage-members')}
                         />
                         <SummaryCard
                             title="Total Registrations"
@@ -276,6 +278,7 @@ export default function ManagerDashboard({ dashboardData }: { dashboardData: Das
                                     {summary.pending_registrations} pending approval
                                 </p>
                             }
+                            onClick={() => router.get('/events')}
                         />
                     </div>
 

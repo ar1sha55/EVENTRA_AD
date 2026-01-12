@@ -93,17 +93,36 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
         { label: 'RM 50', value: 50 },
     ];
 
+    // Helper function to format date for datetime-local input (YYYY-MM-DDTHH:mm)
+    const formatDateTimeLocal = (date: Date | string) => {
+        const dateObj = typeof date === 'string' ? new Date(date) : date;
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const hours = String(dateObj.getHours()).padStart(2, '0');
+        const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+
     // Initialize form data when modal opens or event changes
     // This is a valid use case for setState in useEffect for form initialization
     // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => {
         if (isOpen) {
             if (event) {
+                // Properly format dates from event for datetime-local input
+                // Handle different date formats from backend (with or without timezone, with or without space)
+                const parseEventDate = (dateString: string) => {
+                    // Replace space with 'T' if needed (e.g., "2025-12-01 14:00:00" -> "2025-12-01T14:00:00")
+                    const normalizedDate = dateString.includes('T') ? dateString : dateString.replace(' ', 'T');
+                    return formatDateTimeLocal(normalizedDate);
+                };
+
                 setFormData({
                     name: event.name,
                     description: event.description,
-                    start_date: event.start_date.slice(0, 16),
-                    end_date: event.end_date.slice(0, 16),
+                    start_date: parseEventDate(event.start_date),
+                    end_date: parseEventDate(event.end_date),
                     location: event.location,
                     capacity: event.capacity ?? 0,
                     fee: event.fee ?? null,
@@ -114,16 +133,15 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
                 setPreview(event.image_path ? `/storage/${event.image_path}` : null);
                 setQrCodePreview(event.qr_code_path ? `/storage/${event.qr_code_path}` : null);
             } else {
-                // Smart defaults for new events
+                // Smart defaults for new events - use current time
                 const now = new Date();
-                const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-                const endTime = new Date(tomorrow.getTime() + 2 * 60 * 60 * 1000); // 2 hours duration
+                const endTime = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours duration
 
                 setFormData({
                     name: '',
                     description: '',
-                    start_date: tomorrow.toISOString().slice(0, 16),
-                    end_date: endTime.toISOString().slice(0, 16),
+                    start_date: formatDateTimeLocal(now),
+                    end_date: formatDateTimeLocal(endTime),
                     location: '',
                     capacity: 50,
                     fee: null,
@@ -166,13 +184,25 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
         if (formData.start_date && formData.end_date) {
             const startDate = new Date(formData.start_date);
             const endDate = new Date(formData.end_date);
+            const now = new Date();
             
             if (endDate <= startDate) {
                 newErrors.end_date = 'End date must be after start date';
             }
 
-            if (!event && startDate < new Date()) {
-                newErrors.start_date = 'Start date cannot be in the past';
+            // Prevent past dates for both create and edit
+            // For edit: only prevent if the original event was in the future and user tries to change it to past
+            if (event) {
+                const originalStartDate = new Date(event.start_date);
+                // If original event was in the future, don't allow changing to past
+                if (originalStartDate >= now && startDate < now) {
+                    newErrors.start_date = 'Start date cannot be changed to a past date';
+                }
+            } else {
+                // For new events, always prevent past dates
+                if (startDate < now) {
+                    newErrors.start_date = 'Start date cannot be in the past';
+                }
             }
         }
 
@@ -375,7 +405,13 @@ export default function EventFormModal({ isOpen, onClose, event }: ModalProps) {
                         <Icon className="h-4 w-4" />
                         <span className="font-medium">{title}</span>
                         {hasError && (
-                            <Badge variant="destructive" className="text-xs">Error</Badge>
+                            <Badge 
+                                variant="outline" 
+                                className="text-xs bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 flex items-center gap-1"
+                            >
+                                <AlertCircle className="h-3 w-3" />
+                                Needs attention
+                            </Badge>
                         )}
                     </div>
                     {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}

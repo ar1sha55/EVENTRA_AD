@@ -56,6 +56,7 @@ import {
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
 
 const breadcrumbs: BreadcrumbItem[] = [
   {
@@ -123,6 +124,10 @@ export default function EventBlastPage({ events, blasts, captionStyles }: Props)
     if (flash?.success) {
       setSuccessMessage(flash.success);
       setShowSuccessDialog(true);
+      toast.success(flash.success);
+    }
+    if (flash?.error) {
+      toast.error(flash.error);
     }
   }, [flash]);
 
@@ -164,7 +169,10 @@ export default function EventBlastPage({ events, blasts, captionStyles }: Props)
   const handleSendBlast = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEvent || !message.trim()) return;
-    if (blastType === 'scheduled' && !scheduledAt) return;
+    if (blastType === 'scheduled' && !scheduledAt) {
+      toast.error('Please select a date and time for scheduling');
+      return;
+    }
 
     setIsSending(true);
 
@@ -175,24 +183,80 @@ export default function EventBlastPage({ events, blasts, captionStyles }: Props)
       blast_type: blastType,
       scheduled_at: blastType === 'scheduled' ? scheduledAt : null,
     }, {
-      onSuccess: () => {
+      onSuccess: (page) => {
+        const isScheduled = blastType === 'scheduled';
+        const scheduledDate = isScheduled && scheduledAt 
+          ? new Date(scheduledAt).toLocaleString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+            })
+          : null;
+
+        if (isScheduled) {
+          toast.success('Blast scheduled successfully!', {
+            description: scheduledDate ? `It will be sent on ${scheduledDate}` : 'Your blast has been scheduled.',
+          });
+        } else {
+          toast.success('Blast sent successfully!', {
+            description: 'Your message has been posted to the Telegram channel.',
+          });
+        }
+
         setSelectedEvent("");
         setMessage("");
         setScheduledAt("");
         setBlastType('immediate');
         setIsSending(false);
+        
+        // Refresh the blasts list
+        router.reload({ only: ['blasts'] });
       },
-      onError: () => setIsSending(false),
+      onError: (errors) => {
+        setIsSending(false);
+        const errorMessage = Object.values(errors).flat().join(', ') || 'Failed to send blast. Please try again.';
+        toast.error('Failed to send blast', {
+          description: errorMessage,
+        });
+      },
     });
   };
 
   const handleCancel = (blastId: number) => {
     if (!confirm("Cancel this scheduled blast?")) return;
-    router.post(`/manager/event-blast/${blastId}/cancel`, {}, { preserveScroll: true });
+    router.post(`/manager/event-blast/${blastId}/cancel`, {}, {
+      preserveScroll: true,
+      onSuccess: () => {
+        toast.success('Blast cancelled successfully');
+        router.reload({ only: ['blasts'] });
+      },
+      onError: (errors) => {
+        const errorMessage = Object.values(errors).flat().join(', ') || 'Failed to cancel blast.';
+        toast.error('Failed to cancel blast', {
+          description: errorMessage,
+        });
+      },
+    });
   };
 
   const handleRetry = (blastId: number) => {
-    router.post(`/manager/event-blast/${blastId}/retry`, {}, { preserveScroll: true });
+    router.post(`/manager/event-blast/${blastId}/retry`, {}, {
+      preserveScroll: true,
+      onSuccess: () => {
+        toast.success('Blast retry initiated', {
+          description: 'The blast is being processed again.',
+        });
+        router.reload({ only: ['blasts'] });
+      },
+      onError: (errors) => {
+        const errorMessage = Object.values(errors).flat().join(', ') || 'Failed to retry blast.';
+        toast.error('Failed to retry blast', {
+          description: errorMessage,
+        });
+      },
+    });
   };
 
   const getStatusBadge = (status: string) => {
