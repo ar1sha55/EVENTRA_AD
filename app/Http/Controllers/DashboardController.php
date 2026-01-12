@@ -94,10 +94,9 @@ class DashboardController extends Controller
                 ->join('users', 'participants.user_id', '=', 'users.id')
                 ->select(
                     'users.id',
-                    DB::raw('SUM(participants.hours_logged) as total_hours')
+                    DB::raw('SUM(COALESCE(participants.hours_logged, 0)) as total_hours')
                 )
                 ->where('participants.status', 'APPROVED')
-                ->where('participants.hours_logged', '>', 0)
                 ->whereNotNull('users.name')
                 ->groupBy('users.id')
                 ->orderByDesc('total_hours')
@@ -116,12 +115,11 @@ class DashboardController extends Controller
                     ->join('events', 'participants.event_id', '=', 'events.id')
                     ->where('participants.user_id', $userId)
                     ->where('participants.status', 'APPROVED')
-                    ->where('participants.hours_logged', '>', 0)
                     ->select(
                         'events.id',
                         'events.name',
                         'events.start_date',
-                        'participants.hours_logged as hours'
+                        DB::raw('COALESCE(participants.hours_logged, 0) as hours')
                     )
                     ->orderBy('events.start_date', 'desc')
                     ->get();
