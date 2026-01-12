@@ -197,9 +197,9 @@ const ChatPopup: React.FC<ChatPopupProps> = ({ isOpen, onClose }) => {
     const quickReplies = getQuickReplies();
 
     return (
-        <div className="fixed bottom-24 right-4 z-50 w-80 h-[550px] bg-white rounded-xl shadow-2xl flex flex-col border border-purple-200 font-sans">
+        <div className="fixed bottom-24 right-4 z-50 w-80 h-[550px] bg-white dark:bg-gray-900 rounded-xl shadow-2xl flex flex-col border border-purple-200 dark:border-purple-800 font-sans">
             {/* Header */}
-            <div className="flex justify-between items-center p-4 bg-gradient-to-r from-purple-600 to-purple-700 rounded-t-xl text-white">
+            <div className="flex justify-between items-center p-4 bg-gradient-to-r from-purple-600 to-purple-700 dark:from-purple-700 dark:to-purple-800 rounded-t-xl text-white">
                 <div className="flex items-center gap-2">
                     <Sparkles size={20} className="text-yellow-300 animate-pulse" />
                     <div className="flex flex-col">
@@ -229,7 +229,7 @@ const ChatPopup: React.FC<ChatPopupProps> = ({ isOpen, onClose }) => {
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 p-4 overflow-y-auto bg-gradient-to-b from-purple-50/30 to-gray-50">
+            <div className="flex-1 p-4 overflow-y-auto bg-gradient-to-b from-purple-50/30 to-gray-50 dark:from-purple-950/20 dark:to-gray-900">
                 {messages.map((msg, index) => (
                     <div
                         key={index}
@@ -239,7 +239,7 @@ const ChatPopup: React.FC<ChatPopupProps> = ({ isOpen, onClose }) => {
                             className={`p-3 max-w-[85%] rounded-lg text-sm shadow-sm ${
                                 msg.sender === 'user'
                                     ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-br-none'
-                                    : 'bg-white text-gray-800 border border-purple-100 rounded-bl-none'
+                                    : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-purple-100 dark:border-purple-800/50 rounded-bl-none'
                             }`}
                         >
                             <ReactMarkdown
@@ -271,7 +271,7 @@ const ChatPopup: React.FC<ChatPopupProps> = ({ isOpen, onClose }) => {
                             </ReactMarkdown>
                         </div>
                         {msg.timestamp && (
-                            <span className={`text-[10px] text-gray-400 mt-1 px-1 ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
+                            <span className={`text-[10px] text-gray-400 dark:text-gray-500 mt-1 px-1 ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
                                 {formatTime(msg.timestamp)}
                             </span>
                         )}
@@ -280,9 +280,9 @@ const ChatPopup: React.FC<ChatPopupProps> = ({ isOpen, onClose }) => {
 
                 {isLoading && (
                     <div className="flex justify-start mb-3">
-                        <div className="bg-white border border-purple-200 p-3 rounded-lg rounded-bl-none flex items-center space-x-2 shadow-sm">
-                            <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
-                            <span className="text-xs text-gray-600 font-medium">EventraBot is thinking...</span>
+                        <div className="bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800/50 p-3 rounded-lg rounded-bl-none flex items-center space-x-2 shadow-sm">
+                            <Loader2 className="w-4 h-4 animate-spin text-purple-600 dark:text-purple-400" />
+                            <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">EventraBot is thinking...</span>
                         </div>
                     </div>
                 )}
@@ -291,10 +291,10 @@ const ChatPopup: React.FC<ChatPopupProps> = ({ isOpen, onClose }) => {
 
             {/* Quick Actions Section - Always Visible */}
             {quickReplies.length > 0 && (
-                <div className="bg-white border-t border-purple-100 px-3 py-2.5">
+                <div className="bg-white dark:bg-gray-900 border-t border-purple-100 dark:border-purple-800/50 px-3 py-2.5">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-purple-700">⚡ Quick Actions</span>
-                        <span className="text-[10px] text-gray-400">Click to send</span>
+                        <span className="text-xs font-semibold text-purple-700 dark:text-purple-400">⚡ Quick Actions</span>
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500">Click to send</span>
                     </div>
                     <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                         {quickReplies.map((reply, index) => (
@@ -302,7 +302,7 @@ const ChatPopup: React.FC<ChatPopupProps> = ({ isOpen, onClose }) => {
                                 key={index}
                                 onClick={() => handleQuickReply(reply)}
                                 disabled={isLoading}
-                                className="flex-shrink-0 px-3 py-2 text-xs bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 text-purple-700 rounded-lg hover:from-purple-100 hover:to-purple-200 hover:border-purple-300 transition-all hover:shadow-md shadow-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                                className="flex-shrink-0 px-3 py-2 text-xs bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/30 border border-purple-200 dark:border-purple-700/50 text-purple-700 dark:text-purple-400 rounded-lg hover:from-purple-100 hover:to-purple-200 dark:hover:from-purple-900/50 dark:hover:to-purple-800/50 hover:border-purple-300 dark:hover:border-purple-600 transition-all hover:shadow-md shadow-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                             >
                                 {reply}
                             </button>
@@ -312,14 +312,14 @@ const ChatPopup: React.FC<ChatPopupProps> = ({ isOpen, onClose }) => {
             )}
 
             {/* Input Area */}
-            <div className="p-3 bg-white border-t border-purple-100 rounded-b-xl">
+            <div className="p-3 bg-white dark:bg-gray-900 border-t border-purple-100 dark:border-purple-800/50 rounded-b-xl">
                 <div className="flex items-center gap-2">
                     <input
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-                        className="flex-1 p-2 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                        className="flex-1 p-2 border border-purple-200 dark:border-purple-700/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                         placeholder="Ask me anything..."
                         disabled={isLoading}
                     />
@@ -328,14 +328,14 @@ const ChatPopup: React.FC<ChatPopupProps> = ({ isOpen, onClose }) => {
                         disabled={isLoading || !input.trim()}
                         className={`rounded-lg p-2 transition-all ${
                             isLoading || !input.trim()
-                                ? 'bg-gray-300 cursor-not-allowed'
+                                ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
                                 : 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-sm hover:shadow-md'
                         }`}
                     >
                         <Send size={18} className="text-white" />
                     </Button>
                 </div>
-                <p className="text-xs text-gray-400 mt-2 text-center">
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">
                     Powered by Gemini AI • Press Enter to send
                 </p>
             </div>

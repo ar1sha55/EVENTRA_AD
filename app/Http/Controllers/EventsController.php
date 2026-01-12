@@ -500,7 +500,6 @@ class EventsController extends Controller
         $events = Event::where('end_date', '<', now())
             ->where('status', 'published')
             ->where('is_gallery_visible', true)
-            ->whereHas('documentation')
             ->with(['documentation' => function($query) {
                 $query->orderBy('sort_order')
                     ->orderBy('created_at', 'desc');
@@ -530,13 +529,17 @@ class EventsController extends Controller
                         ->first()
                     : null;
 
+                // Check if user participated in this event
+                $userParticipated = Auth::check()
+                    && Participant::where('event_id', $event->id)
+                        ->where('user_id', Auth::id())
+                        ->where('status', 'approved')
+                        ->exists();
+
                 // Check if user can submit feedback
                 $canSubmitFeedback = Auth::check()
                     && $event->end_date < now()
-                    && Participant::where('event_id', $event->id)
-                        ->where('user_id', Auth::id())
-                        ->where('status', 'APPROVED')
-                        ->exists();
+                    && $userParticipated;
 
                 return [
                     'id' => $event->id,
@@ -557,6 +560,7 @@ class EventsController extends Controller
                     'total_documentation_count' => $event->documentation->count(),
                     'user_feedback' => $userFeedback,
                     'can_submit_feedback' => $canSubmitFeedback,
+                    'user_participated' => $userParticipated,
                 ];
             });
 

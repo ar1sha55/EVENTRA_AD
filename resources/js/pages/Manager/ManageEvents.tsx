@@ -67,6 +67,7 @@ import {
     RefreshCw,
     Trash2,
     X,
+    AlertCircle,
 } from 'lucide-react';
 import { TableSkeleton, StatCardsGridSkeleton } from '@/components/ui/loading-skeletons';
 
@@ -148,9 +149,14 @@ export default function ManageEvents({ events }: ManageEventsProps) {
     const [editingEvent, setEditingEvent] = useState<Event | null>(null);
     const [viewEvent, setViewEvent] = useState<Event | null>(null);
     const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
-    const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published' | 'archived'>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'upcoming' | 'past' | 'draft' | 'archived'>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [isPageLoading, setIsPageLoading] = useState(false);
+
+    // Helper function to check if event is past
+    const isPastEvent = (event: Event) => {
+        return new Date(event.end_date) < new Date();
+    };
 
     // Default sort: Start Date, Descending (Newest first)
     const [sortField, setSortField] = useState<SortField>('start_date');
@@ -314,6 +320,7 @@ export default function ManageEvents({ events }: ManageEventsProps) {
 
     // Calculate statistics
     const statistics = useMemo(() => {
+        const now = new Date();
         const totalEvents = events.length;
         const totalRevenue = events.reduce((sum, event) => {
             if (event.fee && event.fee > 0 && event.participants) {
@@ -330,8 +337,14 @@ export default function ManageEvents({ events }: ManageEventsProps) {
             return sum + count;
         }, 0);
 
+        // Count upcoming events (end_date >= now and not archived)
         const upcomingEvents = events.filter(e =>
-            e.status === 'published' && new Date(e.start_date) > new Date()
+            new Date(e.end_date) >= now && e.status !== 'archived'
+        ).length;
+
+        // Count past events (end_date < now and not archived)
+        const pastEvents = events.filter(e =>
+            new Date(e.end_date) < now && e.status !== 'archived'
         ).length;
 
         return {
@@ -339,9 +352,10 @@ export default function ManageEvents({ events }: ManageEventsProps) {
             draft: events.filter(e => e.status === 'draft').length,
             published: events.filter(e => e.status === 'published').length,
             archived: events.filter(e => e.status === 'archived').length,
+            upcoming: upcomingEvents,
+            past: pastEvents,
             revenue: totalRevenue,
             participants: totalParticipants,
-            upcoming: upcomingEvents,
         };
     }, [events]);
 
@@ -349,11 +363,21 @@ export default function ManageEvents({ events }: ManageEventsProps) {
     const filteredAndSortedEvents = useMemo(() => {
         // CRITICAL FIX: Create a shallow copy of the array before sorting
         let filtered = [...events];
+        const now = new Date();
 
         // Apply status filter
-        if (statusFilter !== 'all') {
-            filtered = filtered.filter(event => event.status === statusFilter);
+        if (statusFilter === 'published') {
+            filtered = filtered.filter(event => event.status === 'published');
+        } else if (statusFilter === 'upcoming') {
+            filtered = filtered.filter(event => new Date(event.end_date) >= now && event.status !== 'archived');
+        } else if (statusFilter === 'past') {
+            filtered = filtered.filter(event => new Date(event.end_date) < now && event.status !== 'archived');
+        } else if (statusFilter === 'draft') {
+            filtered = filtered.filter(event => event.status === 'draft');
+        } else if (statusFilter === 'archived') {
+            filtered = filtered.filter(event => event.status === 'archived');
         }
+        // 'all' shows everything, no filter needed
 
         // Apply search filter
         if (searchQuery) {
@@ -548,15 +572,8 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                         onClick={() => setStatusFilter('all')}
                                         size="sm"
                                     >
+                                        <Calendar className="h-3 w-3 mr-1" />
                                         All ({statistics.total})
-                                    </Button>
-                                    <Button
-                                        variant={statusFilter === 'draft' ? 'default' : 'outline'}
-                                        onClick={() => setStatusFilter('draft')}
-                                        size="sm"
-                                    >
-                                        <Clock className="h-3 w-3 mr-1" />
-                                        Draft ({statistics.draft})
                                     </Button>
                                     <Button
                                         variant={statusFilter === 'published' ? 'default' : 'outline'}
@@ -565,6 +582,30 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                     >
                                         <CheckCircle className="h-3 w-3 mr-1" />
                                         Published ({statistics.published})
+                                    </Button>
+                                    <Button
+                                        variant={statusFilter === 'upcoming' ? 'default' : 'outline'}
+                                        onClick={() => setStatusFilter('upcoming')}
+                                        size="sm"
+                                    >
+                                        <Calendar className="h-3 w-3 mr-1" />
+                                        Upcoming ({statistics.upcoming})
+                                    </Button>
+                                    <Button
+                                        variant={statusFilter === 'past' ? 'default' : 'outline'}
+                                        onClick={() => setStatusFilter('past')}
+                                        size="sm"
+                                    >
+                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                        Past ({statistics.past})
+                                    </Button>
+                                    <Button
+                                        variant={statusFilter === 'draft' ? 'default' : 'outline'}
+                                        onClick={() => setStatusFilter('draft')}
+                                        size="sm"
+                                    >
+                                        <Clock className="h-3 w-3 mr-1" />
+                                        Draft ({statistics.draft})
                                     </Button>
                                     <Button
                                         variant={statusFilter === 'archived' ? 'default' : 'outline'}
@@ -578,38 +619,22 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                             </div>
 
                             {/* Active Filters Display */}
-                            {(searchQuery || statusFilter !== 'all') && (
+                            {searchQuery && (
                                 <div className="flex items-center gap-2 mt-4 pt-4 border-t">
                                     <span className="text-sm text-muted-foreground">Active filters:</span>
-                                    {searchQuery && (
-                                        <Badge variant="secondary" className="gap-1">
-                                            Search: "{searchQuery}"
-                                            <button
-                                                onClick={() => setSearchQuery('')}
-                                                className="ml-1 hover:text-foreground"
-                                            >
-                                                ×
-                                            </button>
-                                        </Badge>
-                                    )}
-                                    {statusFilter !== 'all' && (
-                                        <Badge variant="secondary" className="gap-1">
-                                            Status: {statusFilter}
-                                            <button
-                                                onClick={() => setStatusFilter('all')}
-                                                className="ml-1 hover:text-foreground"
-                                            >
-                                                ×
-                                            </button>
-                                        </Badge>
-                                    )}
+                                    <Badge variant="secondary" className="gap-1">
+                                        Search: "{searchQuery}"
+                                        <button
+                                            onClick={() => setSearchQuery('')}
+                                            className="ml-1 hover:text-foreground"
+                                        >
+                                            ×
+                                        </button>
+                                    </Badge>
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => {
-                                            setSearchQuery('');
-                                            setStatusFilter('all');
-                                        }}
+                                        onClick={() => setSearchQuery('')}
                                         className="h-6 text-xs"
                                     >
                                         Clear all
@@ -695,7 +720,7 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                                         ? 'No events match your filters'
                                                         : 'No events created yet'}
                                                 </p>
-                                                {!searchQuery && statusFilter === 'all' && (
+                                                {!searchQuery && (statusFilter === 'all' || statusFilter === 'upcoming') && paginatedEvents.length === 0 && events.length === 0 && (
                                                     <Button onClick={openCreateModal} className="mt-4">
                                                         <Plus className="h-4 w-4 mr-2" />
                                                         Create Your First Event
@@ -747,11 +772,11 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                     <TableBody>
                                         {paginatedEvents.map((event) => {
                                             const participantStats = getParticipantStats(event);
-                                            const isPastEvent = new Date(event.end_date) < new Date();
+                                            const isEventPast = isPastEvent(event);
                                             const isUpcoming = new Date(event.start_date) > new Date();
 
                                             return (
-                                                <TableRow key={event.id} className={isPastEvent ? 'opacity-60' : ''}>
+                                                <TableRow key={event.id} className={isEventPast ? 'bg-gray-50/50 dark:bg-gray-900/20' : ''}>
                                                     <TableCell>
                                                         <Checkbox
                                                             checked={selectedEventIds.includes(event.id)}
@@ -784,14 +809,9 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                                     <TableCell>
                                                         <div>
                                                             <p className="font-medium">{event.name}</p>
-                                                            {isUpcoming && event.status === 'published' && (
-                                                                <Badge variant="outline" className="mt-1 text-xs">
-                                                                    Upcoming
-                                                                </Badge>
-                                                            )}
-                                                            {isPastEvent && (
-                                                                <Badge variant="secondary" className="mt-1 text-xs">
-                                                                    Past Event
+                                                            {isEventPast && (
+                                                                <Badge variant="default" className="mt-1 text-xs bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                                                                    Ended
                                                                 </Badge>
                                                             )}
                                                         </div>
@@ -873,35 +893,46 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                                                 </Button>
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
+                                                                {/* Always available - View actions */}
                                                                 <DropdownMenuItem onClick={() => openViewModal(event)}>
                                                                     <Eye className="h-4 w-4 mr-2" />
                                                                     View Details
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => openEditModal(event)}>
-                                                                    <FileText className="h-4 w-4 mr-2" />
-                                                                    Edit
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuItem onClick={() => viewParticipants(event.id)}>
                                                                     <Users className="h-4 w-4 mr-2" />
                                                                     View Participants
                                                                 </DropdownMenuItem>
 
+                                                                {/* Edit & Status changes - Only for upcoming/future events */}
+                                                                {!isEventPast && (
+                                                                    <>
+                                                                        <DropdownMenuSeparator />
+
+                                                                        <DropdownMenuItem onClick={() => openEditModal(event)}>
+                                                                            <FileText className="h-4 w-4 mr-2" />
+                                                                            Edit
+                                                                        </DropdownMenuItem>
+
+                                                                        <DropdownMenuItem
+                                                                            onClick={() => handleQuickStatusChange(event, 'draft')}
+                                                                            disabled={event.status === 'draft'}
+                                                                        >
+                                                                            <Clock className="h-4 w-4 mr-2" />
+                                                                            Set as Draft
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem
+                                                                            onClick={() => handleQuickStatusChange(event, 'published')}
+                                                                            disabled={event.status === 'published'}
+                                                                        >
+                                                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                                                            Publish
+                                                                        </DropdownMenuItem>
+                                                                    </>
+                                                                )}
+
+                                                                {/* Archive & Delete - Available for all events */}
                                                                 <DropdownMenuSeparator />
 
-                                                                <DropdownMenuItem
-                                                                    onClick={() => handleQuickStatusChange(event, 'draft')}
-                                                                    disabled={event.status === 'draft'}
-                                                                >
-                                                                    <Clock className="h-4 w-4 mr-2" />
-                                                                    Set as Draft
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem
-                                                                    onClick={() => handleQuickStatusChange(event, 'published')}
-                                                                    disabled={event.status === 'published'}
-                                                                >
-                                                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                                                    Publish
-                                                                </DropdownMenuItem>
                                                                 <DropdownMenuItem
                                                                     onClick={() => handleQuickStatusChange(event, 'archived')}
                                                                     disabled={event.status === 'archived'}
@@ -910,12 +941,11 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                                                                     Archive
                                                                 </DropdownMenuItem>
 
-                                                                <DropdownMenuSeparator />
-
                                                                 <DropdownMenuItem
                                                                     className="text-red-600 focus:text-red-600"
                                                                     onClick={() => setEventToDelete(event)}
                                                                 >
+                                                                    <Trash2 className="h-4 w-4 mr-2" />
                                                                     Delete Event
                                                                 </DropdownMenuItem>
                                                             </DropdownMenuContent>
@@ -964,15 +994,45 @@ export default function ManageEvents({ events }: ManageEventsProps) {
             <AlertDialog open={!!eventToDelete} onOpenChange={() => setEventToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete the event "{eventToDelete?.name}".
-                            {eventToDelete?.participants && eventToDelete.participants.length > 0 && (
-                                <span className="block mt-2 text-red-600 font-semibold">
-                                    Warning: This event has {eventToDelete.participants.length} registered participant(s).
-                                </span>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            {eventToDelete && isPastEvent(eventToDelete) ? (
+                                <>
+                                    <AlertCircle className="h-5 w-5 text-red-600" />
+                                    Delete Past Event?
+                                </>
+                            ) : (
+                                'Are you sure?'
                             )}
-                            This action cannot be undone.
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {eventToDelete && isPastEvent(eventToDelete) ? (
+                                <div className="space-y-2">
+                                    <p>You are about to delete a past event: <span className="font-semibold">"{eventToDelete?.name}"</span></p>
+                                    {eventToDelete?.participants && eventToDelete.participants.length > 0 && (
+                                        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-md p-3 mt-2">
+                                            <p className="text-red-700 dark:text-red-400 font-semibold text-sm">
+                                                ⚠️ This event contains:
+                                            </p>
+                                            <ul className="text-red-600 dark:text-red-400 text-sm mt-1 space-y-1">
+                                                <li>• {eventToDelete.participants.length} registered participant(s)</li>
+                                                <li>• Historical event data</li>
+                                                <li>• Participant records will be lost</li>
+                                            </ul>
+                                        </div>
+                                    )}
+                                    <p className="mt-2 text-muted-foreground">This action cannot be undone.</p>
+                                </div>
+                            ) : (
+                                <div>
+                                    This will permanently delete the event "{eventToDelete?.name}".
+                                    {eventToDelete?.participants && eventToDelete.participants.length > 0 && (
+                                        <span className="block mt-2 text-red-600 font-semibold">
+                                            Warning: This event has {eventToDelete.participants.length} registered participant(s).
+                                        </span>
+                                    )}
+                                    <p className="mt-2">This action cannot be undone.</p>
+                                </div>
+                            )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -981,7 +1041,7 @@ export default function ManageEvents({ events }: ManageEventsProps) {
                             onClick={handleDelete}
                             className="bg-red-600 hover:bg-red-700"
                         >
-                            Delete Event
+                            {eventToDelete && isPastEvent(eventToDelete) ? 'Yes, Delete Past Event' : 'Delete Event'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

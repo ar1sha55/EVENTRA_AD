@@ -325,54 +325,69 @@ export default function ManageParticipants({ event, participants }: ManagePartic
 
                     {/* Statistics Cards */}
                     <div className="grid gap-4 md:grid-cols-4">
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Total Registrations</CardTitle>
-                                <Users className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{stats.total}</div>
-                                {event.capacity && (
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Capacity: {event.capacity}
-                                    </p>
-                                )}
+                        <Card className={`border-l-4 border-l-blue-500 hover:shadow-md transition-shadow ${activeTab === 'all' ? 'ring-1 ring-blue-500' : ''}`}>
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-muted-foreground">Total Registrations</p>
+                                        <p className="text-2xl font-bold">{stats.total}</p>
+                                        {event.capacity && (
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Capacity: {event.capacity}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <Users className="h-8 w-8 text-blue-500" />
+                                </div>
                             </CardContent>
                         </Card>
 
-                        <Card className={activeTab === 'pending' ? 'border-amber-500 ring-1 ring-amber-500' : ''}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Pending</CardTitle>
-                                <Clock className="h-4 w-4 text-amber-500" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{stats.pending}</div>
-                                <p className="text-xs text-muted-foreground mt-1">Needs review</p>
+                        <Card className={`border-l-4 border-l-amber-500 hover:shadow-md transition-shadow ${activeTab === 'pending' ? 'ring-1 ring-amber-500' : ''}`}>
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-muted-foreground">Pending</p>
+                                        <p className="text-2xl font-bold">{stats.pending}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Needs review</p>
+                                    </div>
+                                    <Clock className="h-8 w-8 text-amber-500" />
+                                </div>
                             </CardContent>
                         </Card>
 
-                        <Card className={activeTab === 'approved' ? 'border-green-500 ring-1 ring-green-500' : ''}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Approved</CardTitle>
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{stats.approved}</div>
-                                {event.capacity && (
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        {event.capacity - stats.approved} slots left
-                                    </p>
-                                )}
+                        <Card className={`border-l-4 border-l-green-500 hover:shadow-md transition-shadow ${activeTab === 'approved' ? 'ring-1 ring-green-500' : ''}`}>
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-muted-foreground">Approved</p>
+                                        <p className="text-2xl font-bold">{stats.approved}</p>
+                                        {event.capacity ? (
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                {event.capacity - stats.approved} slots left
+                                            </p>
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Confirmed participants
+                                            </p>
+                                        )}
+                                    </div>
+                                    <CheckCircle className="h-8 w-8 text-green-500" />
+                                </div>
                             </CardContent>
                         </Card>
 
-                        <Card className={activeTab === 'rejected' ? 'border-red-500 ring-1 ring-red-500' : ''}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Rejected</CardTitle>
-                                <XCircle className="h-4 w-4 text-red-500" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{stats.rejected}</div>
+                        <Card className={`border-l-4 border-l-red-500 hover:shadow-md transition-shadow ${activeTab === 'rejected' ? 'ring-1 ring-red-500' : ''}`}>
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-muted-foreground">Rejected</p>
+                                        <p className="text-2xl font-bold">{stats.rejected}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Not approved
+                                        </p>
+                                    </div>
+                                    <XCircle className="h-8 w-8 text-red-500" />
+                                </div>
                             </CardContent>
                         </Card>
                     </div>

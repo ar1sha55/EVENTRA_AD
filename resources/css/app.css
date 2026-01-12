@@ -131,15 +131,15 @@
   --chart-4: oklch(0.553 0.195 38.402);
   --chart-5: oklch(0.47 0.157 37.304);
   
-  /* Dark Mode Purple Sidebar */
-  --sidebar: oklch(0.22 0.08 285);                   /* Dark purple background */
-  --sidebar-foreground: oklch(0.92 0.05 285);        /* Light purple/white text */
-  --sidebar-primary: oklch(0.60 0.22 285);           /* Bright purple for active items */
-  --sidebar-primary-foreground: oklch(0.98 0.01 290); /* White text on active */
-  --sidebar-accent: oklch(0.32 0.12 285);            /* Medium purple hover state */
-  --sidebar-accent-foreground: oklch(0.95 0.03 285); /* Light text on hover */
-  --sidebar-border: oklch(0.30 0.08 285);            /* Dark purple border */
-  --sidebar-ring: oklch(0.65 0.20 285);              /* Bright purple focus ring */
+  /* Dark Mode Sidebar - More Refined & Modern */
+  --sidebar: oklch(0.18 0.015 285);                  /* Very dark with minimal purple tint */
+  --sidebar-foreground: oklch(0.95 0.01 285);        /* Clean white text */
+  --sidebar-primary: oklch(0.65 0.20 30);            /* Orange accent for active items */
+  --sidebar-primary-foreground: oklch(0.98 0.01 0);  /* Pure white text on active */
+  --sidebar-accent: oklch(0.25 0.03 285);            /* Subtle hover state */
+  --sidebar-accent-foreground: oklch(0.98 0.01 285); /* Bright text on hover */
+  --sidebar-border: oklch(0.28 0.02 285);            /* Slightly lighter border */
+  --sidebar-ring: oklch(0.70 0.20 30);               /* Orange focus ring */
   
   /* Footer colors */
   --footer: oklch(16.635% 0.00641 300.794);

@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Event;
 use App\Models\SupportTicket;
 use App\Models\ActivityLog;
+use App\Models\Participant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -49,6 +50,11 @@ class AdminDashboardController extends Controller
         $resolvedTickets = SupportTicket::where('status', 'resolved')->count();
         $inProgressTickets = SupportTicket::where('status', 'in_progress')->count();
 
+        // Registration statistics
+        $totalRegistrations = Participant::count();
+        $approvedRegistrations = Participant::where('status', 'approved')->count();
+        $pendingRegistrations = Participant::where('status', 'pending_approval')->count();
+
         // User growth data (last 6 months)
         $userGrowthData = $this->getUserGrowthData();
 
@@ -80,6 +86,9 @@ class AdminDashboardController extends Controller
             'totalSupportTickets' => $totalSupportTickets,
             'openTickets' => $openTickets,
             'resolvedTickets' => $resolvedTickets,
+            'totalRegistrations' => $totalRegistrations,
+            'approvedRegistrations' => $approvedRegistrations,
+            'pendingRegistrations' => $pendingRegistrations,
             'userGrowthData' => $userGrowthData,
             'eventStatusData' => $eventStatusData,
             'ticketStatusData' => $ticketStatusData,

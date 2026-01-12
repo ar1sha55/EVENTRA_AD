@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('events', function (Blueprint $table) {
-            $table->boolean('is_gallery_visible')->default(true)->after('status');
+            $table->boolean('is_gallery_visible')->default(true)->change();
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('events', function (Blueprint $table) {
-            $table->dropColumn('is_gallery_visible');
+            $table->boolean('is_gallery_visible')->default(false)->change();
         });
     }
 };

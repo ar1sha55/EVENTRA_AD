@@ -82,6 +82,7 @@ interface GalleryEvent {
   total_documentation_count: number;
   user_feedback: UserFeedback | null;
   can_submit_feedback: boolean;
+  user_participated: boolean;
 }
 
 export default function EventsGallery() {
@@ -89,6 +90,7 @@ export default function EventsGallery() {
   const [filteredEvents, setFilteredEvents] = useState<GalleryEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [eventFilter, setEventFilter] = useState<'all' | 'my'>('all');
   const [selectedEvent, setSelectedEvent] = useState<GalleryEvent | null>(null);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("analytics");
@@ -111,20 +113,26 @@ export default function EventsGallery() {
   }, []);
 
   useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setFilteredEvents(events);
-    } else {
+    let filtered = events;
+
+    // Apply event filter (All Events / My Events)
+    if (eventFilter === 'my') {
+      filtered = filtered.filter(event => event.user_participated);
+    }
+
+    // Apply search query
+    if (searchQuery.trim() !== "") {
       const query = searchQuery.toLowerCase();
-      setFilteredEvents(
-        events.filter(
-          (event) =>
-            event.name.toLowerCase().includes(query) ||
-            event.location.toLowerCase().includes(query) ||
-            event.description.toLowerCase().includes(query)
-        )
+      filtered = filtered.filter(
+        (event) =>
+          event.name.toLowerCase().includes(query) ||
+          event.location.toLowerCase().includes(query) ||
+          event.description.toLowerCase().includes(query)
       );
     }
-  }, [searchQuery, events]);
+
+    setFilteredEvents(filtered);
+  }, [searchQuery, events, eventFilter]);
 
   // Handle deep-link from dashboard - auto-open event and feedback tab
   useEffect(() => {
@@ -133,6 +141,7 @@ export default function EventsGallery() {
     const urlParams = new URLSearchParams(window.location.search);
     const eventId = urlParams.get('event_id');
     const openFeedback = urlParams.get('open_feedback');
+    const tabParam = urlParams.get('tab');
 
     if (eventId) {
       const event = events.find((e) => e.id === parseInt(eventId));
@@ -140,8 +149,8 @@ export default function EventsGallery() {
         setSelectedEvent(event);
         setCurrentPhotoIndex(0);
 
-        // Auto-open feedback tab if requested
-        if (openFeedback === 'true') {
+        // Auto-open feedback tab if requested (supports both parameters)
+        if (openFeedback === 'true' || tabParam === 'feedback') {
           setActiveTab('feedback');
 
           // Pre-fill feedback form if user already submitted feedback
@@ -354,6 +363,34 @@ export default function EventsGallery() {
           </div>
         </div>
 
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-2 border-b">
+          <Button
+            variant={eventFilter === 'all' ? 'default' : 'ghost'}
+            onClick={() => setEventFilter('all')}
+            className="rounded-b-none"
+            size="sm"
+          >
+            <Images className="h-4 w-4 mr-2" />
+            All Events
+            <Badge variant="secondary" className="ml-2">
+              {events.length}
+            </Badge>
+          </Button>
+          <Button
+            variant={eventFilter === 'my' ? 'default' : 'ghost'}
+            onClick={() => setEventFilter('my')}
+            className="rounded-b-none"
+            size="sm"
+          >
+            <Users className="h-4 w-4 mr-2" />
+            My Events
+            <Badge variant="secondary" className="ml-2">
+              {events.filter(e => e.user_participated).length}
+            </Badge>
+          </Button>
+        </div>
+
         {/* Events Grid */}
         {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
@@ -363,20 +400,39 @@ export default function EventsGallery() {
           ) : filteredEvents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
               <div className="bg-muted/50 p-8 rounded-full mb-6">
-                <Images className="h-16 w-16 text-muted-foreground/30" />
+                {eventFilter === 'my' ? (
+                  <Users className="h-16 w-16 text-muted-foreground/30" />
+                ) : (
+                  <Images className="h-16 w-16 text-muted-foreground/30" />
+                )}
               </div>
               <h3 className="text-xl font-semibold mb-2">
-                {searchQuery ? "No events found" : "No events yet"}
+                {searchQuery
+                  ? "No events found"
+                  : eventFilter === 'my'
+                    ? "No events participated yet"
+                    : "No events yet"}
               </h3>
               <p className="text-muted-foreground mb-6 text-center max-w-md">
                 {searchQuery
                   ? "Try adjusting your search terms"
-                  : "Past events with photos will appear here"}
+                  : eventFilter === 'my'
+                    ? "Events you participate in will appear here with their photos and memories"
+                    : "Past events with photos will appear here"}
               </p>
-              {searchQuery && (
-                <Button variant="outline" onClick={() => setSearchQuery("")}>
-                  <FilterX className="mr-2 h-4 w-4" /> Clear Search
-                </Button>
+              {(searchQuery || eventFilter === 'my') && (
+                <div className="flex gap-2">
+                  {searchQuery && (
+                    <Button variant="outline" onClick={() => setSearchQuery("")}>
+                      <FilterX className="mr-2 h-4 w-4" /> Clear Search
+                    </Button>
+                  )}
+                  {eventFilter === 'my' && (
+                    <Button variant="outline" onClick={() => setEventFilter('all')}>
+                      <Images className="mr-2 h-4 w-4" /> View All Events
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           ) : (
@@ -418,12 +474,14 @@ export default function EventsGallery() {
                     )}
 
                     {/* Documentation Count Badge */}
-                    <div className="absolute top-3 right-3 z-10">
-                      <Badge className="bg-black/70 text-white border-white/20 backdrop-blur-sm shadow-lg">
-                        <FileText className="h-3 w-3 mr-1.5" />
-                        {event.total_documentation_count} {event.total_documentation_count === 1 ? "item" : "items"}
-                      </Badge>
-                    </div>
+                    {event.total_documentation_count > 0 && (
+                      <div className="absolute top-3 right-3 z-10">
+                        <Badge className="bg-black/70 text-white border-white/20 backdrop-blur-sm shadow-lg">
+                          <FileText className="h-3 w-3 mr-1.5" />
+                          {event.total_documentation_count} {event.total_documentation_count === 1 ? "item" : "items"}
+                        </Badge>
+                      </div>
+                    )}
 
                     {/* Attendance Badge */}
                     <div className="absolute top-3 left-3 z-10">

@@ -195,10 +195,10 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
 
   const getMedalBgColor = (index: number) => {
       switch (index) {
-          case 0: return 'bg-yellow-50 border-yellow-200'; // Gold
-          case 1: return 'bg-gray-50 border-gray-200'; // Silver
-          case 2: return 'bg-orange-50 border-orange-200'; // Bronze
-          default: return 'bg-blue-50 border-blue-200';
+          case 0: return 'bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800/30'; // Gold
+          case 1: return 'bg-gray-50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700/30'; // Silver
+          case 2: return 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800/30'; // Bronze
+          default: return 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/30';
       }
   };
 
@@ -355,7 +355,7 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title="Dashboard" />
 
-      <div className="py-8 px-4 sm:px-6 lg:px-8 bg-gray-50/50">
+      <div className="py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto space-y-8">
 
             {/* 1. Header Section */}
@@ -376,15 +376,15 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
 
             {/* Profile Completion Card */}
             {!isProfileComplete && (
-                <Card className="border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950 dark:to-orange-950 dark:border-amber-800 shadow-sm">
+                <Card className="border-amber-200 dark:border-amber-900/50 bg-gradient-to-r from-amber-50/80 to-orange-50/80 dark:from-amber-950/20 dark:to-orange-950/20 shadow-sm">
                     <CardContent className="pt-6">
                         <div className="flex flex-col lg:flex-row lg:items-center gap-4">
                             {/* Progress Circle & Info */}
                             <div className="flex items-center gap-4 flex-1">
                                 {/* Circular Progress Indicator */}
                                 <div className="relative flex-shrink-0">
-                                    <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center border-4 border-amber-300 dark:border-amber-700">
-                                        <span className="text-lg font-bold text-amber-700 dark:text-amber-300">
+                                    <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center border-4 border-amber-300 dark:border-amber-700/50">
+                                        <span className="text-lg font-bold text-amber-700 dark:text-amber-400">
                                             {completedFieldsCount}/{totalFieldsCount}
                                         </span>
                                     </div>
@@ -393,11 +393,11 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                                 {/* Text Content */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                                        <h3 className="font-semibold text-amber-900 dark:text-amber-100">
+                                        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500 flex-shrink-0" />
+                                        <h3 className="font-semibold text-amber-900 dark:text-amber-200">
                                             Complete Your Profile
                                         </h3>
-                                        <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300 text-xs">
+                                        <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700/50 text-xs">
                                             {profileCompletionPercent}%
                                         </Badge>
                                     </div>
@@ -406,7 +406,7 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                                     <div className="mb-2">
                                         <Progress
                                             value={profileCompletionPercent}
-                                            className="h-2 bg-amber-200 dark:bg-amber-800"
+                                            className="h-2 bg-amber-200 dark:bg-amber-900/30"
                                         />
                                     </div>
 
@@ -417,8 +417,8 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                                                 key={field.key}
                                                 className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${
                                                     field.completed
-                                                        ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                                                        : 'bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-200'
+                                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                                                        : 'bg-amber-200 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
                                                 }`}
                                             >
                                                 {field.completed ? (
@@ -436,7 +436,7 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                             {/* Action Button */}
                             <Button
                                 onClick={() => router.visit(profileEdit().url)}
-                                className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm whitespace-nowrap"
+                                className="bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white shadow-sm whitespace-nowrap"
                             >
                                 <User className="h-4 w-4 mr-2" />
                                 Update Profile
@@ -449,12 +449,12 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
             {/* 2. Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <SummaryCard
-                    title="Total Registered"
-                    value={stats.totalEvents}
+                    title="My Registered Events"
+                    value={registeredEvents.length}
                     icon={ClipboardList}
                     borderColor="border-l-blue-500"
                     iconColor="text-blue-500"
-                    subtext={<p className="text-xs text-muted-foreground">All time registrations</p>}
+                    subtext={<p className="text-xs text-muted-foreground">Your event registrations</p>}
                     onClick={() => {
                         // Scroll to My Events section
                         document.getElementById('my-events-section')?.scrollIntoView({ behavior: 'smooth' });
@@ -491,13 +491,13 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
 
                     {/* Upcoming Opportunities */}
                     <Card className="shadow-sm">
-                         <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+                         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b pb-4 gap-3">
                             <div className="space-y-1">
-                                <CardTitle className="text-lg">Upcoming Opportunities</CardTitle>
-                                <CardDescription>Events open for registration</CardDescription>
+                                <CardTitle className="text-base sm:text-lg">Upcoming Opportunities</CardTitle>
+                                <CardDescription className="text-xs sm:text-sm">Events open for registration</CardDescription>
                             </div>
-                            <Button variant="ghost" onClick={() => router.get('/join-events')} className="text-primary hover:text-primary/80">
-                                View All <ArrowRight className="ml-2 h-4 w-4" />
+                            <Button variant="ghost" onClick={() => router.get('/join-events')} className="text-primary hover:text-primary/80 text-xs sm:text-sm">
+                                View All <ArrowRight className="ml-2 h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
                         </CardHeader>
                         <CardContent className="p-0">
@@ -527,11 +527,11 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                                         return (
                                             <div
                                                 key={event.id}
-                                                className="flex items-center gap-4 p-4 hover:bg-muted/40 transition-colors cursor-pointer group"
+                                                className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 hover:bg-muted/40 transition-colors cursor-pointer group"
                                                 onClick={() => router.get(`/join-events?event_id=${event.id}`)}
                                             >
                                                 {/* Event thumbnail with date fallback */}
-                                                <div className="h-14 w-14 rounded-lg overflow-hidden flex-shrink-0 border bg-muted relative">
+                                                <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-lg overflow-hidden flex-shrink-0 border bg-muted relative">
                                                     {event.image_path ? (
                                                         <img src={`/storage/${event.image_path}`} alt={event.name} className="h-full w-full object-cover" />
                                                     ) : (
@@ -550,24 +550,24 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
 
                                                 {/* Event details */}
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2">
-                                                        <h4 className="font-semibold text-base text-foreground truncate group-hover:text-primary transition-colors">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <h4 className="font-semibold text-sm sm:text-base text-foreground truncate group-hover:text-primary transition-colors">
                                                             {event.name}
                                                         </h4>
                                                         {isPaid && (
-                                                            <Badge variant="outline" className="text-[10px] h-5 px-1.5 bg-blue-50 text-blue-600 border-blue-200">
+                                                            <Badge variant="outline" className="text-[10px] h-5 px-1.5 bg-blue-50 text-blue-600 border-blue-200 flex-shrink-0">
                                                                 RM{event.fee}
                                                             </Badge>
                                                         )}
                                                     </div>
-                                                    <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                                                        <span className="flex items-center gap-1">
-                                                            <CalendarDays className="h-3.5 w-3.5" />
+                                                    <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground mt-1 flex-wrap">
+                                                        <span className="flex items-center gap-1 flex-shrink-0">
+                                                            <CalendarDays className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                                                             {new Date(event.start_date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })}
                                                         </span>
                                                         <span className="flex items-center gap-1 truncate">
-                                                            <MapPin className="h-3.5 w-3.5" />
-                                                            {event.location}
+                                                            <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                                            <span className="truncate">{event.location}</span>
                                                         </span>
                                                     </div>
                                                     {/* Consolidated badges row */}
@@ -594,16 +594,17 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                                                 {!status && !isFull ? (
                                                     <Button
                                                         size="sm"
-                                                        className="opacity-0 group-hover:opacity-100 transition-opacity text-xs h-8"
+                                                        className="opacity-0 sm:group-hover:opacity-100 transition-opacity text-xs h-7 sm:h-8 px-2 sm:px-3 flex-shrink-0"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             handleRegisterClick(event);
                                                         }}
                                                     >
-                                                        {isPaid ? 'Register' : 'Join'}
+                                                        <span className="hidden sm:inline">{isPaid ? 'Register' : 'Join'}</span>
+                                                        <span className="sm:hidden">+</span>
                                                     </Button>
                                                 ) : (
-                                                    <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                    <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0" />
                                                 )}
                                             </div>
                                         );
@@ -616,15 +617,15 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                     {/* My Registered Events - with Tabs */}
                     <Card id="my-events-section" className="shadow-sm">
                         <CardHeader className="border-b pb-4">
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                 <div className="space-y-1">
-                                    <CardTitle className="text-xl flex items-center gap-2">
-                                        <Award className="h-5 w-5 text-purple-600" />
+                                    <CardTitle className="text-base sm:text-xl flex items-center gap-2">
+                                        <Award className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
                                         My Events
                                     </CardTitle>
-                                    <CardDescription>Track your event registrations</CardDescription>
+                                    <CardDescription className="text-xs sm:text-sm">Track your event registrations</CardDescription>
                                 </div>
-                                <Button variant="outline" size="sm" onClick={() => router.get('/join-events')}>
+                                <Button variant="outline" size="sm" onClick={() => router.get('/join-events')} className="text-xs w-full sm:w-auto">
                                     Browse More
                                 </Button>
                             </div>
@@ -764,7 +765,7 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                                                                         className={`text-xs h-7 ${event.has_feedback ? 'text-green-600 border-green-200' : ''}`}
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            router.get(`/events-gallery?event_id=${event.event_id}&open_feedback=true`);
+                                                                            router.get(`/events-gallery?event_id=${event.id}&tab=feedback`);
                                                                         }}
                                                                     >
                                                                         {event.has_feedback ? (
@@ -801,25 +802,51 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                             </CardTitle>
                             <CardDescription>Events participated over the last 6 months</CardDescription>
                         </CardHeader>
-                        <CardContent className="h-[300px] pt-4">
-                            {loadingChartData ? (
-                                <div className="flex items-center justify-center h-full">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                                </div>
-                            ) : (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={activityChartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} />
-                                        <Tooltip
-                                            cursor={{ fill: '#f3f4f6' }}
-                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                        />
-                                        <Bar dataKey="events" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={32} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            )}
+                        <CardContent className="pt-4">
+                            <div className="w-full h-[250px] sm:h-[300px]">
+                                {loadingChartData ? (
+                                    <div className="flex items-center justify-center h-full">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                                    </div>
+                                ) : (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart
+                                            data={activityChartData}
+                                            margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
+                                        >
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                                            <XAxis
+                                                dataKey="name"
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fill: '#6b7280', fontSize: 11 }}
+                                                dy={8}
+                                            />
+                                            <YAxis
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fill: '#6b7280', fontSize: 11 }}
+                                                allowDecimals={false}
+                                            />
+                                            <Tooltip
+                                                cursor={{ fill: '#f3f4f6' }}
+                                                contentStyle={{
+                                                    borderRadius: '8px',
+                                                    border: 'none',
+                                                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                                    fontSize: '12px'
+                                                }}
+                                            />
+                                            <Bar
+                                                dataKey="events"
+                                                fill="#3b82f6"
+                                                radius={[4, 4, 0, 0]}
+                                                maxBarSize={40}
+                                            />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                )}
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
@@ -829,13 +856,13 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                     
                     {/* Notifications */}
                     <Card className="shadow-sm">
-                        <CardHeader className="flex flex-row items-center justify-between pb-4">
+                        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 gap-2">
                             <div>
-                                <CardTitle className="text-lg flex items-center gap-2">
-                                    <Bell className="h-5 w-5 text-purple-600" />
+                                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                                    <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
                                     Notifications
                                 </CardTitle>
-                                <CardDescription>Recent updates and alerts</CardDescription>
+                                <CardDescription className="text-xs sm:text-sm">Recent updates and alerts</CardDescription>
                             </div>
                             {recentNotifications.length > 0 && (
                                 <Button
@@ -885,7 +912,7 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                                             <div
                                                 key={notification.id}
                                                 className={`flex gap-3 p-3 rounded-lg border transition-all cursor-pointer hover:shadow-sm ${
-                                                    notification.read_at ? 'bg-white' : 'bg-blue-50/50 border-blue-200'
+                                                    notification.read_at ? 'bg-card' : 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800'
                                                 }`}
                                                 onClick={() => {
                                                     if (notification.type === 'profile_incomplete') {
@@ -930,11 +957,11 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                     {/* Leaderboard */}
                     <Card className="shadow-sm">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-lg">
-                                <Award className="h-5 w-5 text-yellow-500" />
+                            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                                <Award className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
                                 Top Volunteers
                             </CardTitle>
-                            <CardDescription>Community leaderboard</CardDescription>
+                            <CardDescription className="text-xs sm:text-sm">Community leaderboard</CardDescription>
                         </CardHeader>
                         <CardContent>
                             {/* User's rank indicator */}
@@ -974,17 +1001,17 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                                         return (
                                         <div
                                             key={volunteer.id}
-                                            className={`flex items-center gap-3 p-2 rounded-lg border transition-all hover:shadow-sm cursor-pointer ${getMedalBgColor(index)} bg-opacity-40 ${isCurrentUser ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                                            className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border transition-all hover:shadow-sm cursor-pointer ${getMedalBgColor(index)} bg-opacity-40 ${isCurrentUser ? 'ring-2 ring-primary ring-offset-1' : ''}`}
                                             onClick={() => handleVolunteerClick(volunteer)}
                                         >
                                             <div className={`
-                                                w-8 h-8 flex items-center justify-center rounded-full text-xs font-bold text-white shadow-sm flex-shrink-0
+                                                w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full text-xs font-bold text-white shadow-sm flex-shrink-0
                                                 ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-blue-500'}
                                             `}>
                                                 {index + 1}
                                             </div>
-                                            
-                                            <Avatar className="h-10 w-10 border border-gray-200 flex-shrink-0">
+
+                                            <Avatar className="h-9 w-9 sm:h-10 sm:w-10 border border-gray-200 dark:border-gray-700 flex-shrink-0">
                                                 {volunteer.profile_picture && <AvatarImage src={`/storage/${volunteer.profile_picture}`} />}
                                                 <AvatarFallback className="text-xs font-bold bg-primary/10 text-primary">
                                                     {getInitials(volunteer.name)}
@@ -992,11 +1019,13 @@ export default function Dashboard({ upcomingEvents = [], stats = { totalEvents: 
                                             </Avatar>
 
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold truncate">{volunteer.name}</p>
-                                                <p className="text-xs text-muted-foreground truncate">{volunteer.faculty || 'Faculty N/A'}</p>
+                                                <p className="text-xs sm:text-sm font-semibold truncate" title={volunteer.name}>{volunteer.name}</p>
+                                                <p className="text-[10px] sm:text-xs text-muted-foreground truncate" title={volunteer.faculty || 'Faculty N/A'}>
+                                                    {volunteer.faculty || 'Faculty N/A'}
+                                                </p>
                                             </div>
-                                            
-                                            <Badge variant="secondary" className="font-mono text-xs whitespace-nowrap">
+
+                                            <Badge variant="secondary" className="font-mono text-[10px] sm:text-xs whitespace-nowrap flex-shrink-0">
                                                 {volunteer.total_hours}h
                                             </Badge>
                                         </div>

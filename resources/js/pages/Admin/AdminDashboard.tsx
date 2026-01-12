@@ -18,7 +18,9 @@ import {
     ArrowUpRight,
     AlertCircle,
     CheckCircle,
-    Clock
+    Clock,
+    ClipboardList,
+    MessageSquare
 } from 'lucide-react';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
@@ -50,6 +52,9 @@ interface DashboardStats {
     totalSupportTickets: number;
     openTickets: number;
     resolvedTickets: number;
+    totalRegistrations: number;
+    approvedRegistrations: number;
+    pendingRegistrations: number;
     recentActivities: Array<{
         id: number;
         description: string;
@@ -136,14 +141,14 @@ export default function AdminDashboard() {
             <Head title="Admin Dashboard" />
             <div className="container mx-auto p-6 space-y-6">
                 {/* Header */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-primary/10 rounded-lg">
-                            <Shield className="h-8 w-8 text-primary" />
+                            <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-                            <p className="text-muted-foreground">
+                            <h1 className="text-2xl sm:text-3xl font-bold">Admin Dashboard</h1>
+                            <p className="text-xs sm:text-sm text-muted-foreground">
                                 System-wide overview and administration
                             </p>
                         </div>
@@ -160,18 +165,27 @@ export default function AdminDashboard() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold">{stats?.totalUsers || 0}</div>
-                            <div className="flex items-center gap-2 mt-2">
-                                <Badge variant="secondary" className="text-xs">
-                                    {stats?.totalAdmins || 0} admins
-                                </Badge>
-                                <Badge variant="secondary" className="text-xs">
-                                    {stats?.totalManagers || 0} managers
-                                </Badge>
+                            <div className="text-2xl sm:text-3xl font-bold">{stats?.totalUsers || 0}</div>
+                            <div className="flex flex-col gap-1.5 mt-2">
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-muted-foreground">Admins</span>
+                                    <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                        {stats?.totalAdmins || 0}
+                                    </Badge>
+                                </div>
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-muted-foreground">Managers</span>
+                                    <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                                        {stats?.totalManagers || 0}
+                                    </Badge>
+                                </div>
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-muted-foreground">Members</span>
+                                    <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                                        {stats?.totalMembers || 0}
+                                    </Badge>
+                                </div>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                {stats?.totalMembers || 0} members registered
-                            </p>
                         </CardContent>
                     </Card>
 
@@ -227,21 +241,29 @@ export default function AdminDashboard() {
                         </CardContent>
                     </Card>
 
-                    <Card className="transition-all hover:shadow-md border-l-4 border-l-emerald-500">
+                    <Card className="transition-all hover:shadow-md border-l-4 border-l-purple-500">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">System Health</CardTitle>
-                            <div className="p-2 bg-emerald-100 dark:bg-emerald-900 rounded-full">
-                                <Activity className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                            <CardTitle className="text-sm font-medium">Total Registrations</CardTitle>
+                            <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-full">
+                                <ClipboardList className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="flex items-center gap-2">
-                                <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
-                                <div className="text-2xl font-bold text-emerald-600">Healthy</div>
+                            <div className="text-2xl sm:text-3xl font-bold">{stats?.totalRegistrations || 0}</div>
+                            <div className="flex items-center gap-3 mt-2 flex-wrap">
+                                <div className="flex items-center gap-1">
+                                    <CheckCircle className="h-3 w-3 text-green-500" />
+                                    <span className="text-xs text-muted-foreground">
+                                        {stats?.approvedRegistrations || 0} approved
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3 text-orange-500" />
+                                    <span className="text-xs text-muted-foreground">
+                                        {stats?.pendingRegistrations || 0} pending
+                                    </span>
+                                </div>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-2">
-                                All systems operational
-                            </p>
                         </CardContent>
                     </Card>
                 </div>
@@ -249,114 +271,135 @@ export default function AdminDashboard() {
                 {/* Charts Section */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {/* User Growth Chart */}
-                    <Card className="col-span-2 shadow-sm hover:shadow-md transition-shadow">
+                    <Card className="lg:col-span-2 shadow-sm hover:shadow-md transition-shadow">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <TrendingUp className="h-5 w-5 text-blue-500" />
+                                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                                        <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
                                         User Growth Trend
                                     </CardTitle>
-                                    <CardDescription>Monthly user registration over the last 6 months</CardDescription>
+                                    <CardDescription className="text-xs sm:text-sm">Monthly user registration over the last 6 months</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={250}>
-                                <AreaChart data={stats?.userGrowthData || []}>
-                                    <defs>
-                                        <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                                    <XAxis
-                                        dataKey="month"
-                                        className="text-xs"
-                                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                                    />
-                                    <YAxis
-                                        className="text-xs"
-                                        tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                                    />
-                                    <Tooltip content={<CustomTooltip />} />
-                                    <Area
-                                        type="monotone"
-                                        dataKey="users"
-                                        stroke="#3b82f6"
-                                        fillOpacity={1}
-                                        fill="url(#colorUsers)"
-                                        strokeWidth={2}
-                                    />
-                                </AreaChart>
-                            </ResponsiveContainer>
+                            <div className="w-full h-[220px] sm:h-[250px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart
+                                        data={stats?.userGrowthData || []}
+                                        margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
+                                    >
+                                        <defs>
+                                            <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+                                        <XAxis
+                                            dataKey="month"
+                                            className="text-xs"
+                                            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                                            dy={8}
+                                        />
+                                        <YAxis
+                                            className="text-xs"
+                                            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                                            allowDecimals={false}
+                                        />
+                                        <Tooltip content={<CustomTooltip />} />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="users"
+                                            stroke="#3b82f6"
+                                            fillOpacity={1}
+                                            fill="url(#colorUsers)"
+                                            strokeWidth={2}
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
                         </CardContent>
                     </Card>
 
                     {/* Event Status Distribution */}
                     <Card className="shadow-sm hover:shadow-md transition-shadow">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <BarChart3 className="h-5 w-5 text-green-500" />
+                            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                                <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
                                 Event Status
                             </CardTitle>
-                            <CardDescription>Distribution of event statuses</CardDescription>
+                            <CardDescription className="text-xs sm:text-sm">Distribution of event statuses</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={250}>
-                                <PieChart>
-                                    <Pie
-                                        data={stats?.eventStatusData || []}
-                                        cx="50%"
-                                        cy="50%"
-                                        labelLine={false}
-                                        label={(entry: { name: string; percent: number }) =>
-                                            `${entry.name} ${(entry.percent * 100).toFixed(0)}%`
-                                        }
-                                        outerRadius={80}
-                                        fill="#8884d8"
-                                        dataKey="value"
-                                    >
-                                        {(stats?.eventStatusData || []).map((_entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip content={<CustomTooltip />} />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            <div className="w-full h-[220px] sm:h-[250px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={stats?.eventStatusData || []}
+                                            cx="50%"
+                                            cy="50%"
+                                            labelLine={false}
+                                            label={(entry: { name: string; percent: number; value: number }) => {
+                                                // Only show label if value is greater than 0
+                                                if (entry.value === 0) return '';
+                                                const percentage = (entry.percent * 100).toFixed(0);
+                                                // Don't show 0%
+                                                if (percentage === '0') return '';
+                                                return `${entry.name} ${percentage}%`;
+                                            }}
+                                            outerRadius={window.innerWidth < 640 ? 60 : 75}
+                                            fill="#8884d8"
+                                            dataKey="value"
+                                        >
+                                            {(stats?.eventStatusData || []).map((_entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip content={<CustomTooltip />} />
+                                        <Legend
+                                            verticalAlign="bottom"
+                                            height={36}
+                                            formatter={(value: string, entry: any) => (
+                                                <span className="text-xs">{value}: {entry.payload.value}</span>
+                                            )}
+                                        />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
 
                 {/* Quick Actions & Recent Activity */}
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 lg:grid-cols-3">
                     {/* Quick Actions */}
-                    <Card className="col-span-2 shadow-sm">
+                    <Card className="lg:col-span-2 shadow-sm flex flex-col">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Settings className="h-5 w-5 text-purple-500" />
+                            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                                <Settings className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
                                 Quick Actions
                             </CardTitle>
-                            <CardDescription>Common administrative tasks</CardDescription>
+                            <CardDescription className="text-xs sm:text-sm">Common administrative tasks</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <div className="grid gap-3 md:grid-cols-2">
+                        <CardContent className="pb-6">
+                            <div className="grid gap-4 sm:gap-5 sm:grid-cols-2">
                                 <Button
                                     variant="outline"
-                                    className="h-auto justify-start text-left p-4 hover:bg-blue-50 dark:hover:bg-blue-950 hover:border-blue-200 dark:hover:border-blue-800 transition-all group"
+                                    className="h-auto min-h-[90px] sm:min-h-[100px] justify-start text-left p-4 sm:p-6 hover:bg-blue-50 dark:hover:bg-blue-950 hover:border-blue-200 dark:hover:border-blue-800 transition-all group"
                                     onClick={() => router.get('/admin/manage-users')}
                                 >
-                                    <div className="flex items-start gap-3 w-full">
-                                        <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg group-hover:scale-110 transition-transform">
-                                            <UserCog className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                    <div className="flex items-start gap-3 sm:gap-4 w-full">
+                                        <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
+                                            <UserCog className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
                                         </div>
-                                        <div className="flex-1">
-                                            <div className="font-semibold text-sm flex items-center gap-1">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-semibold text-sm sm:text-base flex items-center gap-1 mb-1">
                                                 Manage Users
-                                                <ArrowUpRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                                             </div>
-                                            <span className="text-xs text-muted-foreground">
+                                            <span className="text-xs sm:text-sm text-muted-foreground block leading-relaxed">
                                                 View and manage all accounts
                                             </span>
                                         </div>
@@ -365,19 +408,19 @@ export default function AdminDashboard() {
 
                                 <Button
                                     variant="outline"
-                                    className="h-auto justify-start text-left p-4 hover:bg-purple-50 dark:hover:bg-purple-950 hover:border-purple-200 dark:hover:border-purple-800 transition-all group"
+                                    className="h-auto min-h-[90px] sm:min-h-[100px] justify-start text-left p-4 sm:p-6 hover:bg-purple-50 dark:hover:bg-purple-950 hover:border-purple-200 dark:hover:border-purple-800 transition-all group"
                                     onClick={() => router.get('/admin/audit-trail')}
                                 >
-                                    <div className="flex items-start gap-3 w-full">
-                                        <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg group-hover:scale-110 transition-transform">
-                                            <History className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                    <div className="flex items-start gap-3 sm:gap-4 w-full">
+                                        <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
+                                            <History className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 dark:text-purple-400" />
                                         </div>
-                                        <div className="flex-1">
-                                            <div className="font-semibold text-sm flex items-center gap-1">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-semibold text-sm sm:text-base flex items-center gap-1 mb-1">
                                                 Audit Trail
-                                                <ArrowUpRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                                             </div>
-                                            <span className="text-xs text-muted-foreground">
+                                            <span className="text-xs sm:text-sm text-muted-foreground block leading-relaxed">
                                                 View system activity history
                                             </span>
                                         </div>
@@ -386,24 +429,24 @@ export default function AdminDashboard() {
 
                                 <Button
                                     variant="outline"
-                                    className="h-auto justify-start text-left p-4 hover:bg-orange-50 dark:hover:bg-orange-950 hover:border-orange-200 dark:hover:border-orange-800 transition-all group"
+                                    className="h-auto min-h-[90px] sm:min-h-[100px] justify-start text-left p-4 sm:p-6 hover:bg-orange-50 dark:hover:bg-orange-950 hover:border-orange-200 dark:hover:border-orange-800 transition-all group"
                                     onClick={() => router.get('/admin/support-tickets')}
                                 >
-                                    <div className="flex items-start gap-3 w-full">
-                                        <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg group-hover:scale-110 transition-transform">
-                                            <LifeBuoy className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                                    <div className="flex items-start gap-3 sm:gap-4 w-full">
+                                        <div className="p-2 sm:p-3 bg-orange-100 dark:bg-orange-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
+                                            <LifeBuoy className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400" />
                                         </div>
-                                        <div className="flex-1">
-                                            <div className="font-semibold text-sm flex items-center gap-1">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-semibold text-sm sm:text-base flex items-center gap-1 mb-1">
                                                 Support Tickets
                                                 {stats && stats.openTickets > 0 && (
-                                                    <Badge variant="destructive" className="ml-auto text-xs">
+                                                    <Badge className="ml-auto text-[10px] sm:text-xs bg-orange-500 text-white hover:bg-orange-600 border-orange-600 flex-shrink-0">
                                                         {stats.openTickets}
                                                     </Badge>
                                                 )}
-                                                <ArrowUpRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                                             </div>
-                                            <span className="text-xs text-muted-foreground">
+                                            <span className="text-xs sm:text-sm text-muted-foreground block leading-relaxed">
                                                 Manage user support requests
                                             </span>
                                         </div>
@@ -412,20 +455,62 @@ export default function AdminDashboard() {
 
                                 <Button
                                     variant="outline"
-                                    className="h-auto justify-start text-left p-4 hover:bg-green-50 dark:hover:bg-green-950 hover:border-green-200 dark:hover:border-green-800 transition-all group"
+                                    className="h-auto min-h-[90px] sm:min-h-[100px] justify-start text-left p-4 sm:p-6 hover:bg-green-50 dark:hover:bg-green-950 hover:border-green-200 dark:hover:border-green-800 transition-all group"
                                     onClick={() => router.get('/manager/manage-analytics')}
                                 >
-                                    <div className="flex items-start gap-3 w-full">
-                                        <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg group-hover:scale-110 transition-transform">
-                                            <BarChart3 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                    <div className="flex items-start gap-3 sm:gap-4 w-full">
+                                        <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
+                                            <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-400" />
                                         </div>
-                                        <div className="flex-1">
-                                            <div className="font-semibold text-sm flex items-center gap-1">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-semibold text-sm sm:text-base flex items-center gap-1 mb-1">
                                                 Analytics & Reports
-                                                <ArrowUpRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
                                             </div>
-                                            <span className="text-xs text-muted-foreground">
+                                            <span className="text-xs sm:text-sm text-muted-foreground block leading-relaxed">
                                                 View detailed analytics
+                                            </span>
+                                        </div>
+                                    </div>
+                                </Button>
+
+                                <Button
+                                    variant="outline"
+                                    className="h-auto min-h-[90px] sm:min-h-[100px] justify-start text-left p-4 sm:p-6 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group"
+                                    onClick={() => router.get('/events')}
+                                >
+                                    <div className="flex items-start gap-3 sm:gap-4 w-full">
+                                        <div className="p-2 sm:p-3 bg-indigo-100 dark:bg-indigo-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
+                                            <ClipboardList className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 dark:text-indigo-400" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-semibold text-sm sm:text-base flex items-center gap-1 mb-1">
+                                                Manage Events
+                                                <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                                            </div>
+                                            <span className="text-xs sm:text-sm text-muted-foreground block leading-relaxed">
+                                                Create and manage all events
+                                            </span>
+                                        </div>
+                                    </div>
+                                </Button>
+
+                                <Button
+                                    variant="outline"
+                                    className="h-auto min-h-[90px] sm:min-h-[100px] justify-start text-left p-4 sm:p-6 hover:bg-pink-50 dark:hover:bg-pink-950 hover:border-pink-200 dark:hover:border-pink-800 transition-all group"
+                                    onClick={() => router.get('/manager/event-blast')}
+                                >
+                                    <div className="flex items-start gap-3 sm:gap-4 w-full">
+                                        <div className="p-2 sm:p-3 bg-pink-100 dark:bg-pink-900 rounded-lg group-hover:scale-110 transition-transform flex-shrink-0">
+                                            <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-pink-600 dark:text-pink-400" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-semibold text-sm sm:text-base flex items-center gap-1 mb-1">
+                                                Event Blast
+                                                <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                                            </div>
+                                            <span className="text-xs sm:text-sm text-muted-foreground block leading-relaxed">
+                                                Send mass notifications to participants
                                             </span>
                                         </div>
                                     </div>
@@ -437,14 +522,14 @@ export default function AdminDashboard() {
                     {/* Recent Activity */}
                     <Card className="shadow-sm">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <History className="h-5 w-5 text-indigo-500" />
+                            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                                <History className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-500" />
                                 Recent Activity
                             </CardTitle>
-                            <CardDescription>Latest system events</CardDescription>
+                            <CardDescription className="text-xs sm:text-sm">Latest system events</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                            <div className="space-y-2 sm:space-y-3 max-h-[400px] overflow-y-auto">
                                 {stats?.recentActivities && stats.recentActivities.length > 0 ? (
                                     stats.recentActivities.map((activity) => (
                                         <div

@@ -143,21 +143,21 @@ export function NotificationDropdown() {
 
   const getNotificationBadge = (type: string) => {
     const badges = {
-      event_upcoming: { label: 'Upcoming', color: 'bg-yellow-100 text-yellow-800' },
-      event_new: { label: 'New Event', color: 'bg-blue-100 text-blue-800' },
-      registration_approved: { label: 'Approved', color: 'bg-green-100 text-green-800' },
-      registration_rejected: { label: 'Rejected', color: 'bg-red-100 text-red-800' },
-      ranking_update: { label: 'Ranking', color: 'bg-purple-100 text-purple-800' },
-      registration_pending: { label: 'Pending', color: 'bg-orange-100 text-orange-800' },
-      new_registration: { label: 'New Member', color: 'bg-indigo-100 text-indigo-800' },
-      manager_approved_registration: { label: 'Action Confirmed', color: 'bg-green-100 text-green-800' },
-      manager_rejected_registration: { label: 'Action Confirmed', color: 'bg-red-100 text-red-800' },
-      profile_incomplete: { label: 'Profile', color: 'bg-amber-100 text-amber-800' },
-      announcement: { label: 'Announcement', color: 'bg-orange-100 text-orange-800' },
-      support_ticket: { label: 'Support', color: 'bg-orange-100 text-orange-800' },
-      support_response: { label: 'Response', color: 'bg-blue-100 text-blue-800' },
+      event_upcoming: { label: 'Upcoming', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400' },
+      event_new: { label: 'New Event', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-400' },
+      registration_approved: { label: 'Approved', color: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-400' },
+      registration_rejected: { label: 'Rejected', color: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400' },
+      ranking_update: { label: 'Ranking', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-400' },
+      registration_pending: { label: 'Pending', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-400' },
+      new_registration: { label: 'New Member', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-400' },
+      manager_approved_registration: { label: 'Action Confirmed', color: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-400' },
+      manager_rejected_registration: { label: 'Action Confirmed', color: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400' },
+      profile_incomplete: { label: 'Profile', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400' },
+      announcement: { label: 'Announcement', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-400' },
+      support_ticket: { label: 'Support', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-400' },
+      support_response: { label: 'Response', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-400' },
     };
-    return badges[type as keyof typeof badges] || { label: 'Info', color: 'bg-gray-100 text-gray-800' };
+    return badges[type as keyof typeof badges] || { label: 'Info', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800/40 dark:text-gray-400' };
   };
 
   const handleNotificationClick = (notification: Notification) => {
@@ -254,12 +254,12 @@ export function NotificationDropdown() {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) return null; // Event has passed
-    if (diffDays === 0) return { text: 'Today!', color: 'bg-red-100 text-red-800' };
-    if (diffDays === 1) return { text: '1 day left', color: 'bg-orange-100 text-orange-800' };
-    if (diffDays === 2) return { text: '2 days left', color: 'bg-yellow-100 text-yellow-800' };
-    if (diffDays === 3) return { text: '3 days left', color: 'bg-yellow-100 text-yellow-800' };
-    if (diffDays <= 7) return { text: `${diffDays} days left`, color: 'bg-blue-100 text-blue-800' };
-    if (diffDays <= 14) return { text: `${diffDays} days left`, color: 'bg-slate-100 text-slate-800' };
+    if (diffDays === 0) return { text: 'Today!', color: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400' };
+    if (diffDays === 1) return { text: '1 day left', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-400' };
+    if (diffDays === 2) return { text: '2 days left', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400' };
+    if (diffDays === 3) return { text: '3 days left', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-400' };
+    if (diffDays <= 7) return { text: `${diffDays} days left`, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-400' };
+    if (diffDays <= 14) return { text: `${diffDays} days left`, color: 'bg-slate-100 text-slate-800 dark:bg-slate-800/40 dark:text-slate-400' };
     return null; // Don't show countdown if more than 2 weeks away
   };
 
@@ -276,14 +276,14 @@ export function NotificationDropdown() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-96 max-h-[500px] overflow-hidden flex flex-col p-0">
-        <div className="px-4 py-3 border-b flex items-center justify-between bg-gradient-to-r from-purple-50 to-blue-50">
+        <div className="px-4 py-3 border-b flex items-center justify-between bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 dark:border-gray-700">
           <h3 className="font-semibold text-lg">Notifications</h3>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
               onClick={markAllAsRead}
-              className="text-xs hover:bg-purple-100"
+              className="text-xs hover:bg-purple-100 dark:hover:bg-purple-900/50"
             >
               <CheckCheck className="h-4 w-4 mr-1" />
               Mark all read
@@ -305,8 +305,8 @@ export function NotificationDropdown() {
                 return (
                   <div
                     key={notification.id}
-                    className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer relative group ${
-                      !notification.read_at ? 'bg-blue-50/30' : ''
+                    className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer relative group ${
+                      !notification.read_at ? 'bg-blue-50/30 dark:bg-blue-950/20' : ''
                     }`}
                     onClick={() => handleNotificationClick(notification)}
                   >
@@ -357,7 +357,7 @@ export function NotificationDropdown() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/50"
                             onClick={(e) => {
                               e.stopPropagation();
                               markAsUnread(notification.id);
@@ -370,7 +370,7 @@ export function NotificationDropdown() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50"
                           onClick={(e) => {
                             e.stopPropagation();
                             deleteNotification(notification.id);
@@ -389,10 +389,10 @@ export function NotificationDropdown() {
         </div>
 
         {notifications.length > 0 && (
-          <div className="px-4 py-3 border-t bg-gray-50">
+          <div className="px-4 py-3 border-t bg-gray-50 dark:bg-gray-900/30 dark:border-gray-700">
             <Button
               variant="link"
-              className="w-full text-sm text-purple-600 hover:text-purple-700"
+              className="w-full text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
               onClick={() => {
                 setIsOpen(false);
                 router.visit('/notifications');

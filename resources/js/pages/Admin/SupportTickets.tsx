@@ -16,6 +16,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import type { BreadcrumbItem } from "@/types";
+import { useState, useMemo } from "react";
 
 const breadcrumbs: BreadcrumbItem[] = [
   { title: "Support Tickets", href: "/admin/support-tickets" },
@@ -62,6 +63,27 @@ interface Props {
 }
 
 export default function SupportTickets({ tickets, stats, currentStatus }: Props) {
+  // Local state for filtering
+  const [activeTab, setActiveTab] = useState<string>(currentStatus || 'all');
+
+  // Filter tickets based on active tab
+  const filteredTickets = useMemo(() => {
+    if (activeTab === 'all') {
+      return tickets.data;
+    }
+    return tickets.data.filter(ticket => ticket.status === activeTab);
+  }, [tickets.data, activeTab]);
+
+  // Calculate stats dynamically
+  const calculatedStats = useMemo(() => {
+    return {
+      pending: tickets.data.filter(t => t.status === 'pending').length,
+      in_progress: tickets.data.filter(t => t.status === 'in_progress').length,
+      resolved: tickets.data.filter(t => t.status === 'resolved').length,
+      total: tickets.data.length,
+    };
+  }, [tickets.data]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
@@ -117,7 +139,7 @@ export default function SupportTickets({ tickets, stats, currentStatus }: Props)
   };
 
   const handleTabChange = (value: string) => {
-    router.visit(`/admin/support-tickets?status=${value}`);
+    setActiveTab(value);
   };
 
   const handleViewTicket = (ticketId: number) => {
@@ -143,62 +165,62 @@ export default function SupportTickets({ tickets, stats, currentStatus }: Props)
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="overflow-hidden relative group hover:shadow-lg transition-shadow">
-            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <CardContent className="pt-6 relative">
+          <Card className="border-l-4 border-l-yellow-500 hover:shadow-md transition-shadow">
+            <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Pending</p>
-                  <p className="text-3xl font-bold mt-1">{stats.pending}</p>
+                  <p className="text-2xl font-bold">{calculatedStats.pending}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Awaiting response
+                  </p>
                 </div>
-                <div className="p-4 rounded-xl bg-gradient-to-br from-yellow-500 to-yellow-600 shadow-lg">
-                  <Clock className="h-6 w-6 text-white" />
-                </div>
+                <Clock className="h-8 w-8 text-yellow-500" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden relative group hover:shadow-lg transition-shadow">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <CardContent className="pt-6 relative">
+          <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
+            <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">In Progress</p>
-                  <p className="text-3xl font-bold mt-1">{stats.in_progress}</p>
+                  <p className="text-2xl font-bold">{calculatedStats.in_progress}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Being handled
+                  </p>
                 </div>
-                <div className="p-4 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg">
-                  <AlertCircle className="h-6 w-6 text-white" />
-                </div>
+                <AlertCircle className="h-8 w-8 text-blue-500" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden relative group hover:shadow-lg transition-shadow">
-            <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-green-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <CardContent className="pt-6 relative">
+          <Card className="border-l-4 border-l-green-500 hover:shadow-md transition-shadow">
+            <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Resolved</p>
-                  <p className="text-3xl font-bold mt-1">{stats.resolved}</p>
+                  <p className="text-2xl font-bold">{calculatedStats.resolved}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Successfully closed
+                  </p>
                 </div>
-                <div className="p-4 rounded-xl bg-gradient-to-br from-green-500 to-green-600 shadow-lg">
-                  <CheckCircle2 className="h-6 w-6 text-white" />
-                </div>
+                <CheckCircle2 className="h-8 w-8 text-green-500" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden relative group hover:shadow-lg transition-shadow">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <CardContent className="pt-6 relative">
+          <Card className="border-l-4 border-l-purple-500 hover:shadow-md transition-shadow">
+            <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total</p>
-                  <p className="text-3xl font-bold mt-1">{stats.total}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Total Tickets</p>
+                  <p className="text-2xl font-bold">{calculatedStats.total}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    All submissions
+                  </p>
                 </div>
-                <div className="p-4 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg">
-                  <MessageSquare className="h-6 w-6 text-white" />
-                </div>
+                <MessageSquare className="h-8 w-8 text-purple-500" />
               </div>
             </CardContent>
           </Card>
@@ -210,26 +232,26 @@ export default function SupportTickets({ tickets, stats, currentStatus }: Props)
             <CardTitle>Support Tickets</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs value={currentStatus} onValueChange={handleTabChange}>
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
               <TabsList className="mb-4">
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="pending">Pending</TabsTrigger>
-                <TabsTrigger value="in_progress">In Progress</TabsTrigger>
-                <TabsTrigger value="resolved">Resolved</TabsTrigger>
+                <TabsTrigger value="all">All ({calculatedStats.total})</TabsTrigger>
+                <TabsTrigger value="pending">Pending ({calculatedStats.pending})</TabsTrigger>
+                <TabsTrigger value="in_progress">In Progress ({calculatedStats.in_progress})</TabsTrigger>
+                <TabsTrigger value="resolved">Resolved ({calculatedStats.resolved})</TabsTrigger>
               </TabsList>
 
-              <TabsContent value={currentStatus}>
-                {tickets.data.length === 0 ? (
+              <TabsContent value={activeTab}>
+                {filteredTickets.length === 0 ? (
                   <div className="text-center py-12">
                     <LifeBuoy className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-20" />
                     <p className="text-muted-foreground">No tickets found</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {tickets.data.map((ticket) => (
+                    {filteredTickets.map((ticket) => (
                       <div
                         key={ticket.id}
-                        className="flex items-start gap-4 p-5 border-2 border-transparent rounded-xl hover:border-purple-200 hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-transparent dark:hover:border-purple-800 dark:hover:from-purple-950/20 cursor-pointer transition-all duration-200 hover:shadow-md"
+                        className="flex items-start gap-4 p-5 border rounded-xl bg-card cursor-pointer transition-all duration-200 hover:border-purple-300 hover:shadow-md hover:bg-purple-50/30 dark:hover:bg-purple-950/10"
                         onClick={() => handleViewTicket(ticket.id)}
                       >
                         <div className="flex-1">
