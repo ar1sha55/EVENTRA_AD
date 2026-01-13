@@ -338,15 +338,15 @@ class EventsController extends Controller
             ->where('event_id', $event->id)
             ->first();
 
-        // Allow re-registration ONLY if status is 'rejected'
-        if ($existingParticipant && $existingParticipant->status !== 'rejected') {
+        // Allow re-registration ONLY if status is 'rejected' (case-insensitive)
+        if ($existingParticipant && strtoupper($existingParticipant->status) !== 'REJECTED') {
             return redirect()->route('join-events')->with('error', 'You are already registered for this event.');
         }
 
         // 3. Check capacity (Count approved and pending, ignore rejected)
         if ($event->capacity) {
             $currentParticipants = Participant::where('event_id', $event->id)
-                ->whereIn('status', ['approved', 'pending_approval'])
+                ->whereIn('status', ['APPROVED', 'PENDING', 'PENDING_APPROVAL'])
                 ->count();
 
             if ($currentParticipants >= $event->capacity) {

@@ -311,6 +311,8 @@ export default function JoinEvents() {
                         Registered
                     </Badge>
                 );
+            case 'pending':
+            case 'pending':
             case 'pending_approval':
                 return (
                     <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-100 shadow-sm">
@@ -362,12 +364,12 @@ export default function JoinEvents() {
         const isOngoing = startDate <= now && endDate >= now;
 
         const totalParticipants = event.participants?.filter(
-            p => p.status.toLowerCase() === 'approved' || p.status.toLowerCase() === 'pending_approval'
+            p => p.status.toLowerCase() === 'approved' || p.status.toLowerCase() === 'pending' || p.status.toLowerCase() === 'pending_approval'
         ).length || 0;
         const isFull = event.capacity ? totalParticipants >= event.capacity : false;
 
         // If user is already registered, don't show availability badge
-        if (userStatus === 'approved' || userStatus === 'pending_approval') {
+        if (userStatus === 'approved' || userStatus === 'pending' || userStatus === 'pending_approval') {
             return null;
         }
 
@@ -587,7 +589,7 @@ export default function JoinEvents() {
                     <div className='grid gap-6 sm:grid-cols-2 lg:grid-cols-3'>
                         {filteredAndSortedEvents.map((event: Event) => {
                             const { status, participantId } = getParticipantStatus(event);
-                            const totalParticipants = event.participants?.filter(p => p.status.toLowerCase() === 'approved' || p.status.toLowerCase() === 'pending_approval').length || 0;
+                            const totalParticipants = event.participants?.filter(p => p.status.toLowerCase() === 'approved' || p.status.toLowerCase() === 'pending' || p.status.toLowerCase() === 'pending_approval').length || 0;
                             const slotsLeft = event.capacity ? event.capacity - totalParticipants : 'Unlimited';
                             const isPaidEvent = event.fee && event.fee > 0;
                             const isFull = event.capacity ? totalParticipants >= event.capacity : false;
@@ -674,7 +676,7 @@ export default function JoinEvents() {
                                         </Button>
                                         
                                         {/*Changed handleUnregister to confirmUnregister */}
-                                        {status === 'approved' || status === 'pending_approval' ? (
+                                        {status === 'approved' || status === 'pending' || status === 'pending_approval' ? (
                                             <Button
                                                 variant='destructive'
                                                 size='sm'
@@ -798,7 +800,7 @@ export default function JoinEvents() {
                                                             <div>{getStatusBadge(status)}</div>
                                                         </div>
                                                         
-                                                        {(status === 'approved' || status === 'pending_approval') && (
+                                                        {(status === 'approved' || status === 'pending' || status === 'pending_approval') && (
                                                             <Button
                                                                 variant='destructive'
                                                                 size='sm'
@@ -823,7 +825,7 @@ export default function JoinEvents() {
                                 </Button>
                                 {(() => {
                                     const { status } = getParticipantStatus(selectedEvent);
-                                    const totalParticipants = selectedEvent.participants?.filter(p => p.status.toLowerCase() === 'approved' || p.status.toLowerCase() === 'pending_approval').length || 0;
+                                    const totalParticipants = selectedEvent.participants?.filter(p => p.status.toLowerCase() === 'approved' || p.status.toLowerCase() === 'pending' || p.status.toLowerCase() === 'pending_approval').length || 0;
                                     const isFull = selectedEvent.capacity ? totalParticipants >= selectedEvent.capacity : false;
                                     const isPaidEvent = selectedEvent.fee && selectedEvent.fee > 0;
 

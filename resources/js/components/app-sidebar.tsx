@@ -189,17 +189,6 @@ export function AppSidebar() {
 
     // Attach badges to navigation items
     roleBasedNavItems = roleBasedNavItems.map(item => {
-        // Handle items with subItems
-        if (item.subItems) {
-            const updatedSubItems = item.subItems.map((subItem: any) => {
-                if (subItem.href === '/support-history' && badges.my_tickets > 0) {
-                    return { ...subItem, badge: badges.my_tickets };
-                }
-                return subItem;
-            });
-            return { ...item, subItems: updatedSubItems };
-        }
-
         // Handle top-level items
         if (item.href === '/admin/support-tickets' && badges.support_tickets > 0) {
             return { ...item, badge: badges.support_tickets };

@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator'; // Added for styling
+import { toast } from 'sonner';
 
 interface User {
     id: number;
@@ -210,6 +211,22 @@ export default function ManageParticipants({ event, participants }: ManagePartic
                 setPaymentProofDialog(false);
                 setViewDetailsDialog(false); // Close details modal if open
                 setSelectedParticipant(null);
+                
+                // Show success toast
+                if (status === 'approved') {
+                    toast.success('Participant approved!', {
+                        description: 'The participant has been successfully approved for this event.',
+                    });
+                } else {
+                    toast.error('Participant rejected', {
+                        description: 'The participant registration has been rejected.',
+                    });
+                }
+            },
+            onError: (errors) => {
+                toast.error('Action failed', {
+                    description: Object.values(errors).flat().join(', ') || 'Please try again.',
+                });
             },
         });
     };
@@ -500,8 +517,8 @@ export default function ManageParticipants({ event, participants }: ManagePartic
                                                                 <FileText className="h-4 w-4" />
                                                             </Button>
 
-                                                            {/* Approve Button */}
-                                                            {participant.status !== 'approved' && participant.status !== 'rejected' && (
+                                                            {/* Approve Button - Show only if NOT approved */}
+                                                            {participant.status.toLowerCase() !== 'approved' && (
                                                                 <Button
                                                                     variant="outline"
                                                                     size="sm"
@@ -513,8 +530,8 @@ export default function ManageParticipants({ event, participants }: ManagePartic
                                                                 </Button>
                                                             )}
                                                             
-                                                            {/* Reject Button */}
-                                                            {participant.status !== 'rejected' && (
+                                                            {/* Reject Button - Show only if NOT rejected */}
+                                                            {participant.status.toLowerCase() !== 'rejected' && (
                                                                 <Button
                                                                     variant="outline"
                                                                     size="sm"
@@ -540,8 +557,8 @@ export default function ManageParticipants({ event, participants }: ManagePartic
 
             {/* Payment Proof Dialog */}
             <Dialog open={paymentProofDialog} onOpenChange={setPaymentProofDialog}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
+                <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+                    <DialogHeader className="flex-shrink-0">
                         <DialogTitle>Verify Payment Proof</DialogTitle>
                         <DialogDescription>
                             Please review the payment proof before approving the registration.
@@ -549,44 +566,48 @@ export default function ManageParticipants({ event, participants }: ManagePartic
                     </DialogHeader>
                     
                     {selectedParticipant && (
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <p className="text-muted-foreground">Participant</p>
-                                    <p className="font-medium">{selectedParticipant.user.name}</p>
-                                </div>
-                                <div>
-                                    <p className="text-muted-foreground">Email</p>
-                                    <p className="font-medium">{selectedParticipant.user.email}</p>
-                                </div>
-                                <div>
-                                    <p className="text-muted-foreground">Amount Due</p>
-                                    <p className="font-medium text-blue-600">RM {Number(event.fee).toFixed(2)}</p>
-                                </div>
-                                <div>
-                                    <p className="text-muted-foreground">Submitted On</p>
-                                    <p className="font-medium">{new Date(selectedParticipant.registration_date).toLocaleString()}</p>
+                        <>
+                            <div className="flex-1 overflow-y-auto px-1">
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <p className="text-muted-foreground">Participant</p>
+                                            <p className="font-medium">{selectedParticipant.user.name}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-muted-foreground">Email</p>
+                                            <p className="font-medium">{selectedParticipant.user.email}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-muted-foreground">Amount Due</p>
+                                            <p className="font-medium text-blue-600">RM {Number(event.fee).toFixed(2)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-muted-foreground">Submitted On</p>
+                                            <p className="font-medium">{new Date(selectedParticipant.registration_date).toLocaleString()}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="border rounded-lg p-2 bg-muted/30 flex items-center justify-center">
+                                        {selectedParticipant.payment_proof_path ? (
+                                            <img
+                                                src={`/storage/${selectedParticipant.payment_proof_path}`}
+                                                alt="Payment Proof"
+                                                className="max-w-full h-auto object-contain rounded"
+                                            />
+                                        ) : (
+                                            <p className="text-muted-foreground py-8">No image available</p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="border rounded-lg p-2 bg-muted/30 flex items-center justify-center">
-                                {selectedParticipant.payment_proof_path ? (
-                                    <img
-                                        src={`/storage/${selectedParticipant.payment_proof_path}`}
-                                        alt="Payment Proof"
-                                        className="max-h-[400px] w-auto object-contain rounded"
-                                    />
-                                ) : (
-                                    <p className="text-muted-foreground py-8">No image available</p>
-                                )}
-                            </div>
-
-                            <DialogFooter>
+                            <DialogFooter className="flex-shrink-0 mt-4">
                                 <Button variant="outline" onClick={() => setPaymentProofDialog(false)} className="w-full sm:w-auto">
                                     Close
                                 </Button>
                             </DialogFooter>
-                        </div>
+                        </>
                     )}
                 </DialogContent>
             </Dialog>
@@ -679,12 +700,23 @@ export default function ManageParticipants({ event, participants }: ManagePartic
                                     Close
                                 </Button>
                                 {/* Allow quick actions from details view */}
-                                {participantToView.status !== 'approved' && participantToView.status !== 'rejected' && (
+                                {participantToView.status.toLowerCase() !== 'approved' && (
                                     <Button 
                                         className="bg-green-600 hover:bg-green-700"
                                         onClick={() => handleStatusChange(participantToView.id, 'approved')}
                                     >
+                                        <CheckCircle className="h-4 w-4 mr-2" />
                                         Approve Participant
+                                    </Button>
+                                )}
+                                {participantToView.status.toLowerCase() !== 'rejected' && (
+                                    <Button 
+                                        variant="outline"
+                                        className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                        onClick={() => handleStatusChange(participantToView.id, 'rejected')}
+                                    >
+                                        <XCircle className="h-4 w-4 mr-2" />
+                                        Reject Participant
                                     </Button>
                                 )}
                             </DialogFooter>
