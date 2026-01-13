@@ -749,12 +749,28 @@ export default function EventsGallery() {
                                   <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
                                   <div>
                                     <p className="text-sm font-medium text-muted-foreground">Event Date</p>
-                                    <p className="font-medium">{new Date(selectedEvent.start_date).toLocaleDateString('en-US', {
-                                      weekday: 'long',
-                                      year: 'numeric',
-                                      month: 'long',
-                                      day: 'numeric'
-                                    })}</p>
+                                    <p className="font-medium">
+                                      {new Date(selectedEvent.start_date).toLocaleString('en-US', {
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric',
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                        hour12: true
+                                      })}
+                                      {new Date(selectedEvent.start_date).getTime() !== new Date(selectedEvent.end_date).getTime() && (
+                                        <> - {new Date(selectedEvent.end_date).toLocaleString('en-US', {
+                                          weekday: 'long',
+                                          year: 'numeric',
+                                          month: 'long',
+                                          day: 'numeric',
+                                          hour: 'numeric',
+                                          minute: '2-digit',
+                                          hour12: true
+                                        })}</>
+                                      )}
+                                    </p>
                                   </div>
                                 </div>
                                 <div className="flex items-start gap-3">
@@ -771,7 +787,10 @@ export default function EventsGallery() {
                                   <div>
                                     <p className="text-sm font-medium text-muted-foreground">Duration</p>
                                     <p className="font-medium">
-                                      {Math.ceil((new Date(selectedEvent.end_date).getTime() - new Date(selectedEvent.start_date).getTime()) / (1000 * 60 * 60 * 24))} days
+                                      {(() => {
+                                        const days = Math.ceil((new Date(selectedEvent.end_date).getTime() - new Date(selectedEvent.start_date).getTime()) / (1000 * 60 * 60 * 24));
+                                        return `${days} ${days === 1 ? 'day' : 'days'}`;
+                                      })()}
                                     </p>
                                   </div>
                                 </div>

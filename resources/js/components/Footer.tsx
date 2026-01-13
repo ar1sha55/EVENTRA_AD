@@ -19,10 +19,10 @@ const Footer: React.FC = () => {
                     <div className="flex flex-col items-center md:items-start space-y-4">
                         {/* Brand Text with Gradient */}
                         <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-700 to-purple-500">
-                            Eventra
+                            Volunteer@UTM
                         </div>
                         <p className="text-sm text-center md:text-left max-w-xs leading-relaxed transition-colors duration-300 text-[var(--footer-text)] opacity-80">
-                            Events Made Simpler, <span>Connections Made Stronger.</span>
+                            Volunteer, <span>A Free Yet Priceless Act.</span>
                         </p>
                     </div>
 

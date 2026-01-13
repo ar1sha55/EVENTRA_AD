@@ -184,8 +184,11 @@ export default function EventViewModal({ isOpen, onClose, event }: ModalProps) {
                                 <Calendar className="h-4 w-4" />
                                 <span className="text-xs font-medium">Duration</span>
                             </div>
-                            <p className="text-sm font-semibold">
-                                {Math.ceil((new Date(event.end_date).getTime() - new Date(event.start_date).getTime()) / (1000 * 60 * 60 * 24))} days
+                            <p className="text-2xl font-bold">
+                                {(() => {
+                                    const days = Math.ceil((new Date(event.end_date).getTime() - new Date(event.start_date).getTime()) / (1000 * 60 * 60 * 24));
+                                    return `${days} ${days === 1 ? 'day' : 'days'}`;
+                                })()}
                             </p>
                         </div>
 
@@ -194,7 +197,7 @@ export default function EventViewModal({ isOpen, onClose, event }: ModalProps) {
                                 <Clock className="h-4 w-4" />
                                 <span className="text-xs font-medium">Status</span>
                             </div>
-                            <p className="text-sm font-semibold">
+                            <p className="text-2xl font-bold">
                                 {isUpcoming ? 'Not Started' : isOngoing ? 'In Progress' : 'Completed'}
                             </p>
                         </div>

@@ -152,7 +152,7 @@ export default function SupportTicketDetail({ ticket: initialTicket }: Props) {
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title={`Ticket #${ticket.id} - ${ticket.subject}`} />
-      <div className="min-h-screen bg-gradient-to-br from-purple-50/30 via-white to-orange-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 p-6">
+      <div className="min-h-screen bg-background p-6">
         <div className="max-w-4xl mx-auto space-y-6">
         {/* Back Button */}
         <Button variant="ghost" onClick={() => router.visit('/admin/support-tickets')}>
@@ -188,31 +188,31 @@ export default function SupportTicketDetail({ ticket: initialTicket }: Props) {
           <CardContent className="space-y-6">
             {/* User Info */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-5 bg-gradient-to-r from-muted/50 to-muted/30 rounded-xl border shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex-shrink-0">
                   <User className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-muted-foreground">Submitted By</p>
-                  <p className="font-semibold text-foreground">{ticket.user.name}</p>
+                  <p className="font-semibold text-foreground truncate">{ticket.user.name}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex-shrink-0">
                   <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-muted-foreground">Email</p>
-                  <p className="font-semibold text-foreground">{ticket.user.email}</p>
+                  <p className="font-semibold text-foreground break-words">{ticket.user.email}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-green-100 dark:bg-green-900/30">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-lg bg-green-100 dark:bg-green-900/30 flex-shrink-0">
                   <Calendar className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-muted-foreground">Submitted On</p>
-                  <p className="font-semibold text-foreground">{formatDate(ticket.created_at)}</p>
+                  <p className="font-semibold text-foreground break-words">{formatDate(ticket.created_at)}</p>
                 </div>
               </div>
             </div>

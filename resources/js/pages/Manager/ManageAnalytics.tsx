@@ -357,9 +357,11 @@ const AnalyticsModalContent = memo(({
                                     bgClass="bg-emerald-50/50 dark:bg-emerald-950/20"
                                     colorClass="text-emerald-600 dark:text-emerald-400"
                                 />
-                                <MetricCard 
-                                    title="Total Hours" 
-                                    value={eventAnalytics?.metrics.total_volunteer_hours || 0}
+                                <MetricCard
+                                    title="Total Hours"
+                                    value={typeof eventAnalytics?.metrics.total_volunteer_hours === 'number' 
+                                        ? Number(eventAnalytics.metrics.total_volunteer_hours.toFixed(2))
+                                        : 0}
                                     icon={Clock}
                                     bgClass="bg-purple-50/50 dark:bg-purple-950/20"
                                     colorClass="text-purple-600 dark:text-purple-400"
@@ -1250,7 +1252,9 @@ export default function ManageAnalytics() {
                             </div>
                           </TableCell>
                           <TableCell className="text-center text-sm font-medium text-muted-foreground">
-                             {(event.total_volunteer_hours || 0).toLocaleString()} hrs
+                             {typeof event.total_volunteer_hours === 'number' 
+                               ? Number(event.total_volunteer_hours.toFixed(2)).toLocaleString() 
+                               : 0} hrs
                           </TableCell>
                           <TableCell className="text-center text-sm">
                              {event.fee && event.revenue > 0 ? (
